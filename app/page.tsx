@@ -37,6 +37,13 @@ type City = {
   greeting: string;
   translation: string;
   sceneClass: string;
+  mapX: number;
+  mapY: number;
+  rank?: number;
+  india?: boolean;
+  prompts: string[];
+  demoText: string;
+  demoTranslation: string;
   scenes: Scene[];
 };
 
@@ -59,7 +66,103 @@ type Reward = {
   newStamp: boolean;
 };
 
+const questGoals = [
+  "Greet a local, introduce yourself, and ask one natural follow-up question.",
+  "Complete a useful everyday exchange and confirm one important detail.",
+  "Ask for a local recommendation and respond to the character’s suggestion.",
+];
+
+function localScenes(labels: [string, string, string], characters: [string, string, string], avatars: [string, string, string]): Scene[] {
+  return labels.map((label, index) => ({
+    id: `scene-${index + 1}`,
+    label,
+    icon: ["◆", "◉", "✦"][index],
+    character: characters[index],
+    role: ["Local guide", "Neighbourhood regular", "Market host"][index],
+    avatar: avatars[index],
+    goal: questGoals[index],
+  }));
+}
+
 const CITIES: City[] = [
+  {
+    id: "new-york", name: "New York", country: "United States", language: "English", nativeLanguage: "English", locale: "en-US", flag: "🇺🇸",
+    coordinates: "40.71° N · 74.01° W", verified: true, sceneClass: "atlantic", mapX: 25, mapY: 35, rank: 1,
+    greeting: "Hey! Welcome to New York. What brings you to the city?", translation: "A friendly local welcome.",
+    prompts: ["What do you recommend nearby?", "How do I get to the subway?", "What do locals do on weekends?"],
+    demoText: "You’re doing great. There’s a brilliant little place around the corner—what kind of experience are you looking for?", demoTranslation: "The local understood you and asked a follow-up question.",
+    scenes: localScenes(["Brooklyn deli", "Subway platform", "Central Park"], ["Maya", "Theo", "Jordan"], ["👩🏽", "👨🏿", "🧑🏻"]),
+  },
+  {
+    id: "beijing", name: "Beijing", country: "China", language: "Mandarin Chinese", nativeLanguage: "普通话", locale: "zh-CN", flag: "🇨🇳",
+    coordinates: "39.90° N · 116.41° E", verified: true, sceneClass: "east", mapX: 79, mapY: 40, rank: 2,
+    greeting: "你好！欢迎来到北京。你今天想去哪里？", translation: "Hello! Welcome to Beijing. Where would you like to go today?",
+    prompts: ["你叫什么名字？", "附近有什么好吃的？", "地铁站怎么走？"], demoText: "说得很好！附近有一家很受欢迎的小店。你喜欢吃辣的吗？", demoTranslation: "Very good! There is a popular little restaurant nearby. Do you like spicy food?",
+    scenes: localScenes(["Hutong tea house", "Metro entrance", "Morning market"], ["Xiaoyu", "Wei", "Lin"], ["👩🏻", "👨🏻", "🧑🏻"]),
+  },
+  {
+    id: "delhi", name: "Delhi", country: "India", language: "Hindi", nativeLanguage: "हिन्दी", locale: "hi-IN", flag: "🇮🇳",
+    coordinates: "28.61° N · 77.21° E", verified: true, sceneClass: "india", mapX: 68, mapY: 48, rank: 3, india: true,
+    greeting: "नमस्ते! दिल्ली में आपका स्वागत है। आज आप कहाँ जाना चाहते हैं?", translation: "Hello! Welcome to Delhi. Where would you like to go today?",
+    prompts: ["आपका नाम क्या है?", "यहाँ अच्छा खाना कहाँ मिलेगा?", "मेट्रो स्टेशन कितनी दूर है?"], demoText: "बहुत बढ़िया! पास में एक मशहूर जगह है। आपको मसालेदार खाना पसंद है?", demoTranslation: "Very good! There is a famous place nearby. Do you like spicy food?",
+    scenes: localScenes(["Chai stall", "Metro concourse", "Chandni Chowk"], ["Aarav", "Naina", "Kabir"], ["👨🏽", "👩🏽", "🧑🏽"]),
+  },
+  {
+    id: "madrid", name: "Madrid", country: "Spain", language: "Spanish", nativeLanguage: "Español", locale: "es-ES", flag: "🇪🇸",
+    coordinates: "40.42° N · 3.70° W", verified: true, sceneClass: "europe", mapX: 47, mapY: 38, rank: 4,
+    greeting: "¡Hola! Bienvenido a Madrid. ¿Qué te gustaría hacer hoy?", translation: "Hello! Welcome to Madrid. What would you like to do today?",
+    prompts: ["¿Cómo te llamas?", "¿Qué comida recomiendas?", "¿Cómo llego al centro?"], demoText: "¡Muy bien! Hay un lugar estupendo muy cerca. ¿Prefieres algo dulce o salado?", demoTranslation: "Very good! There is a great place nearby. Do you prefer something sweet or savoury?",
+    scenes: localScenes(["Tapas bar", "Metro plaza", "El Rastro"], ["Lucía", "Mateo", "Sofía"], ["👩🏻", "👨🏻", "🧑🏻"]),
+  },
+  {
+    id: "paris", name: "Paris", country: "France", language: "French", nativeLanguage: "Français", locale: "fr-FR", flag: "🇫🇷",
+    coordinates: "48.86° N · 2.35° E", verified: true, sceneClass: "europe", mapX: 49, mapY: 33, rank: 5,
+    greeting: "Bonjour et bienvenue à Paris ! Qu’est-ce qui vous amène ici ?", translation: "Hello and welcome to Paris! What brings you here?",
+    prompts: ["Comment vous appelez-vous ?", "Qu’est-ce que vous recommandez ?", "Où se trouve le métro ?"], demoText: "Très bien ! Je vous recommande un petit café tout près. Vous préférez le sucré ou le salé ?", demoTranslation: "Very good! I recommend a little café nearby. Do you prefer sweet or savoury?",
+    scenes: localScenes(["Corner café", "Seine bookseller", "Street market"], ["Camille", "Luc", "Amélie"], ["👩🏼", "👨🏼", "🧑🏼"]),
+  },
+  {
+    id: "cairo", name: "Cairo", country: "Egypt", language: "Arabic", nativeLanguage: "العربية", locale: "ar-EG", flag: "🇪🇬",
+    coordinates: "30.04° N · 31.24° E", verified: true, sceneClass: "desert", mapX: 56, mapY: 45, rank: 6,
+    greeting: "أهلاً وسهلاً بك في القاهرة! ماذا تريد أن تفعل اليوم؟", translation: "Welcome to Cairo! What would you like to do today?",
+    prompts: ["ما اسمك؟", "أين أجد طعاماً جيداً؟", "كيف أذهب إلى السوق؟"], demoText: "ممتاز! يوجد مكان جميل قريب من هنا. هل تريد أن أريك الطريق؟", demoTranslation: "Excellent! There is a lovely place nearby. Would you like me to show you the way?",
+    scenes: localScenes(["Ahwa café", "Nile promenade", "Khan market"], ["Layla", "Omar", "Nour"], ["👩🏽", "👨🏽", "🧑🏽"]),
+  },
+  {
+    id: "dhaka", name: "Dhaka", country: "Bangladesh", language: "Bengali", nativeLanguage: "বাংলা", locale: "bn-BD", flag: "🇧🇩",
+    coordinates: "23.81° N · 90.41° E", verified: true, sceneClass: "india", mapX: 73, mapY: 51, rank: 7,
+    greeting: "নমস্কার! ঢাকায় স্বাগতম। আজ আপনি কোথায় যেতে চান?", translation: "Hello! Welcome to Dhaka. Where would you like to go today?",
+    prompts: ["আপনার নাম কী?", "এখানে ভালো খাবার কোথায় পাব?", "বাজারে কীভাবে যাব?"], demoText: "খুব ভালো বলেছেন! কাছেই একটি জনপ্রিয় খাবারের দোকান আছে। আপনি ঝাল পছন্দ করেন?", demoTranslation: "Very well said! There is a popular food place nearby. Do you like spicy food?",
+    scenes: localScenes(["Tea cabin", "Rickshaw stand", "New Market"], ["Asha", "Rafi", "Mitu"], ["👩🏽", "👨🏽", "🧑🏽"]),
+  },
+  {
+    id: "sao-paulo", name: "São Paulo", country: "Brazil", language: "Portuguese", nativeLanguage: "Português", locale: "pt-BR", flag: "🇧🇷",
+    coordinates: "23.55° S · 46.63° W", verified: true, sceneClass: "tropical", mapX: 36, mapY: 72, rank: 8,
+    greeting: "Olá! Bem-vindo a São Paulo. O que você quer conhecer hoje?", translation: "Hello! Welcome to São Paulo. What would you like to discover today?",
+    prompts: ["Como você se chama?", "O que você recomenda comer?", "Como chego ao metrô?"], demoText: "Muito bem! Tem um lugar ótimo aqui perto. Você quer uma recomendação mais tranquila ou animada?", demoTranslation: "Very good! There is a great place nearby. Would you like a relaxed or lively recommendation?",
+    scenes: localScenes(["Padaria counter", "Metro station", "Street fair"], ["Beatriz", "Lucas", "Dani"], ["👩🏽", "👨🏽", "🧑🏽"]),
+  },
+  {
+    id: "moscow", name: "Moscow", country: "Russia", language: "Russian", nativeLanguage: "Русский", locale: "ru-RU", flag: "🇷🇺",
+    coordinates: "55.76° N · 37.62° E", verified: true, sceneClass: "east", mapX: 61, mapY: 28, rank: 9,
+    greeting: "Здравствуйте! Добро пожаловать в Москву. Куда вы хотите пойти?", translation: "Hello! Welcome to Moscow. Where would you like to go?",
+    prompts: ["Как вас зовут?", "Что вы посоветуете попробовать?", "Где находится метро?"], demoText: "Отлично! Недалеко есть интересное место. Вы хотите пойти пешком или на метро?", demoTranslation: "Excellent! There is an interesting place nearby. Would you like to walk or take the metro?",
+    scenes: localScenes(["Coffee kiosk", "Metro hall", "Food market"], ["Anya", "Mikhail", "Sasha"], ["👩🏻", "👨🏻", "🧑🏻"]),
+  },
+  {
+    id: "lahore", name: "Lahore", country: "Pakistan", language: "Urdu", nativeLanguage: "اردو", locale: "ur-PK", flag: "🇵🇰",
+    coordinates: "31.52° N · 74.36° E", verified: true, sceneClass: "desert", mapX: 66, mapY: 45, rank: 10,
+    greeting: "السلام علیکم! لاہور میں خوش آمدید۔ آج آپ کہاں جانا چاہتے ہیں؟", translation: "Hello! Welcome to Lahore. Where would you like to go today?",
+    prompts: ["آپ کا نام کیا ہے؟", "اچھا کھانا کہاں ملے گا؟", "بازار کیسے جاؤں؟"], demoText: "بہت خوب! قریب ہی ایک مشہور جگہ ہے۔ کیا آپ کو مصالحے دار کھانا پسند ہے؟", demoTranslation: "Very good! There is a famous place nearby. Do you like spicy food?",
+    scenes: localScenes(["Chai dhaba", "Bus stop", "Anarkali Bazaar"], ["Zara", "Hamza", "Noor"], ["👩🏽", "👨🏽", "🧑🏽"]),
+  },
+  {
+    id: "mumbai", name: "Mumbai", country: "India", language: "Marathi", nativeLanguage: "मराठी", locale: "mr-IN", flag: "🇮🇳",
+    coordinates: "19.08° N · 72.88° E", verified: true, sceneClass: "india", mapX: 66, mapY: 57, india: true,
+    greeting: "नमस्कार! मुंबईत तुमचं स्वागत आहे. आज तुम्हाला कुठे जायचं आहे?", translation: "Hello! Welcome to Mumbai. Where would you like to go today?",
+    prompts: ["तुमचं नाव काय आहे?", "इथे चांगलं जेवण कुठे मिळेल?", "स्टेशनला कसं जायचं?"], demoText: "छान बोललात! जवळच एक मस्त जागा आहे. तुम्हाला तिखट आवडतं का?", demoTranslation: "Well said! There is a great place nearby. Do you like spicy food?",
+    scenes: localScenes(["Irani café", "Local platform", "Dadar market"], ["Ira", "Rohan", "Sahil"], ["👩🏽", "👨🏽", "🧑🏽"]),
+  },
   {
     id: "bengaluru",
     name: "Bengaluru",
@@ -72,58 +175,12 @@ const CITIES: City[] = [
     verified: true,
     greeting: "ನಮಸ್ಕಾರ! ಬೆಂಗಳೂರಿಗೆ ಸ್ವಾಗತ. ಇಂದು ಹೇಗಿದ್ದೀರಿ?",
     translation: "Hello! Welcome to Bengaluru. How are you today?",
-    sceneClass: "bengaluru",
-    scenes: [
-      { id: "darshini", label: "Darshini café", icon: "☕", character: "Ananya", role: "Café regular", avatar: "👩🏽", goal: "Have a friendly chat and ask for a local recommendation." },
-      { id: "auto", label: "Auto stand", icon: "🛺", character: "Ravi", role: "Auto driver", avatar: "👨🏾", goal: "Explain where you want to go and ask about the fare." },
-      { id: "market", label: "KR Market", icon: "🌼", character: "Meera", role: "Flower seller", avatar: "👩🏾", goal: "Ask about the flowers, price, or life in the market." },
-    ],
-  },
-  {
-    id: "tokyo",
-    name: "Tokyo",
-    country: "Japan",
-    language: "Japanese",
-    nativeLanguage: "日本語",
-    locale: "ja-JP",
-    flag: "🇯🇵",
-    coordinates: "35.68° N · 139.65° E",
-    verified: true,
-    greeting: "こんにちは！東京へようこそ。今日は何をしてみたいですか？",
-    translation: "Hello! Welcome to Tokyo. What would you like to do today?",
-    sceneClass: "tokyo",
-    scenes: [
-      { id: "station", label: "Shibuya station", icon: "🚉", character: "Aiko", role: "University student", avatar: "👩🏻", goal: "Ask for directions and keep the conversation going." },
-      { id: "ramen", label: "Ramen counter", icon: "🍜", character: "Ren", role: "Ramen chef", avatar: "👨🏻", goal: "Order naturally and ask the chef a question." },
-      { id: "park", label: "Ueno park", icon: "🌳", character: "Emi", role: "Local photographer", avatar: "🧑🏻", goal: "Talk about the park, weather, or photography." },
-    ],
-  },
-  {
-    id: "paris",
-    name: "Paris",
-    country: "France",
-    language: "French",
-    nativeLanguage: "Français",
-    locale: "fr-FR",
-    flag: "🇫🇷",
-    coordinates: "48.86° N · 2.35° E",
-    verified: false,
-    greeting: "Bonjour et bienvenue à Paris ! Qu’est-ce qui vous amène ici ?",
-    translation: "Hello and welcome to Paris! What brings you here?",
-    sceneClass: "paris",
-    scenes: [
-      { id: "cafe", label: "Corner café", icon: "🥐", character: "Camille", role: "Café owner", avatar: "👩🏼", goal: "Start a natural conversation and ask for a recommendation." },
-      { id: "books", label: "Seine bookseller", icon: "📚", character: "Luc", role: "Bookseller", avatar: "👨🏼", goal: "Describe what you enjoy reading and ask a follow-up." },
-      { id: "market", label: "Street market", icon: "🍓", character: "Amélie", role: "Market vendor", avatar: "🧑🏼", goal: "Ask about local produce, prices, or the neighbourhood." },
-    ],
+    sceneClass: "bengaluru", mapX: 68, mapY: 63, india: true,
+    prompts: ["ನಿಮ್ಮ ಹೆಸರು ಏನು?", "ಇಲ್ಲಿ ಒಳ್ಳೆಯ ಊಟ ಎಲ್ಲಿ ಸಿಗುತ್ತದೆ?", "ಇಂದಿನ ಹವಾಮಾನ ಹೇಗಿದೆ?"],
+    demoText: "ಇಲ್ಲಿ ಮಸಾಲೆ ದೋಸೆ ತುಂಬಾ ಚೆನ್ನಾಗಿದೆ. ನಿಮಗೆ ಖಾರ ಇಷ್ಟವೇ?", demoTranslation: "The masala dosa is very good here. Do you like spicy food?",
+    scenes: localScenes(["Darshini café", "Auto stand", "KR Market"], ["Ananya", "Ravi", "Meera"], ["👩🏽", "👨🏾", "👩🏾"]),
   },
 ];
-
-const PROMPTS: Record<string, string[]> = {
-  bengaluru: ["ನಿಮ್ಮ ಹೆಸರು ಏನು?", "ಇಲ್ಲಿ ಒಳ್ಳೆಯ ಊಟ ಎಲ್ಲಿ ಸಿಗುತ್ತದೆ?", "ಇಂದಿನ ಹವಾಮಾನ ಹೇಗಿದೆ?"],
-  tokyo: ["お名前は何ですか？", "おすすめの食べ物は何ですか？", "駅はどこですか？"],
-  paris: ["Comment vous appelez-vous ?", "Qu’est-ce que vous recommandez ?", "Vous aimez vivre à Paris ?"],
-};
 
 const providerLabels: Record<Provider, string> = {
   demo: "Demo brain",
@@ -141,43 +198,9 @@ function cityWelcome(city: City, level: Level): Message {
 }
 
 function demoReply(city: City, scene: Scene, input: string, level: Level): { text: string; translation: string } {
-  const lowered = input.toLocaleLowerCase();
-  const asksName = /name|ಹೆಸರು|名前|appelle/.test(lowered);
-  const asksFood = /food|eat|restaurant|ಊಟ|ತಿಂಡಿ|食|ラーメン|manger|recommand/.test(lowered);
-  const asksDirection = /where|direction|go|ಎಲ್ಲಿ|ಹೋಗ|どこ|駅|où|aller/.test(lowered);
-  const thanks = /thank|ಧನ್ಯವಾದ|ありがとう|merci/.test(lowered);
-
-  const replies: Record<string, Array<{ text: string; translation: string }>> = {
-    bengaluru: asksName
-      ? [{ text: `ನನ್ನ ಹೆಸರು ${scene.character}. ನಿಮ್ಮ ಹೆಸರು ಏನು?`, translation: `My name is ${scene.character}. What is your name?` }]
-      : asksFood
-        ? [{ text: "ಇಲ್ಲಿ ಮಸಾಲೆ ದೋಸೆ ತುಂಬಾ ಚೆನ್ನಾಗಿದೆ. ನಿಮಗೆ ಖಾರ ಇಷ್ಟವೇ?", translation: "The masala dosa is very good here. Do you like spicy food?" }]
-        : asksDirection
-          ? [{ text: "ನೇರವಾಗಿ ಹೋಗಿ, ಎರಡನೇ ಬಲ ತಿರುಗಿ. ನೀವು ಒಬ್ಬರೇ ಹೋಗುತ್ತಿದ್ದೀರಾ?", translation: "Go straight and take the second right. Are you going alone?" }]
-          : thanks
-            ? [{ text: "ಪರವಾಗಿಲ್ಲ! ಇನ್ನೇನಾದರೂ ಸಹಾಯ ಬೇಕೇ?", translation: "You’re welcome! Do you need any other help?" }]
-            : [{ text: "ಚೆನ್ನಾಗಿದೆ! ಅದರ ಬಗ್ಗೆ ಇನ್ನಷ್ಟು ಹೇಳಿ. ನೀವು ಬೆಂಗಳೂರಿಗೆ ಮೊದಲ ಬಾರಿ ಬಂದಿದ್ದೀರಾ?", translation: "Nice! Tell me more about that. Is this your first time in Bengaluru?" }],
-    tokyo: asksName
-      ? [{ text: `私は${scene.character}です。あなたのお名前は？`, translation: `I’m ${scene.character}. What is your name?` }]
-      : asksFood
-        ? [{ text: "この近くのラーメンがおすすめです。辛いものは好きですか？", translation: "I recommend the ramen nearby. Do you like spicy food?" }]
-        : asksDirection
-          ? [{ text: "駅はこの道をまっすぐ行って右です。どこまで行きますか？", translation: "The station is straight ahead and to the right. Where are you going?" }]
-          : thanks
-            ? [{ text: "どういたしまして！ほかに聞きたいことはありますか？", translation: "You’re welcome! Is there anything else you want to ask?" }]
-            : [{ text: "面白いですね。もう少し詳しく教えてください。東京は初めてですか？", translation: "That’s interesting. Tell me a little more. Is this your first time in Tokyo?" }],
-    paris: asksName
-      ? [{ text: `Je m’appelle ${scene.character}. Et vous, comment vous appelez-vous ?`, translation: `My name is ${scene.character}. And what is your name?` }]
-      : asksFood
-        ? [{ text: "Je vous recommande la tarte du jour. Vous préférez le sucré ou le salé ?", translation: "I recommend today’s tart. Do you prefer sweet or savoury?" }]
-        : asksDirection
-          ? [{ text: "Continuez tout droit, puis tournez à gauche. Vous cherchez un endroit précis ?", translation: "Continue straight, then turn left. Are you looking for somewhere specific?" }]
-          : thanks
-            ? [{ text: "Avec plaisir ! Vous voulez savoir autre chose ?", translation: "My pleasure! Would you like to know anything else?" }]
-            : [{ text: "C’est intéressant ! Racontez-moi un peu plus. C’est votre première fois à Paris ?", translation: "That’s interesting! Tell me a little more. Is this your first time in Paris?" }],
-  };
-
-  const reply = replies[city.id][0];
+  void scene;
+  void input;
+  const reply = { text: city.demoText, translation: city.demoTranslation };
   return level === "Beginner" ? reply : { ...reply, translation: level === "Advanced" ? "" : reply.translation };
 }
 
@@ -200,7 +223,7 @@ function demoEvaluation(messages: Message[], city: City, level: Level): Evaluati
     confidence,
     strength: userMessages.length >= 2 ? "You kept the exchange moving and responded to follow-up questions." : "Your meaning was clear enough for the character to respond.",
     improvement: words.length < 12 ? "Try adding one detail and one follow-up question in your next attempt." : `Use a more natural connector in ${city.language} instead of pausing between ideas.`,
-    phrase: PROMPTS[city.id][1],
+    phrase: city.prompts[1],
   };
 }
 
@@ -220,7 +243,7 @@ function ollamaSystemPrompt(city: City, scene: Scene, level: Level, action: "tur
 
 export default function Home() {
   const [cityId, setCityId] = useState("bengaluru");
-  const [sceneId, setSceneId] = useState("darshini");
+  const [sceneId, setSceneId] = useState("scene-1");
   const [provider, setProvider] = useState<Provider>("demo");
   const [level, setLevel] = useState<Level>("Beginner");
   const [messages, setMessages] = useState<Message[]>([]);
@@ -557,34 +580,34 @@ export default function Home() {
 
           <div className="world-map" aria-label="Available destinations">
             <div className="map-grid" />
-            <div className="land land-one" />
-            <div className="land land-two" />
-            <div className="land land-three" />
+            <img className="world-map-image" src="/world-map.png" alt="World map" />
             {CITIES.map((item) => (
               <button
                 key={item.id}
-                className={`map-pin pin-${item.id} ${item.id === city.id ? "selected" : ""}`}
+                className={`map-pin ${item.id === city.id ? "selected" : ""}`}
+                style={{ left: `${item.mapX}%`, top: `${item.mapY}%` }}
                 onClick={() => chooseCity(item)}
-                aria-label={`Visit ${item.name}`}
+                aria-label={`Visit ${item.name} to practise ${item.language}`}
               >
                 <span>{item.flag}</span>
                 <strong>{item.name}</strong>
               </button>
             ))}
-            <div className="map-caption">3 cities live · a world-shaped system</div>
+            <div className="map-caption">12 language destinations · select a glowing waypoint</div>
           </div>
 
+          <div className="language-heading"><strong>LANGUAGE ATLAS</strong><span>Global top 10 + India</span></div>
           <div className="city-list">
             {CITIES.map((item) => (
               <button key={item.id} className={item.id === city.id ? "city-card active" : "city-card"} onClick={() => chooseCity(item)}>
                 <span className="city-flag">{item.flag}</span>
-                <span><strong>{item.name}</strong><small>{item.country} · {item.nativeLanguage}</small></span>
-                <span className={item.verified ? "verified" : "beta"}>{item.verified ? "Verified" : "Beta"}</span>
+                <span><strong>{item.language}</strong><small>{item.name} · {item.nativeLanguage}</small></span>
+                <span className="language-rank">{item.rank ? `#${item.rank}${item.india ? " · IN" : ""}` : "INDIA"}</span>
               </button>
             ))}
           </div>
           <div className="passport-strip">
-            <div><span>◆</span><p><strong>YOUR PASSPORT</strong><small>{stamps.length}/3 city stamps earned</small></p></div>
+            <div><span>◆</span><p><strong>YOUR PASSPORT</strong><small>{stamps.length}/{CITIES.length} city stamps earned</small></p></div>
             <div className="stamp-row">
               {CITIES.map((item) => <span key={item.id} className={stamps.includes(item.id) ? "earned" : ""} title={`${item.name} stamp`}>{stamps.includes(item.id) ? item.flag : "·"}</span>)}
             </div>
@@ -673,7 +696,7 @@ export default function Home() {
           </div>
 
           <div className="prompt-chips">
-            {PROMPTS[city.id].map((prompt) => <button key={prompt} onClick={() => setInput(prompt)}>{prompt}</button>)}
+            {city.prompts.map((prompt) => <button key={prompt} onClick={() => setInput(prompt)}>{prompt}</button>)}
           </div>
 
           <form className="composer" onSubmit={handleSubmit}>
@@ -705,8 +728,8 @@ export default function Home() {
       </section>
 
       <footer>
-        <p><strong>WORLDLING / PROTOTYPE 02</strong> · Browser voice recognition supplies the transcript.</p>
-        <p>The selected model receives text, not raw microphone audio.</p>
+        <p><strong>WORLDLING / NIGHT ATLAS</strong> · Browser voice recognition supplies the transcript.</p>
+        <p>The selected model receives text, not raw microphone audio. · Map by <a href="https://commons.wikimedia.org/wiki/File:Blank_Map_of_The_World_Equirectangular_Projection.png" target="_blank" rel="noreferrer">FelixCountryBalls163, CC BY 4.0</a></p>
       </footer>
 
       {evaluation && (
