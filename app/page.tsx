@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, PointerEvent as ReactPointerEvent, WheelEvent as ReactWheelEvent, useEffect, useMemo, useRef, useState } from "react";
 
 type Provider = "demo" | "local" | "api";
 type Level = "Beginner" | "Intermediate" | "Advanced";
@@ -87,7 +87,7 @@ function localScenes(labels: [string, string, string], characters: [string, stri
 const CITIES: City[] = [
   {
     id: "new-york", name: "New York", country: "United States", language: "English", nativeLanguage: "English", locale: "en-US", flag: "🇺🇸",
-    coordinates: "40.71° N · 74.01° W", verified: true, sceneClass: "atlantic", mapX: 25, mapY: 35, rank: 1,
+    coordinates: "40.71° N · 74.01° W", verified: true, sceneClass: "atlantic", mapX: 29.4, mapY: 27.4, rank: 1,
     greeting: "Hey! Welcome to New York. What brings you to the city?", translation: "A friendly local welcome.",
     prompts: ["What do you recommend nearby?", "How do I get to the subway?", "What do locals do on weekends?"],
     demoText: "You’re doing great. There’s a brilliant little place around the corner—what kind of experience are you looking for?", demoTranslation: "The local understood you and asked a follow-up question.",
@@ -95,70 +95,70 @@ const CITIES: City[] = [
   },
   {
     id: "beijing", name: "Beijing", country: "China", language: "Mandarin Chinese", nativeLanguage: "普通话", locale: "zh-CN", flag: "🇨🇳",
-    coordinates: "39.90° N · 116.41° E", verified: true, sceneClass: "east", mapX: 79, mapY: 40, rank: 2,
+    coordinates: "39.90° N · 116.41° E", verified: true, sceneClass: "east", mapX: 82.3, mapY: 27.8, rank: 2,
     greeting: "你好！欢迎来到北京。你今天想去哪里？", translation: "Hello! Welcome to Beijing. Where would you like to go today?",
     prompts: ["你叫什么名字？", "附近有什么好吃的？", "地铁站怎么走？"], demoText: "说得很好！附近有一家很受欢迎的小店。你喜欢吃辣的吗？", demoTranslation: "Very good! There is a popular little restaurant nearby. Do you like spicy food?",
     scenes: localScenes(["Hutong tea house", "Metro entrance", "Morning market"], ["Xiaoyu", "Wei", "Lin"], ["👩🏻", "👨🏻", "🧑🏻"]),
   },
   {
     id: "delhi", name: "Delhi", country: "India", language: "Hindi", nativeLanguage: "हिन्दी", locale: "hi-IN", flag: "🇮🇳",
-    coordinates: "28.61° N · 77.21° E", verified: true, sceneClass: "india", mapX: 68, mapY: 48, rank: 3, india: true,
+    coordinates: "28.61° N · 77.21° E", verified: true, sceneClass: "india", mapX: 71.4, mapY: 34.1, rank: 3, india: true,
     greeting: "नमस्ते! दिल्ली में आपका स्वागत है। आज आप कहाँ जाना चाहते हैं?", translation: "Hello! Welcome to Delhi. Where would you like to go today?",
     prompts: ["आपका नाम क्या है?", "यहाँ अच्छा खाना कहाँ मिलेगा?", "मेट्रो स्टेशन कितनी दूर है?"], demoText: "बहुत बढ़िया! पास में एक मशहूर जगह है। आपको मसालेदार खाना पसंद है?", demoTranslation: "Very good! There is a famous place nearby. Do you like spicy food?",
     scenes: localScenes(["Chai stall", "Metro concourse", "Chandni Chowk"], ["Aarav", "Naina", "Kabir"], ["👨🏽", "👩🏽", "🧑🏽"]),
   },
   {
     id: "madrid", name: "Madrid", country: "Spain", language: "Spanish", nativeLanguage: "Español", locale: "es-ES", flag: "🇪🇸",
-    coordinates: "40.42° N · 3.70° W", verified: true, sceneClass: "europe", mapX: 47, mapY: 38, rank: 4,
+    coordinates: "40.42° N · 3.70° W", verified: true, sceneClass: "europe", mapX: 49, mapY: 27.5, rank: 4,
     greeting: "¡Hola! Bienvenido a Madrid. ¿Qué te gustaría hacer hoy?", translation: "Hello! Welcome to Madrid. What would you like to do today?",
     prompts: ["¿Cómo te llamas?", "¿Qué comida recomiendas?", "¿Cómo llego al centro?"], demoText: "¡Muy bien! Hay un lugar estupendo muy cerca. ¿Prefieres algo dulce o salado?", demoTranslation: "Very good! There is a great place nearby. Do you prefer something sweet or savoury?",
     scenes: localScenes(["Tapas bar", "Metro plaza", "El Rastro"], ["Lucía", "Mateo", "Sofía"], ["👩🏻", "👨🏻", "🧑🏻"]),
   },
   {
     id: "paris", name: "Paris", country: "France", language: "French", nativeLanguage: "Français", locale: "fr-FR", flag: "🇫🇷",
-    coordinates: "48.86° N · 2.35° E", verified: true, sceneClass: "europe", mapX: 49, mapY: 33, rank: 5,
+    coordinates: "48.86° N · 2.35° E", verified: true, sceneClass: "europe", mapX: 50.7, mapY: 22.9, rank: 5,
     greeting: "Bonjour et bienvenue à Paris ! Qu’est-ce qui vous amène ici ?", translation: "Hello and welcome to Paris! What brings you here?",
     prompts: ["Comment vous appelez-vous ?", "Qu’est-ce que vous recommandez ?", "Où se trouve le métro ?"], demoText: "Très bien ! Je vous recommande un petit café tout près. Vous préférez le sucré ou le salé ?", demoTranslation: "Very good! I recommend a little café nearby. Do you prefer sweet or savoury?",
     scenes: localScenes(["Corner café", "Seine bookseller", "Street market"], ["Camille", "Luc", "Amélie"], ["👩🏼", "👨🏼", "🧑🏼"]),
   },
   {
     id: "cairo", name: "Cairo", country: "Egypt", language: "Arabic", nativeLanguage: "العربية", locale: "ar-EG", flag: "🇪🇬",
-    coordinates: "30.04° N · 31.24° E", verified: true, sceneClass: "desert", mapX: 56, mapY: 45, rank: 6,
+    coordinates: "30.04° N · 31.24° E", verified: true, sceneClass: "desert", mapX: 58.7, mapY: 33.3, rank: 6,
     greeting: "أهلاً وسهلاً بك في القاهرة! ماذا تريد أن تفعل اليوم؟", translation: "Welcome to Cairo! What would you like to do today?",
     prompts: ["ما اسمك؟", "أين أجد طعاماً جيداً؟", "كيف أذهب إلى السوق؟"], demoText: "ممتاز! يوجد مكان جميل قريب من هنا. هل تريد أن أريك الطريق؟", demoTranslation: "Excellent! There is a lovely place nearby. Would you like me to show you the way?",
     scenes: localScenes(["Ahwa café", "Nile promenade", "Khan market"], ["Layla", "Omar", "Nour"], ["👩🏽", "👨🏽", "🧑🏽"]),
   },
   {
     id: "dhaka", name: "Dhaka", country: "Bangladesh", language: "Bengali", nativeLanguage: "বাংলা", locale: "bn-BD", flag: "🇧🇩",
-    coordinates: "23.81° N · 90.41° E", verified: true, sceneClass: "india", mapX: 73, mapY: 51, rank: 7,
+    coordinates: "23.81° N · 90.41° E", verified: true, sceneClass: "india", mapX: 75.1, mapY: 36.8, rank: 7,
     greeting: "নমস্কার! ঢাকায় স্বাগতম। আজ আপনি কোথায় যেতে চান?", translation: "Hello! Welcome to Dhaka. Where would you like to go today?",
     prompts: ["আপনার নাম কী?", "এখানে ভালো খাবার কোথায় পাব?", "বাজারে কীভাবে যাব?"], demoText: "খুব ভালো বলেছেন! কাছেই একটি জনপ্রিয় খাবারের দোকান আছে। আপনি ঝাল পছন্দ করেন?", demoTranslation: "Very well said! There is a popular food place nearby. Do you like spicy food?",
     scenes: localScenes(["Tea cabin", "Rickshaw stand", "New Market"], ["Asha", "Rafi", "Mitu"], ["👩🏽", "👨🏽", "🧑🏽"]),
   },
   {
     id: "sao-paulo", name: "São Paulo", country: "Brazil", language: "Portuguese", nativeLanguage: "Português", locale: "pt-BR", flag: "🇧🇷",
-    coordinates: "23.55° S · 46.63° W", verified: true, sceneClass: "tropical", mapX: 36, mapY: 72, rank: 8,
+    coordinates: "23.55° S · 46.63° W", verified: true, sceneClass: "tropical", mapX: 37, mapY: 63.1, rank: 8,
     greeting: "Olá! Bem-vindo a São Paulo. O que você quer conhecer hoje?", translation: "Hello! Welcome to São Paulo. What would you like to discover today?",
     prompts: ["Como você se chama?", "O que você recomenda comer?", "Como chego ao metrô?"], demoText: "Muito bem! Tem um lugar ótimo aqui perto. Você quer uma recomendação mais tranquila ou animada?", demoTranslation: "Very good! There is a great place nearby. Would you like a relaxed or lively recommendation?",
     scenes: localScenes(["Padaria counter", "Metro station", "Street fair"], ["Beatriz", "Lucas", "Dani"], ["👩🏽", "👨🏽", "🧑🏽"]),
   },
   {
     id: "moscow", name: "Moscow", country: "Russia", language: "Russian", nativeLanguage: "Русский", locale: "ru-RU", flag: "🇷🇺",
-    coordinates: "55.76° N · 37.62° E", verified: true, sceneClass: "east", mapX: 61, mapY: 28, rank: 9,
+    coordinates: "55.76° N · 37.62° E", verified: true, sceneClass: "east", mapX: 60.5, mapY: 19, rank: 9,
     greeting: "Здравствуйте! Добро пожаловать в Москву. Куда вы хотите пойти?", translation: "Hello! Welcome to Moscow. Where would you like to go?",
     prompts: ["Как вас зовут?", "Что вы посоветуете попробовать?", "Где находится метро?"], demoText: "Отлично! Недалеко есть интересное место. Вы хотите пойти пешком или на метро?", demoTranslation: "Excellent! There is an interesting place nearby. Would you like to walk or take the metro?",
     scenes: localScenes(["Coffee kiosk", "Metro hall", "Food market"], ["Anya", "Mikhail", "Sasha"], ["👩🏻", "👨🏻", "🧑🏻"]),
   },
   {
     id: "lahore", name: "Lahore", country: "Pakistan", language: "Urdu", nativeLanguage: "اردو", locale: "ur-PK", flag: "🇵🇰",
-    coordinates: "31.52° N · 74.36° E", verified: true, sceneClass: "desert", mapX: 66, mapY: 45, rank: 10,
+    coordinates: "31.52° N · 74.36° E", verified: true, sceneClass: "desert", mapX: 70.7, mapY: 32.5, rank: 10,
     greeting: "السلام علیکم! لاہور میں خوش آمدید۔ آج آپ کہاں جانا چاہتے ہیں؟", translation: "Hello! Welcome to Lahore. Where would you like to go today?",
     prompts: ["آپ کا نام کیا ہے؟", "اچھا کھانا کہاں ملے گا؟", "بازار کیسے جاؤں؟"], demoText: "بہت خوب! قریب ہی ایک مشہور جگہ ہے۔ کیا آپ کو مصالحے دار کھانا پسند ہے؟", demoTranslation: "Very good! There is a famous place nearby. Do you like spicy food?",
     scenes: localScenes(["Chai dhaba", "Bus stop", "Anarkali Bazaar"], ["Zara", "Hamza", "Noor"], ["👩🏽", "👨🏽", "🧑🏽"]),
   },
   {
     id: "mumbai", name: "Mumbai", country: "India", language: "Marathi", nativeLanguage: "मराठी", locale: "mr-IN", flag: "🇮🇳",
-    coordinates: "19.08° N · 72.88° E", verified: true, sceneClass: "india", mapX: 66, mapY: 57, india: true,
+    coordinates: "19.08° N · 72.88° E", verified: true, sceneClass: "india", mapX: 70.2, mapY: 39.4, india: true,
     greeting: "नमस्कार! मुंबईत तुमचं स्वागत आहे. आज तुम्हाला कुठे जायचं आहे?", translation: "Hello! Welcome to Mumbai. Where would you like to go today?",
     prompts: ["तुमचं नाव काय आहे?", "इथे चांगलं जेवण कुठे मिळेल?", "स्टेशनला कसं जायचं?"], demoText: "छान बोललात! जवळच एक मस्त जागा आहे. तुम्हाला तिखट आवडतं का?", demoTranslation: "Well said! There is a great place nearby. Do you like spicy food?",
     scenes: localScenes(["Irani café", "Local platform", "Dadar market"], ["Ira", "Rohan", "Sahil"], ["👩🏽", "👨🏽", "🧑🏽"]),
@@ -175,7 +175,7 @@ const CITIES: City[] = [
     verified: true,
     greeting: "ನಮಸ್ಕಾರ! ಬೆಂಗಳೂರಿಗೆ ಸ್ವಾಗತ. ಇಂದು ಹೇಗಿದ್ದೀರಿ?",
     translation: "Hello! Welcome to Bengaluru. How are you today?",
-    sceneClass: "bengaluru", mapX: 68, mapY: 63, india: true,
+    sceneClass: "bengaluru", mapX: 71.5, mapY: 42.8, india: true,
     prompts: ["ನಿಮ್ಮ ಹೆಸರು ಏನು?", "ಇಲ್ಲಿ ಒಳ್ಳೆಯ ಊಟ ಎಲ್ಲಿ ಸಿಗುತ್ತದೆ?", "ಇಂದಿನ ಹವಾಮಾನ ಹೇಗಿದೆ?"],
     demoText: "ಇಲ್ಲಿ ಮಸಾಲೆ ದೋಸೆ ತುಂಬಾ ಚೆನ್ನಾಗಿದೆ. ನಿಮಗೆ ಖಾರ ಇಷ್ಟವೇ?", demoTranslation: "The masala dosa is very good here. Do you like spicy food?",
     scenes: localScenes(["Darshini café", "Auto stand", "KR Market"], ["Ananya", "Ravi", "Meera"], ["👩🏽", "👨🏾", "👩🏾"]),
@@ -265,9 +265,13 @@ export default function Home() {
   const [questProgress, setQuestProgress] = useState([false, false, false]);
   const [reward, setReward] = useState<Reward | null>(null);
   const [rewarded, setRewarded] = useState(false);
+  const [mapZoom, setMapZoom] = useState(1);
+  const [mapPan, setMapPan] = useState({ x: 0, y: 0 });
+  const [mapDragging, setMapDragging] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const recognitionRef = useRef<{ start: () => void; stop: () => void } | null>(null);
   const messageId = useRef(1);
+  const mapDragRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
 
   const city = useMemo(() => CITIES.find((item) => item.id === cityId) ?? CITIES[0], [cityId]);
   const scene = useMemo(() => city.scenes.find((item) => item.id === sceneId) ?? city.scenes[0], [city, sceneId]);
@@ -545,13 +549,53 @@ export default function Home() {
     setSceneId(nextCity.scenes[0].id);
   }
 
+  function changeMapZoom(delta: number) {
+    setMapZoom((current) => {
+      const next = Math.min(3, Math.max(1, Number((current + delta).toFixed(2))));
+      if (next === 1) setMapPan({ x: 0, y: 0 });
+      return next;
+    });
+  }
+
+  function resetMapView() {
+    setMapZoom(1);
+    setMapPan({ x: 0, y: 0 });
+  }
+
+  function handleMapWheel(event: ReactWheelEvent<HTMLDivElement>) {
+    event.preventDefault();
+    changeMapZoom(event.deltaY < 0 ? .2 : -.2);
+  }
+
+  function handleMapPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+    if (mapZoom === 1 || (event.target as HTMLElement).closest("button")) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    mapDragRef.current = { x: event.clientX, y: event.clientY, panX: mapPan.x, panY: mapPan.y };
+    setMapDragging(true);
+  }
+
+  function handleMapPointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+    const origin = mapDragRef.current;
+    if (!origin) return;
+    const limit = 170 * mapZoom;
+    setMapPan({
+      x: Math.max(-limit, Math.min(limit, origin.panX + event.clientX - origin.x)),
+      y: Math.max(-limit * .6, Math.min(limit * .6, origin.panY + event.clientY - origin.y)),
+    });
+  }
+
+  function stopMapDrag() {
+    mapDragRef.current = null;
+    setMapDragging(false);
+  }
+
   return (
     <main className="app-shell">
       <header className="topbar">
         <a className="brand" href="#world" aria-label="Worldling home">
           <span className="brand-mark">W</span>
-          <span>worldling</span>
-          <small>voice travel lab</small>
+          <span>WORLDLING</span>
+          <small>FREE ROAM / VOICE OPS</small>
         </a>
         <div className="top-actions">
           <div className="player-hud" aria-label={`Player level ${playerLevel}, ${levelProgress} percent to next level, ${coins} travel coins`}>
@@ -574,26 +618,43 @@ export default function Home() {
 
       <section className="experience-grid">
         <aside className="world-panel" id="world">
-          <div className="section-kicker"><span>01</span> Choose your corner of Earth</div>
-          <h1>The world is<br />waiting to talk.</h1>
-          <p className="intro">Drop into a local scene. Say anything. Your AI character listens, adapts, and remembers.</p>
+          <div className="section-kicker"><span>01</span> Global operations map</div>
+          <h1>Choose your<br />territory.</h1>
+          <p className="intro">Select a city, enter the street, and talk your way through a live language mission.</p>
 
-          <div className="world-map" aria-label="Available destinations">
+          <div
+            className={`world-map ${mapDragging ? "dragging" : ""}`}
+            aria-label="Zoomable world map with available destinations"
+            onWheel={handleMapWheel}
+            onPointerDown={handleMapPointerDown}
+            onPointerMove={handleMapPointerMove}
+            onPointerUp={stopMapDrag}
+            onPointerCancel={stopMapDrag}
+            onDoubleClick={() => changeMapZoom(.4)}
+          >
             <div className="map-grid" />
-            <img className="world-map-image" src="/world-map.png" alt="World map" />
-            {CITIES.map((item) => (
-              <button
-                key={item.id}
-                className={`map-pin ${item.id === city.id ? "selected" : ""}`}
-                style={{ left: `${item.mapX}%`, top: `${item.mapY}%` }}
-                onClick={() => chooseCity(item)}
-                aria-label={`Visit ${item.name} to practise ${item.language}`}
-              >
-                <span>{item.flag}</span>
-                <strong>{item.name}</strong>
-              </button>
-            ))}
-            <div className="map-caption">12 language destinations · select a glowing waypoint</div>
+            <div className="map-stage" style={{ transform: `translate3d(${mapPan.x}px, ${mapPan.y}px, 0) scale(${mapZoom})` }}>
+              <img className="world-map-image" src="/world-map.png" alt="World map" draggable="false" />
+              {CITIES.map((item) => (
+                <button
+                  key={item.id}
+                  className={`map-pin ${item.id === city.id ? "selected" : ""}`}
+                  style={{ left: `${item.mapX}%`, top: `${item.mapY}%` }}
+                  onClick={() => chooseCity(item)}
+                  aria-label={`Visit ${item.name} to practise ${item.language}`}
+                >
+                  <span>{item.flag}</span>
+                  <strong>{item.name}</strong>
+                </button>
+              ))}
+            </div>
+            <div className="map-controls" aria-label="Map zoom controls">
+              <button onClick={() => changeMapZoom(-.25)} disabled={mapZoom <= 1} aria-label="Zoom map out">−</button>
+              <span>{Math.round(mapZoom * 100)}%</span>
+              <button onClick={() => changeMapZoom(.25)} disabled={mapZoom >= 3} aria-label="Zoom map in">+</button>
+              <button className="map-reset" onClick={resetMapView}>RESET</button>
+            </div>
+            <div className="map-caption">Scroll or use controls to zoom · drag to pan</div>
           </div>
 
           <div className="language-heading"><strong>LANGUAGE ATLAS</strong><span>Global top 10 + India</span></div>
@@ -657,7 +718,7 @@ export default function Home() {
 
           <div className="mission-strip">
             <span className="mission-icon">{completedQuests === 3 ? "✓" : "◎"}</span>
-            <div><small>ACTIVE CONVERSATION QUEST</small><strong>{scene.goal}</strong></div>
+              <div><small>MISSION ACTIVE · {city.name.toUpperCase()}</small><strong>{scene.goal}</strong></div>
             <span className="quest-count">{completedQuests}/3</span>
             <div className="quest-objectives">
               {["Greet the local", "Ask a real question", "Complete 3 turns"].map((objective, index) => (
@@ -728,7 +789,7 @@ export default function Home() {
       </section>
 
       <footer>
-        <p><strong>WORLDLING / NIGHT ATLAS</strong> · Browser voice recognition supplies the transcript.</p>
+        <p><strong>WORLDLING / FREE ROAM BUILD 03</strong> · Browser voice recognition supplies the transcript.</p>
         <p>The selected model receives text, not raw microphone audio. · Map by <a href="https://commons.wikimedia.org/wiki/File:Blank_Map_of_The_World_Equirectangular_Projection.png" target="_blank" rel="noreferrer">FelixCountryBalls163, CC BY 4.0</a></p>
       </footer>
 
