@@ -51,6 +51,14 @@ type Evaluation = {
   phrase: string;
 };
 
+type LocalStatus = "idle" | "checking" | "connected" | "error";
+
+type Reward = {
+  xp: number;
+  coins: number;
+  newStamp: boolean;
+};
+
 const CITIES: City[] = [
   {
     id: "bengaluru",
@@ -196,6 +204,20 @@ function demoEvaluation(messages: Message[], city: City, level: Level): Evaluati
   };
 }
 
+function extractModelJson(text: string) {
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1];
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  return JSON.parse(fenced ?? (start >= 0 && end >= start ? text.slice(start, end + 1) : text));
+}
+
+function ollamaSystemPrompt(city: City, scene: Scene, level: Level, action: "turn" | "evaluate") {
+  if (action === "evaluate") {
+    return `You are a fair language-game evaluator. Judge whether the player communicated successfully in ${city.language} at ${level} level in ${city.name}. The optional quest was: ${scene.goal}. Reward communicative success and recovery. Do not punish a regional accent. Use only transcript evidence. Return only valid JSON with numeric fields overall, communication, vocabulary, grammar, confidence from 0 to 100, plus string fields strength, improvement, and phrase.`;
+  }
+  return `You are ${scene.character}, a ${scene.role} at ${scene.label} in ${city.name}, ${city.country}. Speak naturally in ${city.language}. The player is at ${level} level. Stay warmly in character, respond to anything appropriate, remember the recent transcript, and end with no more than one natural follow-up question. Keep beginner language simple. Return only valid JSON with fields text for the ${city.language} reply and translation for concise English.`;
+}
+
 export default function Home() {
   const [cityId, setCityId] = useState("bengaluru");
   const [sceneId, setSceneId] = useState("darshini");
@@ -209,28 +231,69 @@ export default function Home() {
   const [engineNote, setEngineNote] = useState("Ready · no account or key required");
   const [evaluation, setEvaluation] = useState<Evaluation | null>(null);
   const [showEngine, setShowEngine] = useState(false);
+  const [ollamaEndpoint, setOllamaEndpoint] = useState("http://127.0.0.1:11434");
+  const [ollamaModel, setOllamaModel] = useState("qwen3:8b");
+  const [localStatus, setLocalStatus] = useState<LocalStatus>("idle");
+  const [localMessage, setLocalMessage] = useState("Not tested yet");
+  const [xp, setXp] = useState(120);
+  const [coins, setCoins] = useState(35);
+  const [stamps, setStamps] = useState<string[]>([]);
+  const [affinity, setAffinity] = useState(12);
+  const [questProgress, setQuestProgress] = useState([false, false, false]);
+  const [reward, setReward] = useState<Reward | null>(null);
+  const [rewarded, setRewarded] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
   const recognitionRef = useRef<{ start: () => void; stop: () => void } | null>(null);
   const messageId = useRef(1);
 
   const city = useMemo(() => CITIES.find((item) => item.id === cityId) ?? CITIES[0], [cityId]);
   const scene = useMemo(() => city.scenes.find((item) => item.id === sceneId) ?? city.scenes[0], [city, sceneId]);
   const userTurns = messages.filter((message) => message.role === "user").length;
+  const playerLevel = Math.floor(xp / 100) + 1;
+  const levelProgress = xp % 100;
+  const completedQuests = questProgress.filter(Boolean).length;
 
   useEffect(() => {
     const saved = window.localStorage.getItem("worldling-provider") as Provider | null;
     if (saved && ["demo", "local", "api"].includes(saved)) setProvider(saved);
+    try {
+      const local = JSON.parse(window.localStorage.getItem("worldling-ollama") ?? "null") as { endpoint?: string; model?: string } | null;
+      if (local?.endpoint) setOllamaEndpoint(local.endpoint);
+      if (local?.model) setOllamaModel(local.model);
+      const progress = JSON.parse(window.localStorage.getItem("worldling-progress") ?? "null") as { xp?: number; coins?: number; stamps?: string[] } | null;
+      if (typeof progress?.xp === "number") setXp(progress.xp);
+      if (typeof progress?.coins === "number") setCoins(progress.coins);
+      if (Array.isArray(progress?.stamps)) setStamps(progress.stamps);
+    } catch {
+      // Ignore malformed device-local prototype state.
+    }
+    setHydrated(true);
   }, []);
 
   useEffect(() => {
     setMessages([cityWelcome(city, level)]);
     setEvaluation(null);
     setInput("");
-    setEngineNote(provider === "demo" ? "Ready · no account or key required" : `${providerLabels[provider]} selected · server connection checked on first message`);
+    setQuestProgress([false, false, false]);
+    setAffinity(12);
+    setReward(null);
+    setRewarded(false);
+    setEngineNote(provider === "demo" ? "Ready · no account or key required" : provider === "local" ? "Ollama selected · test the connection in Engine" : "API model selected · server connection checked on first message");
   }, [city, scene, level, provider]);
 
   useEffect(() => {
     window.localStorage.setItem("worldling-provider", provider);
   }, [provider]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    window.localStorage.setItem("worldling-ollama", JSON.stringify({ endpoint: ollamaEndpoint, model: ollamaModel }));
+  }, [hydrated, ollamaEndpoint, ollamaModel]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    window.localStorage.setItem("worldling-progress", JSON.stringify({ xp, coins, stamps }));
+  }, [hydrated, xp, coins, stamps]);
 
   function speak(text: string) {
     if (!autoSpeak || !("speechSynthesis" in window)) return;
@@ -241,7 +304,61 @@ export default function Home() {
     window.speechSynthesis.speak(utterance);
   }
 
+  async function callOllama(action: "turn" | "evaluate", nextMessages: Message[]) {
+    const base = ollamaEndpoint.trim().replace(/\/$/, "");
+    if (!base || !ollamaModel.trim()) throw new Error("Enter an Ollama endpoint and model.");
+    const transcript = nextMessages.slice(-10).map((message) => ({
+      role: message.role === "npc" ? "assistant" : "user",
+      content: message.text,
+    }));
+    const response = await fetch(`${base}/api/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: ollamaModel.trim(),
+        stream: false,
+        format: "json",
+        messages: [
+          { role: "system", content: ollamaSystemPrompt(city, scene, level, action) },
+          ...transcript,
+        ],
+        options: { temperature: action === "turn" ? 0.75 : 0.15 },
+      }),
+    });
+    if (!response.ok) throw new Error(`Ollama returned ${response.status}.`);
+    const payload = await response.json() as { message?: { content?: string } };
+    return extractModelJson(payload.message?.content ?? "");
+  }
+
+  async function testOllama() {
+    setLocalStatus("checking");
+    setLocalMessage("Looking for Ollama on this device…");
+    try {
+      const base = ollamaEndpoint.trim().replace(/\/$/, "");
+      const response = await fetch(`${base}/api/tags`);
+      if (!response.ok) throw new Error(`Ollama returned ${response.status}.`);
+      const payload = await response.json() as { models?: Array<{ name?: string; model?: string }> };
+      const available = (payload.models ?? []).map((item) => item.model ?? item.name ?? "").filter(Boolean);
+      const modelReady = available.some((name) => name === ollamaModel || name.startsWith(`${ollamaModel}:`) || ollamaModel.startsWith(`${name}:`));
+      if (!modelReady) {
+        setLocalStatus("error");
+        setLocalMessage(available.length ? `Ollama is online, but ${ollamaModel} is not installed. Available: ${available.slice(0, 3).join(", ")}.` : "Ollama is online, but it has no downloaded models.");
+        return;
+      }
+      setLocalStatus("connected");
+      setLocalMessage(`Connected · ${ollamaModel} is ready on this device`);
+      setProvider("local");
+      setEngineNote(`Ollama connected · using ${ollamaModel}`);
+    } catch {
+      setLocalStatus("error");
+      setLocalMessage("Could not reach Ollama. Start Ollama, allow this site origin, or run Worldling locally.");
+    }
+  }
+
   async function askProvider(text: string, nextMessages: Message[]) {
+    if (provider === "local") {
+      return await callOllama("turn", nextMessages) as { text: string; translation?: string };
+    }
     const response = await fetch("/api/agent", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -272,6 +389,8 @@ export default function Home() {
     setMessages(nextMessages);
     setInput("");
     setThinking(true);
+    const asksQuestion = /[?？]|what|where|how|why|who|which|ಎಲ್ಲಿ|ಏನು|ಹೇಗೆ|どこ|何|どう|où|comment|pourquoi/i.test(clean);
+    setQuestProgress((current) => [true, current[1] || asksQuestion, current[2] || userTurns + 1 >= 3]);
     setEngineNote(provider === "demo" ? "NPC considered intent · selected a follow-up" : `Contacting ${providerLabels[provider]}…`);
 
     let reply: { text: string; translation?: string };
@@ -282,10 +401,18 @@ export default function Home() {
         setEngineNote("Intent read · conversation memory updated · follow-up chosen");
       } else {
         reply = await askProvider(clean, nextMessages);
+        if (provider === "local") {
+          setLocalStatus("connected");
+          setLocalMessage(`Connected · ${ollamaModel} generated this reply`);
+        }
         setEngineNote(`${providerLabels[provider]} responded · memory updated`);
       }
     } catch {
       reply = demoReply(city, scene, clean, level);
+      if (provider === "local") {
+        setLocalStatus("error");
+        setLocalMessage("Ollama did not respond. Demo fallback was used for this turn.");
+      }
       setEngineNote(`${providerLabels[provider]} unavailable · demo fallback kept the conversation alive`);
     }
 
@@ -296,6 +423,7 @@ export default function Home() {
       translation: level === "Advanced" ? undefined : reply.translation,
     };
     setMessages((current) => [...current, npcMessage]);
+    setAffinity((current) => Math.min(100, current + (asksQuestion ? 14 : 9)));
     setThinking(false);
     speak(reply.text);
   }
@@ -342,28 +470,48 @@ export default function Home() {
     let result = demoEvaluation(messages, city, level);
     if (provider !== "demo") {
       try {
-        const response = await fetch("/api/agent", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "evaluate",
-            provider,
-            city: city.name,
-            language: city.language,
-            level,
-            goal: scene.goal,
-            messages: messages.map(({ role, text: content }) => ({ role, content })),
-          }),
-        });
-        if (!response.ok) throw new Error("evaluation failed");
-        result = (await response.json()).evaluation as Evaluation;
+        if (provider === "local") {
+          result = await callOllama("evaluate", messages) as Evaluation;
+          setLocalStatus("connected");
+          setLocalMessage(`Connected · ${ollamaModel} evaluated this quest`);
+        } else {
+          const response = await fetch("/api/agent", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "evaluate",
+              provider,
+              city: city.name,
+              language: city.language,
+              level,
+              goal: scene.goal,
+              messages: messages.map(({ role, text: content }) => ({ role, content })),
+            }),
+          });
+          if (!response.ok) throw new Error("evaluation failed");
+          result = (await response.json()).evaluation as Evaluation;
+        }
         setEngineNote(`${providerLabels[provider]} completed a level-aware evaluation`);
       } catch {
+        if (provider === "local") {
+          setLocalStatus("error");
+          setLocalMessage("Ollama could not grade this quest. The transparent demo rubric was used.");
+        }
         setEngineNote(`${providerLabels[provider]} unavailable · transparent demo rubric used`);
       }
     } else {
       await new Promise((resolve) => window.setTimeout(resolve, 450));
       setEngineNote("Demo rubric complete · no audio was stored");
+    }
+    if (!rewarded) {
+      const xpEarned = Math.max(20, Math.round(result.overall * 0.55) + completedQuests * 8);
+      const coinsEarned = Math.max(5, Math.round(result.overall / 12));
+      const newStamp = result.overall >= 70 && !stamps.includes(city.id);
+      setXp((current) => current + xpEarned);
+      setCoins((current) => current + coinsEarned);
+      if (newStamp) setStamps((current) => [...current, city.id]);
+      setReward({ xp: xpEarned, coins: coinsEarned, newStamp });
+      setRewarded(true);
     }
     setEvaluation(result);
     setThinking(false);
@@ -383,13 +531,18 @@ export default function Home() {
           <small>voice travel lab</small>
         </a>
         <div className="top-actions">
+          <div className="player-hud" aria-label={`Player level ${playerLevel}, ${levelProgress} percent to next level, ${coins} travel coins`}>
+            <span className="level-medal">{playerLevel}</span>
+            <div><small>TRAVELLER LEVEL {playerLevel}</small><i><b style={{ width: `${levelProgress}%` }} /></i></div>
+            <strong>◈ {coins}</strong>
+          </div>
           <div className="level-control" aria-label="Difficulty level">
             {(["Beginner", "Intermediate", "Advanced"] as Level[]).map((option) => (
               <button key={option} className={level === option ? "active" : ""} onClick={() => setLevel(option)}>{option}</button>
             ))}
           </div>
           <button className="engine-button" onClick={() => setShowEngine(true)}>
-            <span className={`status-dot ${provider}`} />
+            <span className={`status-dot ${provider} ${provider === "local" ? localStatus : ""}`} />
             {providerLabels[provider]}
             <span aria-hidden="true">⌄</span>
           </button>
@@ -429,6 +582,12 @@ export default function Home() {
                 <span className={item.verified ? "verified" : "beta"}>{item.verified ? "Verified" : "Beta"}</span>
               </button>
             ))}
+          </div>
+          <div className="passport-strip">
+            <div><span>◆</span><p><strong>YOUR PASSPORT</strong><small>{stamps.length}/3 city stamps earned</small></p></div>
+            <div className="stamp-row">
+              {CITIES.map((item) => <span key={item.id} className={stamps.includes(item.id) ? "earned" : ""} title={`${item.name} stamp`}>{stamps.includes(item.id) ? item.flag : "·"}</span>)}
+            </div>
           </div>
         </aside>
 
@@ -474,9 +633,14 @@ export default function Home() {
           </div>
 
           <div className="mission-strip">
-            <span className="mission-icon">◎</span>
-            <div><small>OPTIONAL CONVERSATION GOAL</small><strong>{scene.goal}</strong></div>
-            <span className="free-badge">Say anything</span>
+            <span className="mission-icon">{completedQuests === 3 ? "✓" : "◎"}</span>
+            <div><small>ACTIVE CONVERSATION QUEST</small><strong>{scene.goal}</strong></div>
+            <span className="quest-count">{completedQuests}/3</span>
+            <div className="quest-objectives">
+              {["Greet the local", "Ask a real question", "Complete 3 turns"].map((objective, index) => (
+                <span key={objective} className={questProgress[index] ? "done" : ""}><i>{questProgress[index] ? "✓" : index + 1}</i>{objective}</span>
+              ))}
+            </div>
           </div>
         </section>
 
@@ -485,6 +649,7 @@ export default function Home() {
             <div>
               <div className="section-kicker"><span>03</span> Join the conversation</div>
               <h2>Talk with {scene.character}</h2>
+              <div className="affinity-meter"><span>Bond with {scene.character}</span><i><b style={{ width: `${affinity}%` }} /></i><strong>{affinity}%</strong></div>
             </div>
             <label className="audio-toggle">
               <input type="checkbox" checked={autoSpeak} onChange={(event) => setAutoSpeak(event.target.checked)} />
@@ -540,8 +705,8 @@ export default function Home() {
       </section>
 
       <footer>
-        <p><strong>WORLDLING / PROTOTYPE 01</strong> · Voice stays on this device in demo mode.</p>
-        <p>Designed for communication, not perfect accents.</p>
+        <p><strong>WORLDLING / PROTOTYPE 02</strong> · Browser voice recognition supplies the transcript.</p>
+        <p>The selected model receives text, not raw microphone audio.</p>
       </footer>
 
       {evaluation && (
@@ -552,6 +717,13 @@ export default function Home() {
               <div className="score-ring"><strong>{evaluation.overall}</strong><span>/100</span></div>
               <div><span className="score-kicker">CONVERSATION COMPLETE</span><h2 id="score-title">You were understood.</h2><p>{city.name} · {city.language} · {level}</p></div>
             </div>
+            {reward && (
+              <div className="reward-banner">
+                <span><strong>+{reward.xp} XP</strong><small>Quest experience</small></span>
+                <span><strong>+{reward.coins} ◈</strong><small>Travel coins</small></span>
+                <span className={reward.newStamp ? "stamp-won" : ""}><strong>{reward.newStamp ? city.flag : `${completedQuests}/3`}</strong><small>{reward.newStamp ? "New passport stamp" : "Quest objectives"}</small></span>
+              </div>
+            )}
             <div className="score-bars">
               {(["communication", "vocabulary", "grammar", "confidence"] as const).map((key) => (
                 <div key={key}><span>{key}</span><i><b style={{ width: `${evaluation[key]}%` }} /></i><strong>{evaluation[key]}</strong></div>
@@ -562,7 +734,7 @@ export default function Home() {
               <article><span>↗ TRY NEXT</span><p>{evaluation.improvement}</p></article>
             </div>
             <div className="takeaway"><span>Phrase to keep</span><strong>{evaluation.phrase}</strong></div>
-            <button className="replay-button" onClick={() => { setMessages([cityWelcome(city, level)]); setEvaluation(null); }}>Try this scene again</button>
+            <button className="replay-button" onClick={() => { setMessages([cityWelcome(city, level)]); setEvaluation(null); setReward(null); setRewarded(false); setQuestProgress([false, false, false]); setAffinity(12); }}>Play this scene again</button>
           </section>
         </div>
       )}
@@ -590,10 +762,21 @@ export default function Home() {
               <b>→</b>
               <div><span>3</span><p><strong>Judge</strong>Level-aware rubric</p></div>
             </div>
-            <div className="config-note">
-              <strong>{provider === "local" ? "Local setup" : provider === "api" ? "API setup" : "Demo setup"}</strong>
-              <p>{provider === "local" ? "Run an OpenAI-compatible local server and set LOCAL_AI_BASE_URL plus LOCAL_AI_MODEL. The server keeps the endpoint private." : provider === "api" ? "Set OPENAI_API_KEY and OPENAI_MODEL on the server. Keys are never requested by or exposed to the browser." : "No setup. Responses and scores use transparent prototype rules so every interaction is testable."}</p>
-            </div>
+            {provider === "local" ? (
+              <div className="ollama-config">
+                <div className="ollama-title"><span className={`status-dot local ${localStatus}`} /><div><strong>Direct Ollama connection</strong><small>Conversation text goes from this browser to your local Ollama server.</small></div></div>
+                <label>Ollama address<input value={ollamaEndpoint} onChange={(event) => { setOllamaEndpoint(event.target.value); setLocalStatus("idle"); }} placeholder="http://127.0.0.1:11434" /></label>
+                <label>Installed model<input value={ollamaModel} onChange={(event) => { setOllamaModel(event.target.value); setLocalStatus("idle"); }} placeholder="qwen3:8b" /></label>
+                <div className={`local-result ${localStatus}`}><span>{localStatus === "checking" ? "◌" : localStatus === "connected" ? "✓" : localStatus === "error" ? "!" : "·"}</span><p>{localMessage}</p></div>
+                <button className="test-local" onClick={() => void testOllama()} disabled={localStatus === "checking"}>{localStatus === "checking" ? "Testing…" : "Test Ollama connection"}</button>
+                <p className="origin-help">For the hosted version, Ollama must allow the Worldling site origin. Running Worldling locally is the simplest setup.</p>
+              </div>
+            ) : (
+              <div className="config-note">
+                <strong>{provider === "api" ? "API setup" : "Demo setup"}</strong>
+                <p>{provider === "api" ? "Set OPENAI_API_KEY and OPENAI_MODEL on the server. Keys are never requested by or exposed to the browser." : "No setup. Responses and scores use transparent prototype rules so every interaction is testable."}</p>
+              </div>
+            )}
             <button className="sheet-done" onClick={() => setShowEngine(false)}>Continue with {providerLabels[provider]}</button>
           </section>
         </div>
