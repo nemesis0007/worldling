@@ -388,6 +388,7 @@ export default function Home() {
   const playerLevel = Math.floor(xp / 100) + 1;
   const levelProgress = xp % 100;
   const completedQuests = questProgress.filter(Boolean).length;
+  const streetViewUrl = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${encodeURIComponent(`${(90 - city.mapY * 1.8).toFixed(4)},${(city.mapX * 3.6 - 180).toFixed(4)}`)}`;
   const activeNpcIndex = Math.max(0, city.scenes.findIndex((item) => item.id === scene.id));
   const npcPositions = [{ x: 24, y: 67 }, { x: 61, y: 60 }, { x: 79, y: 73 }];
   const activeNpcPosition = npcPositions[activeNpcIndex];
@@ -948,6 +949,8 @@ export default function Home() {
                 onSelectNpc={(index) => setSceneId(city.scenes[index].id)}
                 playerPosition={playerPosition}
                 sceneClass={city.sceneClass}
+                latitude={90 - city.mapY * 1.8}
+                longitude={city.mapX * 3.6 - 180}
               />
             </Suspense>
 
@@ -958,6 +961,7 @@ export default function Home() {
 
             <div className="game-status glass-card">
               <span className={`model-chip ${provider}`}>{provider === "local" ? `${ollamaModel} · local` : providerLabels[provider]}</span>
+              <a href={streetViewUrl} target="_blank" rel="noreferrer">Real streets ↗</a>
               <button onClick={() => setShowTranscript((current) => !current)}>{showTranscript ? "Close transcript" : "Transcript"}</button>
               <button onClick={() => setShowEngine(true)}>AI settings</button>
             </div>

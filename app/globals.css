@@ -960,8 +960,8 @@ footer { min-height: 64px; padding-inline: max(24px,calc((100vw - 1320px)/2)); b
 .game-mission small { display: block; margin-bottom: 3px; color: var(--yellow); font-size: 6px; font-weight: 800; letter-spacing: .12em; }
 .game-mission strong { display: block; font-size: 9px; line-height: 1.35; }
 .game-status { position: absolute; z-index: 20; top: 20px; right: 20px; display: flex; align-items: center; gap: 5px; border-radius: 999px; padding: 5px; }
-.game-status > button { border: 0; border-radius: 999px; padding: 8px 10px; color: var(--muted); background: transparent; font-size: 7px; cursor: pointer; }
-.game-status > button:hover { color: var(--ink); background: rgba(255,255,255,.08); }
+.game-status > button, .game-status > a { border: 0; border-radius: 999px; padding: 8px 10px; color: var(--muted); background: transparent; font-size: 7px; text-decoration: none; cursor: pointer; }
+.game-status > button:hover, .game-status > a:hover { color: var(--ink); background: rgba(255,255,255,.08); }
 .game-status .model-chip { border: 0; background: transparent; }
 
 .world-character { position: absolute; z-index: 7; width: 78px; border: 0; padding: 0; background: transparent; cursor: pointer; transform-origin: center bottom; transition: filter .2s,scale .2s; }
@@ -1057,6 +1057,14 @@ footer { min-height: 64px; padding-inline: max(24px,calc((100vw - 1320px)/2)); b
 .world3d-name { pointer-events: none; white-space: nowrap; }
 .world3d-name span { display: block; border: 1px solid rgba(255,255,255,.16); border-radius: 999px; padding: 6px 9px; color: white; background: rgba(5,8,7,.74); box-shadow: 0 10px 28px rgba(0,0,0,.3); backdrop-filter: blur(10px); font: 800 9px/1 var(--font-sans),sans-serif; letter-spacing: .02em; }
 .world3d-name span.active { border-color: rgba(216,255,95,.65); color: #07100d; background: var(--yellow); box-shadow: 0 0 0 5px rgba(216,255,95,.12),0 10px 30px rgba(0,0,0,.3); }
+.landmark-label { pointer-events: none; white-space: nowrap; }
+.landmark-label span { display: block; border: 1px solid rgba(216,255,95,.34); border-radius: 999px; padding: 7px 10px; color: var(--yellow); background: rgba(5,8,7,.7); box-shadow: 0 0 30px rgba(0,0,0,.22); backdrop-filter: blur(10px); font: 800 8px/1 var(--font-sans),sans-serif; letter-spacing: .08em; text-transform: uppercase; }
+.osm-world-status { position: absolute; z-index: 10; left: 20px; top: 78px; display: flex; align-items: center; gap: 7px; border: 1px solid rgba(255,255,255,.12); border-radius: 999px; padding: 7px 10px; color: rgba(255,255,255,.76); background: rgba(4,8,7,.58); backdrop-filter: blur(14px); font-size: 6px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
+.osm-world-status span { width: 6px; height: 6px; border-radius: 50%; background: #f3b958; box-shadow: 0 0 12px #f3b958; }
+.osm-world-status.live span { background: var(--forest); box-shadow: 0 0 12px var(--forest); }
+.osm-world-status.fallback span { background: #a4aaa7; box-shadow: none; }
+.osm-attribution { position: absolute; z-index: 10; right: 18px; bottom: 162px; color: rgba(255,255,255,.58); font-size: 6px; text-decoration: none; text-shadow: 0 1px 4px rgba(0,0,0,.8); }
+.osm-attribution:hover { color: white; }
 .game-mission, .game-status, .world-dialogue, .movement-pad, .voice-hud, .transcript-drawer, .approach-hint, .game-minimap { z-index: 20; }
 .world-dialogue { top: 13%; background: rgba(6,10,9,.72); }
 .movement-pad { bottom: 27px; }

@@ -1,9 +1,11 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useRef } from "react";
-import { Canvas, ThreeElements, ThreeEvent, useFrame, useThree } from "@react-three/fiber";
-import { Environment, Html, Sparkles, useGLTF } from "@react-three/drei";
+import { Suspense, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { Canvas, ThreeElements, ThreeEvent, useFrame, useLoader, useThree } from "@react-three/fiber";
+import { Environment, Html, Line, Sparkles, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
+import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
+import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils.js";
 
 type Point = { x: number; y: number };
 
@@ -16,9 +18,18 @@ type World3DProps = {
   onSelectNpc: (index: number) => void;
   playerPosition: Point;
   sceneClass: string;
+  latitude: number;
+  longitude: number;
+};
+
+type MapPoint = { x: number; z: number };
+type Neighborhood = {
+  roads: Array<{ id: number; kind?: string; points: MapPoint[] }>;
+  buildings: Array<{ id: number; height: number; points: MapPoint[] }>;
 };
 
 const MODEL_ROOT = "/models/kenney-city";
+const CHARACTER_ROOT = "/models/kenney-characters";
 
 function toWorld(point: Point): [number, number, number] {
   return [(point.x - 50) / 3.1, 0, (point.y - 70) / 2.2];
@@ -47,47 +58,47 @@ function Model({ url, ...props }: { url: string } & ThreeElements["group"]) {
   return <primitive object={clone} {...props} />;
 }
 
-function Person({ active = false, color, name, onClick, player = false, position }: {
+function Person({ active = false, name, onClick, player = false, position, skin }: {
   active?: boolean;
-  color: string;
   name?: string;
   onClick?: () => void;
   player?: boolean;
   position: [number, number, number];
+  skin: string;
 }) {
   const group = useRef<THREE.Group>(null);
+  const source = useLoader(FBXLoader, `${CHARACTER_ROOT}/character.fbx`);
+  const idle = useLoader(FBXLoader, `${CHARACTER_ROOT}/idle.fbx`);
+  const texture = useLoader(THREE.TextureLoader, `${CHARACTER_ROOT}/${skin}`);
+  const character = useMemo(() => cloneSkeleton(source) as THREE.Group, [source]);
+  const mixer = useMemo(() => new THREE.AnimationMixer(character), [character]);
+  const destination = useMemo(() => new THREE.Vector3(...position), [position]);
 
-  useFrame(({ clock }) => {
-    if (!group.current || player) return;
-    group.current.position.y = Math.sin(clock.elapsedTime * 1.7 + position[0]) * .035;
+  useEffect(() => {
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.flipY = false;
+    character.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+        child.material = new THREE.MeshStandardMaterial({ map: texture, roughness: .68, metalness: .02 });
+      }
+    });
+    const clip = idle.animations[0];
+    const action = clip ? mixer.clipAction(clip) : null;
+    action?.reset().fadeIn(.2).play();
+    return () => { action?.fadeOut(.15); mixer.stopAllAction(); };
+  }, [character, idle, mixer, texture]);
+
+  useFrame((_, delta) => {
+    mixer.update(delta);
+    if (!group.current) return;
+    group.current.position.lerp(destination, player ? .16 : .08);
   });
 
   return (
     <group ref={group} position={position} onClick={(event) => { event.stopPropagation(); onClick?.(); }}>
-      <mesh castShadow position={[0, 1.72, 0]}>
-        <sphereGeometry args={[.3, 18, 18]} />
-        <meshStandardMaterial color={player ? "#f4c89a" : "#d9a779"} roughness={.72} />
-      </mesh>
-      <mesh castShadow position={[0, 1.08, 0]}>
-        <capsuleGeometry args={[.37, .72, 8, 16]} />
-        <meshStandardMaterial color={color} roughness={.58} metalness={.04} />
-      </mesh>
-      <mesh castShadow position={[-.18, .36, 0]} rotation={[0, 0, .02]}>
-        <capsuleGeometry args={[.11, .54, 6, 12]} />
-        <meshStandardMaterial color="#18201d" roughness={.78} />
-      </mesh>
-      <mesh castShadow position={[.18, .36, 0]} rotation={[0, 0, -.02]}>
-        <capsuleGeometry args={[.11, .54, 6, 12]} />
-        <meshStandardMaterial color="#18201d" roughness={.78} />
-      </mesh>
-      <mesh castShadow position={[-.48, 1.12, 0]} rotation={[0, 0, -.16]}>
-        <capsuleGeometry args={[.09, .56, 6, 12]} />
-        <meshStandardMaterial color={color} roughness={.6} />
-      </mesh>
-      <mesh castShadow position={[.48, 1.12, 0]} rotation={[0, 0, .16]}>
-        <capsuleGeometry args={[.09, .56, 6, 12]} />
-        <meshStandardMaterial color={color} roughness={.6} />
-      </mesh>
+      <primitive object={character} scale={.012} rotation={[0, Math.PI, 0]} />
       {active && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, .035, 0]}>
           <ringGeometry args={[.7, .86, 40]} />
@@ -95,7 +106,7 @@ function Person({ active = false, color, name, onClick, player = false, position
         </mesh>
       )}
       {name && (
-        <Html position={[0, 2.32, 0]} center distanceFactor={10} className="world3d-name">
+        <Html position={[0, 2.58, 0]} center distanceFactor={10} className="world3d-name">
           <span className={active ? "active" : ""}>{active ? "TALK · " : ""}{name}</span>
         </Html>
       )}
@@ -109,6 +120,112 @@ function StreetLamp({ position }: { position: [number, number, number] }) {
       <mesh castShadow position={[0, 1.55, 0]}><cylinderGeometry args={[.055, .08, 3.1, 10]} /><meshStandardMaterial color="#1b211f" metalness={.75} roughness={.3} /></mesh>
       <mesh castShadow position={[0, 3.08, 0]}><boxGeometry args={[.48, .2, .32]} /><meshStandardMaterial color="#222a27" metalness={.7} /></mesh>
       <pointLight position={[0, 2.92, 0]} color="#ffdca0" intensity={5} distance={6} />
+    </group>
+  );
+}
+
+function OsmBuilding({ building, sceneClass }: { building: Neighborhood["buildings"][number]; sceneClass: string }) {
+  const geometry = useMemo(() => {
+    const shape = new THREE.Shape();
+    building.points.forEach((point, index) => {
+      if (index === 0) shape.moveTo(point.x, -point.z);
+      else shape.lineTo(point.x, -point.z);
+    });
+    shape.closePath();
+    const result = new THREE.ExtrudeGeometry(shape, { depth: building.height, bevelEnabled: false, curveSegments: 1 });
+    result.rotateX(-Math.PI / 2);
+    result.computeVertexNormals();
+    return result;
+  }, [building]);
+
+  useEffect(() => () => geometry.dispose(), [geometry]);
+  const palette = sceneClass === "desert" ? ["#b99b72", "#d0b88f", "#927e63"] : sceneClass === "india" ? ["#ba8b70", "#d4ad80", "#846c62"] : sceneClass === "east" ? ["#7c8589", "#a0958a", "#657174"] : ["#8f9694", "#b2aaa0", "#707977"];
+  const color = palette[building.id % palette.length];
+
+  return <mesh geometry={geometry} castShadow receiveShadow><meshStandardMaterial color={color} roughness={.86} metalness={.04} /></mesh>;
+}
+
+function OsmNeighborhood({ data, sceneClass }: { data: Neighborhood; sceneClass: string }) {
+  return (
+    <group>
+      {data.roads.map((road) => {
+        const major = ["primary", "secondary", "tertiary"].includes(road.kind ?? "");
+        const points = road.points.map((point) => [point.x, .04, point.z] as [number, number, number]);
+        return (
+          <group key={road.id}>
+            <Line points={points} color="#1d2222" lineWidth={major ? 12 : 8} />
+            <Line points={points} color={major ? "#d9c974" : "#aaa58e"} lineWidth={major ? .7 : .35} dashed dashSize={.45} gapSize={.55} />
+          </group>
+        );
+      })}
+      {data.buildings.map((building) => <OsmBuilding key={building.id} building={building} sceneClass={sceneClass} />)}
+    </group>
+  );
+}
+
+function FallbackStreet() {
+  return (
+    <>
+      <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[0, .005, 0]}>
+        <planeGeometry args={[8.2, 42]} /><meshStandardMaterial color="#292d2d" roughness={.88} />
+      </mesh>
+      {[-8, -2, 4, 10].map((z) => <mesh key={z} rotation={[-Math.PI / 2, 0, 0]} position={[0, .025, z]}><planeGeometry args={[.15, 2.6]} /><meshBasicMaterial color="#e9dba7" /></mesh>)}
+      <Model url={`${MODEL_ROOT}/building-type-a.glb`} position={[-9.1, 0, -7]} rotation={[0, Math.PI / 2, 0]} scale={2.25} />
+      <Model url={`${MODEL_ROOT}/building-type-f.glb`} position={[-9.3, 0, 2.5]} rotation={[0, Math.PI / 2, 0]} scale={2.15} />
+      <Model url={`${MODEL_ROOT}/building-type-k.glb`} position={[-9.2, 0, 12]} rotation={[0, Math.PI / 2, 0]} scale={2.2} />
+      <Model url={`${MODEL_ROOT}/building-type-c.glb`} position={[9.2, 0, -8]} rotation={[0, -Math.PI / 2, 0]} scale={2.25} />
+      <Model url={`${MODEL_ROOT}/building-type-t.glb`} position={[9.2, 0, 2]} rotation={[0, -Math.PI / 2, 0]} scale={2.05} />
+      <Model url={`${MODEL_ROOT}/building-type-h.glb`} position={[9.2, 0, 11]} rotation={[0, -Math.PI / 2, 0]} scale={2.35} />
+    </>
+  );
+}
+
+const LANDMARKS: Record<string, string> = {
+  "New York": "Liberty Harbor",
+  Beijing: "Temple Gate",
+  Delhi: "India Gate",
+  Madrid: "Puerta de Alcalá",
+  Paris: "Eiffel Tower",
+  Cairo: "Giza Pyramids",
+  Dhaka: "National Memorial",
+  "São Paulo": "MASP",
+  Moscow: "St. Basil’s",
+  Lahore: "Minar-e-Pakistan",
+  Mumbai: "Gateway of India",
+  Bengaluru: "Vidhana Soudha",
+};
+
+function CityLandmark({ cityName }: { cityName: string }) {
+  const stone = cityName === "Cairo" ? "#d8ad67" : cityName === "Moscow" ? "#d34f48" : cityName === "Beijing" ? "#b93632" : "#c9c0a6";
+  const label = LANDMARKS[cityName] ?? cityName;
+  let structure: ReactNode;
+
+  if (cityName === "Paris") {
+    structure = <><mesh position={[0, 2.6, 0]}><coneGeometry args={[2.2, 5.4, 4, 1, true]} /><meshStandardMaterial color="#5c5b57" wireframe /></mesh><mesh position={[0, 5.7, 0]}><cylinderGeometry args={[.05, .12, 1.4, 8]} /><meshStandardMaterial color="#444744" /></mesh>{[1.2, 2.8, 4.4].map((y) => <mesh key={y} position={[0, y, 0]}><boxGeometry args={[3.2 - y * .42, .13, 1.5 - y * .18]} /><meshStandardMaterial color="#575955" /></mesh>)}</>;
+  } else if (cityName === "Cairo") {
+    structure = <>{[-2.2, .2, 2.4].map((x, index) => <mesh key={x} position={[x, 1.5 - index * .2, index * .5]} rotation={[0, Math.PI / 4, 0]}><coneGeometry args={[2.2 - index * .35, 3.2 - index * .35, 4]} /><meshStandardMaterial color={["#d9aa61", "#c8944d", "#e1bd79"][index]} roughness={1} /></mesh>)}</>;
+  } else if (cityName === "New York") {
+    structure = <><mesh position={[0, .7, 0]}><boxGeometry args={[2.2, 1.4, 2.2]} /><meshStandardMaterial color="#7e827d" /></mesh><mesh position={[0, 2.55, 0]}><capsuleGeometry args={[.45, 2.3, 8, 12]} /><meshStandardMaterial color="#6fa994" /></mesh><mesh position={[0, 4.35, 0]}><sphereGeometry args={[.43, 12, 12]} /><meshStandardMaterial color="#6fa994" /></mesh><mesh position={[.7, 4.65, 0]} rotation={[0, 0, -.35]}><cylinderGeometry args={[.09, .12, 1.7, 8]} /><meshStandardMaterial color="#6fa994" /></mesh><pointLight position={[1, 5.6, 0]} color="#ffb84d" intensity={12} distance={8} /></>;
+  } else if (cityName === "Lahore") {
+    structure = <><mesh position={[0, 2.5, 0]}><cylinderGeometry args={[.42, 1.5, 5, 24]} /><meshStandardMaterial color="#ddd4bf" /></mesh><mesh position={[0, 5.4, 0]}><sphereGeometry args={[.35, 14, 14]} /><meshStandardMaterial color="#d8ff5f" /></mesh><mesh position={[0, .35, 0]}><cylinderGeometry args={[2.2, 2.6, .7, 24]} /><meshStandardMaterial color="#b7aa93" /></mesh></>;
+  } else if (cityName === "Moscow") {
+    structure = <>{[-1.7, 0, 1.7].map((x, index) => <group key={x} position={[x, 0, index === 1 ? -.45 : 0]}><mesh position={[0, 2, 0]}><cylinderGeometry args={[.7, .88, 4, 12]} /><meshStandardMaterial color={["#3d87b5", "#c44740", "#e2b84b"][index]} /></mesh><mesh position={[0, 4.35, 0]}><sphereGeometry args={[.76, 18, 12]} /><meshStandardMaterial color={["#e4c14d", "#4ca089", "#386fa2"][index]} /></mesh><mesh position={[0, 5.1, 0]}><coneGeometry args={[.18, 1.1, 8]} /><meshStandardMaterial color="#d7b94d" /></mesh></group>)}</>;
+  } else if (cityName === "Beijing") {
+    structure = <>{[0, 1.35, 2.5].map((y, index) => <group key={y} position={[0, y, 0]}><mesh position={[0, .55, 0]}><boxGeometry args={[4.6 - index * .8, 1.1, 2.8 - index * .45]} /><meshStandardMaterial color="#a83a31" /></mesh><mesh position={[0, 1.2, 0]} scale={[1 - index * .12, 1, 1 - index * .12]}><coneGeometry args={[3.3, .8, 4]} /><meshStandardMaterial color="#284b3d" /></mesh></group>)}</>;
+  } else if (cityName === "São Paulo") {
+    structure = <><mesh position={[0, 2.7, 0]}><boxGeometry args={[5.5, 2.2, 1.8]} /><meshStandardMaterial color="#3d4648" metalness={.35} /></mesh>{[-2.25, 2.25].map((x) => <mesh key={x} position={[x, 1.7, 0]}><boxGeometry args={[.3, 3.4, 2.1]} /><meshStandardMaterial color="#d83c35" /></mesh>)}</>;
+  } else if (cityName === "Dhaka") {
+    structure = <>{[-1.5, -.75, 0, .75, 1.5].map((x) => <mesh key={x} position={[x, 2.4 - Math.abs(x) * .45, 0]} rotation={[0, 0, x * .16]}><boxGeometry args={[.32, 5 - Math.abs(x) * .6, 1.3]} /><meshStandardMaterial color="#dedbd0" /></mesh>)}</>;
+  } else if (["Delhi", "Madrid", "Mumbai"].includes(cityName)) {
+    structure = <><mesh position={[-1.55, 2, 0]}><boxGeometry args={[1.15, 4, 1.7]} /><meshStandardMaterial color={stone} /></mesh><mesh position={[1.55, 2, 0]}><boxGeometry args={[1.15, 4, 1.7]} /><meshStandardMaterial color={stone} /></mesh><mesh position={[0, 4.3, 0]}><boxGeometry args={[4.3, 1.15, 1.9]} /><meshStandardMaterial color={stone} /></mesh>{cityName === "Mumbai" && [-1.5, 1.5].map((x) => <mesh key={x} position={[x, 5.15, 0]}><sphereGeometry args={[.52, 16, 10]} /><meshStandardMaterial color="#b9aa8c" /></mesh>)}</>;
+  } else {
+    structure = <><mesh position={[0, 2.1, 0]}><boxGeometry args={[5.2, 4.2, 2.1]} /><meshStandardMaterial color="#d7d0bc" /></mesh>{[-1.7, 0, 1.7].map((x) => <mesh key={x} position={[x, 4.45, 0]}><sphereGeometry args={[.62, 18, 12]} /><meshStandardMaterial color="#caa550" /></mesh>)}<mesh position={[0, 5.4, 0]}><coneGeometry args={[.18, 1.3, 8]} /><meshStandardMaterial color="#d8ff5f" /></mesh></>;
+  }
+
+  return (
+    <group position={[0, 0, -15]} scale={1.05}>
+      {structure}
+      <Html position={[0, 6.5, 0]} center distanceFactor={13} className="landmark-label"><span>{label}</span></Html>
     </group>
   );
 }
@@ -129,9 +246,9 @@ function FollowCamera({ playerPosition }: { playerPosition: Point }) {
   return null;
 }
 
-function CityScene({ activeNpcIndex, npcNames, npcPositions, onMoveTo, onSelectNpc, playerPosition, sceneClass }: Omit<World3DProps, "cityName">) {
+function CityScene({ activeNpcIndex, cityName, neighborhood, npcNames, npcPositions, onMoveTo, onSelectNpc, playerPosition, sceneClass }: World3DProps & { neighborhood: Neighborhood | null }) {
   const playerWorld = toWorld(playerPosition);
-  const palette = sceneClass === "desert" ? "#d09a65" : sceneClass === "india" ? "#e46d45" : sceneClass === "east" ? "#e64f58" : "#55a9d8";
+  const sky = sceneClass === "desert" ? "#c9966f" : sceneClass === "india" ? "#d79a72" : sceneClass === "east" ? "#7894a4" : sceneClass === "tropical" ? "#5f9b9a" : "#86abc0";
 
   function moveOnGround(event: ThreeEvent<PointerEvent>) {
     event.stopPropagation();
@@ -140,8 +257,8 @@ function CityScene({ activeNpcIndex, npcNames, npcPositions, onMoveTo, onSelectN
 
   return (
     <>
-      <color attach="background" args={["#86abc0"]} />
-      <fog attach="fog" args={["#86a2ae", 18, 46]} />
+      <color attach="background" args={[sky]} />
+      <fog attach="fog" args={[sky, 18, 46]} />
       <ambientLight intensity={1.25} />
       <hemisphereLight args={["#d9efff", "#29372f", 2.1]} />
       <directionalLight castShadow position={[-9, 14, 8]} intensity={3.2} color="#fff1d5" shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
@@ -149,44 +266,58 @@ function CityScene({ activeNpcIndex, npcNames, npcPositions, onMoveTo, onSelectN
       <Sparkles count={30} scale={[24, 5, 24]} size={1.1} speed={.18} opacity={.18} color="#d8ff5f" />
 
       <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[0, -.03, 0]} onClick={moveOnGround}>
-        <planeGeometry args={[34, 42]} />
+        <planeGeometry args={[44, 48]} />
         <meshStandardMaterial color="#70756e" roughness={.96} />
       </mesh>
-      <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[0, .005, 0]} onClick={moveOnGround}>
-        <planeGeometry args={[8.2, 42]} />
-        <meshStandardMaterial color="#292d2d" roughness={.88} />
-      </mesh>
-      {[-8, -2, 4, 10].map((z) => <mesh key={z} rotation={[-Math.PI / 2, 0, 0]} position={[0, .025, z]}><planeGeometry args={[.15, 2.6]} /><meshBasicMaterial color="#e9dba7" /></mesh>)}
-      <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[-5.4, .03, 0]}><planeGeometry args={[2.6, 42]} /><meshStandardMaterial color="#b7b5aa" roughness={1} /></mesh>
-      <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[5.4, .03, 0]}><planeGeometry args={[2.6, 42]} /><meshStandardMaterial color="#b7b5aa" roughness={1} /></mesh>
-
-      <Model url={`${MODEL_ROOT}/building-type-a.glb`} position={[-9.1, 0, -7]} rotation={[0, Math.PI / 2, 0]} scale={2.25} />
-      <Model url={`${MODEL_ROOT}/building-type-f.glb`} position={[-9.3, 0, 2.5]} rotation={[0, Math.PI / 2, 0]} scale={2.15} />
-      <Model url={`${MODEL_ROOT}/building-type-k.glb`} position={[-9.2, 0, 12]} rotation={[0, Math.PI / 2, 0]} scale={2.2} />
-      <Model url={`${MODEL_ROOT}/building-type-c.glb`} position={[9.2, 0, -8]} rotation={[0, -Math.PI / 2, 0]} scale={2.25} />
-      <Model url={`${MODEL_ROOT}/building-type-t.glb`} position={[9.2, 0, 2]} rotation={[0, -Math.PI / 2, 0]} scale={2.05} />
-      <Model url={`${MODEL_ROOT}/building-type-h.glb`} position={[9.2, 0, 11]} rotation={[0, -Math.PI / 2, 0]} scale={2.35} />
+      {neighborhood ? <OsmNeighborhood data={neighborhood} sceneClass={sceneClass} /> : <FallbackStreet />}
       {[-11, -3, 6, 13].map((z, index) => <Model key={`tree-left-${z}`} url={`${MODEL_ROOT}/${index % 2 ? "tree-small" : "tree-large"}.glb`} position={[-5.5, 0, z]} scale={1.7} />)}
       {[-8, 1, 9].map((z, index) => <Model key={`tree-right-${z}`} url={`${MODEL_ROOT}/${index % 2 ? "tree-large" : "tree-small"}.glb`} position={[5.5, 0, z]} scale={1.6} />)}
       <StreetLamp position={[-4.2, 0, -4]} />
       <StreetLamp position={[4.2, 0, 4]} />
       <StreetLamp position={[-4.2, 0, 11]} />
+      <CityLandmark cityName={cityName} />
 
       {npcPositions.map((point, index) => (
-        <Person key={npcNames[index]} active={index === activeNpcIndex} color={[palette, "#5f72dc", "#d99b52"][index]} name={npcNames[index]} onClick={() => onSelectNpc(index)} position={toWorld(point)} />
+        <Person key={npcNames[index]} active={index === activeNpcIndex} skin={["skaterFemaleA.png", "criminalMaleA.png", "cyborgFemaleA.png"][index]} name={npcNames[index]} onClick={() => onSelectNpc(index)} position={toWorld(point)} />
       ))}
-      <Person player color="#d8ff5f" position={playerWorld} />
+      <Person player skin="skaterMaleA.png" position={playerWorld} />
       <FollowCamera playerPosition={playerPosition} />
     </>
   );
 }
 
 export default function World3D(props: World3DProps) {
+  const [neighborhood, setNeighborhood] = useState<Neighborhood | null>(null);
+  const [mapStatus, setMapStatus] = useState<"loading" | "live" | "fallback">("loading");
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setNeighborhood(null);
+    setMapStatus("loading");
+    fetch(`/api/osm?lat=${props.latitude.toFixed(5)}&lon=${props.longitude.toFixed(5)}`, { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) throw new Error("Map request failed");
+        return response.json() as Promise<Neighborhood>;
+      })
+      .then((data) => {
+        if (!data.roads?.length && !data.buildings?.length) throw new Error("No map geometry");
+        setNeighborhood(data);
+        setMapStatus("live");
+      })
+      .catch((error) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setMapStatus("fallback");
+      });
+    return () => controller.abort();
+  }, [props.cityName, props.latitude, props.longitude]);
+
   return (
     <div className="world3d-canvas" aria-label={`Interactive 3D street in ${props.cityName}`}>
       <Canvas shadows camera={{ fov: 52, near: .1, far: 90, position: [0, 5, 12] }} dpr={[1, 1.5]} gl={{ antialias: true, powerPreference: "high-performance" }}>
-        <Suspense fallback={null}><CityScene {...props} /></Suspense>
+        <Suspense fallback={null}><CityScene {...props} neighborhood={neighborhood} /></Suspense>
       </Canvas>
+      <div className={`osm-world-status ${mapStatus}`}><span />{mapStatus === "live" ? "OSM neighborhood live" : mapStatus === "loading" ? "Generating real streets…" : "Designed fallback district"}</div>
+      <a className="osm-attribution" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap contributors</a>
       <div className="world3d-loading">Loading city…</div>
     </div>
   );
