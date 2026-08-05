@@ -1045,3 +1045,44 @@ footer { min-height: 64px; padding-inline: max(24px,calc((100vw - 1320px)/2)); b
   .voice-actions { position: static; margin: 8px 0 0; }
   .transcript-drawer { inset: 132px 12px 260px; width: auto; }
 }
+
+/* Worldling 06 — real-time 3D street */
+.play-world { min-height: min(830px,calc(100vh - 86px)); background: #090d0c; }
+.play-world::before { z-index: 4; background: linear-gradient(180deg,rgba(2,5,4,.16),transparent 45%,rgba(2,5,4,.52)),radial-gradient(circle at 50% 45%,transparent 42%,rgba(0,0,0,.32) 120%); }
+.world3d-canvas { position: absolute; inset: 0; z-index: 1; background: #86abc0; }
+.world3d-fallback { position: absolute; inset: 0; z-index: 3; display: grid; place-items: center; color: rgba(255,255,255,.7); background: #0b100e; font-size: 8px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+.world3d-canvas canvas { display: block; width: 100% !important; height: 100% !important; outline: 0; cursor: crosshair; }
+.world3d-loading { position: absolute; inset: 0; z-index: 3; display: grid; place-items: center; pointer-events: none; color: rgba(255,255,255,.65); background: #0b100e; font-size: 8px; font-weight: 800; letter-spacing: .15em; text-transform: uppercase; animation: world3dReveal 2.2s .35s forwards; }
+@keyframes world3dReveal { 0%,45% { opacity: 1; } 100% { opacity: 0; visibility: hidden; } }
+.world3d-name { pointer-events: none; white-space: nowrap; }
+.world3d-name span { display: block; border: 1px solid rgba(255,255,255,.16); border-radius: 999px; padding: 6px 9px; color: white; background: rgba(5,8,7,.74); box-shadow: 0 10px 28px rgba(0,0,0,.3); backdrop-filter: blur(10px); font: 800 9px/1 var(--font-sans),sans-serif; letter-spacing: .02em; }
+.world3d-name span.active { border-color: rgba(216,255,95,.65); color: #07100d; background: var(--yellow); box-shadow: 0 0 0 5px rgba(216,255,95,.12),0 10px 30px rgba(0,0,0,.3); }
+.game-mission, .game-status, .world-dialogue, .movement-pad, .voice-hud, .transcript-drawer, .approach-hint, .game-minimap { z-index: 20; }
+.world-dialogue { top: 13%; background: rgba(6,10,9,.72); }
+.movement-pad { bottom: 27px; }
+.game-minimap { position: absolute; z-index: 24; right: 20px; bottom: 22px; width: 132px; height: 132px; overflow: hidden; border-radius: 50%; background: rgba(4,8,7,.68); box-shadow: inset 0 0 0 6px rgba(255,255,255,.03),inset 0 0 35px rgba(112,227,179,.09),0 18px 48px rgba(0,0,0,.34); }
+.game-minimap::after { content: ""; position: absolute; inset: 12px; border: 1px solid rgba(255,255,255,.08); border-radius: 50%; }
+.radar-road { position: absolute; display: block; background: rgba(255,255,255,.13); }
+.radar-road.horizontal { left: -10%; right: -10%; top: 58%; height: 13px; rotate: -12deg; }
+.radar-road.vertical { top: -10%; bottom: -10%; left: 47%; width: 10px; rotate: 18deg; }
+.game-minimap .npc-dot { position: absolute; z-index: 2; width: 6px; height: 6px; translate: -50% -50%; border-radius: 50%; background: white; box-shadow: 0 0 0 3px rgba(255,255,255,.11); }
+.game-minimap .npc-dot.active { background: var(--yellow); box-shadow: 0 0 0 4px rgba(216,255,95,.18),0 0 12px var(--yellow); }
+.game-minimap b { position: absolute; z-index: 3; translate: -50% -50%; color: #58aaff; font-size: 10px; text-shadow: 0 0 10px #58aaff; }
+.game-minimap small { position: absolute; z-index: 4; left: 50%; bottom: 14px; translate: -50% 0; max-width: 86px; overflow: hidden; color: rgba(255,255,255,.58); font-size: 5px; font-weight: 900; letter-spacing: .12em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
+.voice-hud { background: rgba(6,10,9,.7); }
+
+@media (max-width: 900px) {
+  .play-world { min-height: 780px; }
+  .game-minimap { width: 105px; height: 105px; right: 12px; bottom: 205px; }
+  .movement-pad { left: 12px; bottom: 205px; }
+  .voice-hud { width: calc(100% - 24px); }
+}
+
+@media (max-width: 580px) {
+  .play-world { min-height: 730px; }
+  .game-mission strong { font-size: 7px; }
+  .world-dialogue { top: 20%; }
+  .game-minimap { width: 92px; height: 92px; bottom: 245px; }
+  .movement-pad { bottom: 245px; }
+  .voice-hud form { grid-template-columns: 94px minmax(0,1fr); }
+}

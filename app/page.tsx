@@ -1,6 +1,8 @@
 "use client";
 
-import { FormEvent, PointerEvent as ReactPointerEvent, WheelEvent as ReactWheelEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, PointerEvent as ReactPointerEvent, Suspense, WheelEvent as ReactWheelEvent, lazy, useEffect, useMemo, useRef, useState } from "react";
+
+const World3D = lazy(() => import("./World3D"));
 
 type Provider = "demo" | "local" | "api";
 type Level = "Beginner" | "Intermediate" | "Advanced";
@@ -363,7 +365,7 @@ export default function Home() {
   const [globeScale, setGlobeScale] = useState(1);
   const [globeDragging, setGlobeDragging] = useState(false);
   const [globeAutoSpin, setGlobeAutoSpin] = useState(true);
-  const [playerPosition, setPlayerPosition] = useState({ x: 38, y: 82 });
+  const [playerPosition, setPlayerPosition] = useState({ x: 31, y: 73 });
   const [showTranscript, setShowTranscript] = useState(false);
   const [showPronunciation, setShowPronunciation] = useState(false);
   const [pronunciationProvider, setPronunciationProvider] = useState<PronunciationProvider>("local");
@@ -389,7 +391,7 @@ export default function Home() {
   const activeNpcIndex = Math.max(0, city.scenes.findIndex((item) => item.id === scene.id));
   const npcPositions = [{ x: 24, y: 67 }, { x: 61, y: 60 }, { x: 79, y: 73 }];
   const activeNpcPosition = npcPositions[activeNpcIndex];
-  const nearCharacter = Math.hypot(playerPosition.x - activeNpcPosition.x, playerPosition.y - activeNpcPosition.y) < 26;
+  const nearCharacter = Math.hypot((playerPosition.x - activeNpcPosition.x) / 3.1, (playerPosition.y - activeNpcPosition.y) / 2.2) < 3.4;
   const lastNpcMessage = [...messages].reverse().find((message) => message.role === "npc");
 
   useEffect(() => {
@@ -755,7 +757,7 @@ export default function Home() {
     setSceneId(nextCity.scenes[0].id);
     setGlobeAutoSpin(false);
     setGlobeLongitude(nextCity.mapX * 3.6 - 180);
-    setPlayerPosition({ x: 38, y: 82 });
+    setPlayerPosition({ x: 31, y: 73 });
   }
 
   function movePlayer(dx: number, dy: number) {
@@ -936,14 +938,18 @@ export default function Home() {
           </div>
 
           <div className="play-world" aria-label={`Walkable scene in ${city.name}`}>
-            <div className="sun" />
-            <div className="cloud cloud-one" />
-            <div className="cloud cloud-two" />
-            <div className="skyline skyline-one" />
-            <div className="skyline skyline-two" />
-            <div className="awning"><span>{scene.label}</span></div>
-            <div className="street-line" />
-            <div className="plant"><span>✦</span></div>
+            <Suspense fallback={<div className="world3d-fallback">Building the city…</div>}>
+              <World3D
+                activeNpcIndex={activeNpcIndex}
+                cityName={city.name}
+                npcNames={city.scenes.map((person) => person.character)}
+                npcPositions={npcPositions}
+                onMoveTo={setPlayerPosition}
+                onSelectNpc={(index) => setSceneId(city.scenes[index].id)}
+                playerPosition={playerPosition}
+                sceneClass={city.sceneClass}
+              />
+            </Suspense>
 
             <div className="game-mission glass-card">
               <span className="mission-icon">{completedQuests === 3 ? "✓" : "◎"}</span>
@@ -956,34 +962,12 @@ export default function Home() {
               <button onClick={() => setShowEngine(true)}>AI settings</button>
             </div>
 
-            {city.scenes.map((person, index) => {
-              const position = npcPositions[index];
-              const isActive = person.id === scene.id;
-              return (
-                <button
-                  key={person.id}
-                  className={`world-character ${isActive ? "active" : ""}`}
-                  style={{ left: `${position.x}%`, top: `${position.y}%`, transform: `translate(-50%, -100%) scale(${.78 + position.y / 170})` }}
-                  onClick={() => setSceneId(person.id)}
-                  aria-label={`Approach ${person.character}, ${person.role}`}
-                >
-                  {isActive && <span className="npc-marker">TALK</span>}
-                  <span className="npc-avatar">{person.avatar}</span>
-                  <span className="npc-name"><strong>{person.character}</strong><small>{person.role}</small></span>
-                </button>
-              );
-            })}
-
             {(nearCharacter || thinking) && (
               <div className="world-dialogue glass-card" aria-live="polite">
                 <span>{scene.avatar}</span>
                 <div><small>{thinking ? `${scene.character} is thinking…` : scene.character}</small><p>{thinking ? "•••" : lastNpcMessage?.text}</p></div>
               </div>
             )}
-
-            <div className="player-character" style={{ left: `${playerPosition.x}%`, top: `${playerPosition.y}%`, transform: `translate(-50%, -100%) scale(${.78 + playerPosition.y / 170})` }}>
-              <span>🧍</span><small>YOU</small>
-            </div>
 
             {!nearCharacter && <div className="approach-hint glass-card">Move closer to {scene.character} to talk</div>}
 
@@ -993,6 +977,13 @@ export default function Home() {
               <button onClick={() => movePlayer(0, 5)} aria-label="Move down">↓</button>
               <button onClick={() => movePlayer(5, 0)} aria-label="Move right">→</button>
               <small>WASD</small>
+            </div>
+
+            <div className="game-minimap glass-card" aria-label="Street radar">
+              <i className="radar-road horizontal" /><i className="radar-road vertical" />
+              {npcPositions.map((position, index) => <span key={city.scenes[index].id} className={index === activeNpcIndex ? "npc-dot active" : "npc-dot"} style={{ left: `${position.x}%`, top: `${position.y}%` }} />)}
+              <b style={{ left: `${playerPosition.x}%`, top: `${playerPosition.y}%` }}>▲</b>
+              <small>{city.name}</small>
             </div>
 
             {showTranscript && (
@@ -1042,8 +1033,8 @@ export default function Home() {
       </section>
 
       <footer>
-        <p><strong>WORLDLING / FREE ROAM BUILD 03</strong> · Browser voice recognition supplies the transcript.</p>
-        <p>The selected model receives text, not raw microphone audio. · Map by <a href="https://commons.wikimedia.org/wiki/File:Blank_Map_of_The_World_Equirectangular_Projection.png" target="_blank" rel="noreferrer">FelixCountryBalls163, CC BY 4.0</a></p>
+        <p><strong>WORLDLING / 3D FREE ROAM BUILD 06</strong> · Browser voice recognition supplies the transcript.</p>
+        <p>3D city assets by <a href="https://kenney.nl/assets/city-kit-suburban" target="_blank" rel="noreferrer">Kenney, CC0</a> · Map by <a href="https://commons.wikimedia.org/wiki/File:Blank_Map_of_The_World_Equirectangular_Projection.png" target="_blank" rel="noreferrer">FelixCountryBalls163, CC BY 4.0</a></p>
       </footer>
 
       {evaluation && (
