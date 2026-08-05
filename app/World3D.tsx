@@ -10,6 +10,7 @@ type Point = { x: number; y: number };
 
 type World3DProps = {
   activeNpcIndex: number;
+  cityId: string;
   cityName: string;
   npcNames: string[];
   npcPositions: Point[];
@@ -376,15 +377,13 @@ function CityScene({ activeNpcIndex, cityName, neighborhood, npcNames, npcPositi
 
 export default function World3D(props: World3DProps) {
   const [neighborhood, setNeighborhood] = useState<Neighborhood | null>(null);
-  const [mapStatus, setMapStatus] = useState<"loading" | "live" | "fallback">("loading");
+  const [mapStatus, setMapStatus] = useState<"loading" | "bundled" | "refreshing" | "live" | "fallback">("loading");
 
-  useEffect(() => {
-    const controller = new AbortController();
-    setNeighborhood(null);
-    setMapStatus("loading");
-    fetch(`/api/osm?lat=${props.latitude.toFixed(5)}&lon=${props.longitude.toFixed(5)}`, { signal: controller.signal })
+  function refreshMap() {
+    setMapStatus("refreshing");
+    fetch(`/api/osm?lat=${props.latitude.toFixed(5)}&lon=${props.longitude.toFixed(5)}`)
       .then((response) => {
-        if (!response.ok) throw new Error("Map request failed");
+        if (!response.ok) throw new Error("Map refresh failed");
         return response.json() as Promise<Neighborhood>;
       })
       .then((data) => {
@@ -392,19 +391,38 @@ export default function World3D(props: World3DProps) {
         setNeighborhood(data);
         setMapStatus("live");
       })
+      .catch(() => setMapStatus("bundled"));
+  }
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setNeighborhood(null);
+    setMapStatus("loading");
+    fetch(`/city-data/${props.cityId}.json`, { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) throw new Error("Map request failed");
+        return response.json() as Promise<Neighborhood>;
+      })
+      .then((data) => {
+        if (!data.roads?.length && !data.buildings?.length) throw new Error("No map geometry");
+        setNeighborhood(data);
+        setMapStatus("bundled");
+      })
       .catch((error) => {
         if (error instanceof DOMException && error.name === "AbortError") return;
         setMapStatus("fallback");
       });
     return () => controller.abort();
-  }, [props.cityName, props.latitude, props.longitude]);
+  }, [props.cityId]);
 
   return (
     <div className="world3d-canvas" aria-label={`Interactive 3D street in ${props.cityName}`}>
       <Canvas shadows camera={{ fov: 52, near: .1, far: 90, position: [0, 5, 12] }} dpr={[1, 1.5]} gl={{ antialias: true, powerPreference: "high-performance" }}>
         <Suspense fallback={null}><CityScene {...props} neighborhood={neighborhood} /></Suspense>
       </Canvas>
-      <div className={`osm-world-status ${mapStatus}`}><span />{mapStatus === "live" ? "OSM2World district" : mapStatus === "loading" ? "Downloading city area…" : "Designed fallback district"}</div>
+      <button className={`osm-world-status ${mapStatus}`} onClick={refreshMap} disabled={mapStatus === "loading" || mapStatus === "refreshing"} title="Load the newest map data from OpenStreetMap">
+        <span />{mapStatus === "live" ? "Live OSM district" : mapStatus === "bundled" ? "Downloaded OSM district · refresh" : mapStatus === "loading" ? "Loading city area…" : mapStatus === "refreshing" ? "Refreshing map…" : "Designed fallback district"}
+      </button>
       <a className="osm-attribution" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap contributors</a>
       <div className="world3d-loading">Loading city…</div>
     </div>

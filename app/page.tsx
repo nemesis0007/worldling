@@ -958,6 +958,7 @@ export default function Home() {
             <Suspense fallback={<div className="world3d-fallback">Building the city…</div>}>
               <World3D
                 activeNpcIndex={activeNpcIndex}
+                cityId={city.id}
                 cityName={city.name}
                 npcNames={city.scenes.map((person) => person.character)}
                 npcPositions={npcPositions}
