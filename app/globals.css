@@ -934,3 +934,114 @@ footer { min-height: 64px; padding-inline: max(24px,calc((100vw - 1320px)/2)); b
   .quest-objectives { grid-template-columns: 1fr; }
   footer { display: block; padding: 18px 16px; line-height: 1.5; }
 }
+
+/* Worldling 05 — glass world mode */
+.topbar { background: rgba(4,7,6,.64); box-shadow: 0 1px 0 rgba(255,255,255,.04); }
+.level-control, .engine-button, .destination-dock .city-card, .glass-card { backdrop-filter: blur(22px) saturate(145%); -webkit-backdrop-filter: blur(22px) saturate(145%); }
+.destination-dock { padding: 22px; border: 1px solid rgba(255,255,255,.09); border-radius: 28px; background: linear-gradient(145deg,rgba(255,255,255,.055),rgba(255,255,255,.018)); box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 30px 80px rgba(0,0,0,.24); }
+.destination-dock .city-list { display: grid; grid-template-columns: repeat(6,minmax(0,1fr)); gap: 8px; overflow: visible; padding: 0; }
+.destination-dock .city-card { min-width: 0; width: 100%; grid-template-columns: 28px minmax(0,1fr); border-radius: 15px; background: rgba(255,255,255,.035); }
+.destination-dock .city-card:hover { border-color: rgba(112,227,179,.35); background: rgba(255,255,255,.07); transform: translateY(-1px); }
+.destination-dock .city-card.active { border-color: rgba(216,255,95,.72); background: linear-gradient(145deg,rgba(216,255,95,.16),rgba(216,255,95,.045)); box-shadow: inset 0 1px 0 rgba(255,255,255,.1),0 10px 28px rgba(0,0,0,.18); }
+.destination-dock .passport-strip { margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.07); }
+
+.journey-section { padding-bottom: 100px; background: radial-gradient(circle at 50% 28%,rgba(49,114,87,.16),transparent 35%),#050706; }
+.journey-section .scene-tabs { padding: 5px; width: fit-content; border: 1px solid rgba(255,255,255,.08); border-radius: 999px; background: rgba(255,255,255,.035); backdrop-filter: blur(18px); }
+.play-world { position: relative; min-height: min(790px,calc(100vh - 105px)); overflow: hidden; border: 1px solid rgba(255,255,255,.11); border-radius: 38px; background: linear-gradient(180deg,#607a79 0%,#a5a38d 45%,#777064 45.2%,#393a36 100%); box-shadow: inset 0 1px 0 rgba(255,255,255,.18),0 45px 120px rgba(0,0,0,.4); isolation: isolate; }
+.play-world::before { content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none; background: linear-gradient(180deg,rgba(4,8,7,.08),transparent 50%,rgba(4,8,7,.65)),radial-gradient(circle at 50% 40%,transparent 25%,rgba(0,0,0,.28) 110%); }
+.play-world .sun, .play-world .cloud, .play-world .skyline, .play-world .awning, .play-world .street-line, .play-world .plant { z-index: 1; }
+.play-world .skyline-one { height: 310px; bottom: 34%; }
+.play-world .skyline-two { height: 270px; bottom: 34%; }
+.play-world .street-line { height: 35%; }
+.play-world .awning { bottom: 35%; }
+.play-world .plant { bottom: 33%; }
+.glass-card { border: 1px solid rgba(255,255,255,.13); background: rgba(7,12,10,.58); box-shadow: inset 0 1px 0 rgba(255,255,255,.08),0 18px 48px rgba(0,0,0,.24); }
+.game-mission { position: absolute; z-index: 20; top: 20px; left: 20px; display: grid; grid-template-columns: 32px minmax(0,320px); align-items: center; gap: 10px; border-radius: 18px; padding: 11px 14px 11px 11px; }
+.game-mission small { display: block; margin-bottom: 3px; color: var(--yellow); font-size: 6px; font-weight: 800; letter-spacing: .12em; }
+.game-mission strong { display: block; font-size: 9px; line-height: 1.35; }
+.game-status { position: absolute; z-index: 20; top: 20px; right: 20px; display: flex; align-items: center; gap: 5px; border-radius: 999px; padding: 5px; }
+.game-status > button { border: 0; border-radius: 999px; padding: 8px 10px; color: var(--muted); background: transparent; font-size: 7px; cursor: pointer; }
+.game-status > button:hover { color: var(--ink); background: rgba(255,255,255,.08); }
+.game-status .model-chip { border: 0; background: transparent; }
+
+.world-character { position: absolute; z-index: 7; width: 78px; border: 0; padding: 0; background: transparent; cursor: pointer; transform-origin: center bottom; transition: filter .2s,scale .2s; }
+.world-character:hover, .world-character.active { z-index: 9; filter: drop-shadow(0 15px 16px rgba(0,0,0,.42)); }
+.npc-avatar { display: grid; place-items: center; width: 68px; height: 96px; margin: 0 auto; border-radius: 35px 35px 22px 22px; font-size: 46px; background: linear-gradient(180deg,rgba(255,255,255,.18),rgba(5,8,7,.18)); border: 1px solid rgba(255,255,255,.2); box-shadow: inset 0 1px 0 rgba(255,255,255,.2),0 15px 24px rgba(0,0,0,.2); }
+.npc-name { display: block; width: max-content; max-width: 130px; margin: 6px 50% 0; translate: -50% 0; border-radius: 10px; padding: 5px 8px; color: white; background: rgba(5,8,7,.74); backdrop-filter: blur(10px); box-shadow: 0 8px 18px rgba(0,0,0,.22); }
+.npc-name strong, .npc-name small { display: block; white-space: nowrap; }
+.npc-name strong { font-size: 8px; }
+.npc-name small { margin-top: 1px; color: rgba(255,255,255,.6); font-size: 5px; }
+.npc-marker { position: absolute; left: 50%; top: -27px; translate: -50% 0; border-radius: 999px; padding: 5px 8px; color: #07100d; background: var(--yellow); box-shadow: 0 0 0 5px rgba(216,255,95,.14),0 0 24px rgba(216,255,95,.32); font-size: 6px; font-weight: 900; letter-spacing: .09em; }
+.player-character { position: absolute; z-index: 11; width: 64px; transform-origin: center bottom; pointer-events: none; text-align: center; filter: drop-shadow(0 14px 12px rgba(0,0,0,.45)); transition: left .13s linear,top .13s linear; }
+.player-character > span { display: grid; place-items: center; height: 92px; border-radius: 30px 30px 20px 20px; font-size: 48px; background: linear-gradient(180deg,rgba(216,255,95,.22),rgba(5,8,7,.12)); border: 1px solid rgba(216,255,95,.42); }
+.player-character small { display: inline-block; margin-top: 5px; border-radius: 999px; padding: 4px 7px; color: #07100d; background: var(--yellow); font-size: 5px; font-weight: 900; }
+.world-dialogue { position: absolute; z-index: 22; top: 16%; left: 50%; translate: -50% 0; display: grid; grid-template-columns: 36px minmax(0,1fr); gap: 10px; width: min(540px,calc(100% - 40px)); border-radius: 21px; padding: 13px 15px; }
+.world-dialogue > span { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; background: rgba(216,255,95,.16); font-size: 22px; }
+.world-dialogue small { color: var(--forest); font-size: 6px; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; }
+.world-dialogue p { margin: 4px 0 0; font-size: 12px; line-height: 1.5; }
+.approach-hint { position: absolute; z-index: 18; left: 50%; bottom: 177px; translate: -50% 0; border-radius: 999px; padding: 9px 13px; color: rgba(255,255,255,.75); font-size: 7px; }
+.movement-pad { position: absolute; z-index: 24; left: 20px; bottom: 22px; display: grid; grid-template-columns: repeat(3,30px); grid-template-rows: repeat(2,30px); gap: 4px; border-radius: 17px; padding: 7px; }
+.movement-pad button { border: 0; border-radius: 9px; color: var(--ink); background: rgba(255,255,255,.09); cursor: pointer; }
+.movement-pad button:first-child { grid-column: 2; }
+.movement-pad button:nth-child(2) { grid-column: 1; grid-row: 2; }
+.movement-pad button:nth-child(3) { grid-column: 2; grid-row: 2; }
+.movement-pad button:nth-child(4) { grid-column: 3; grid-row: 2; }
+.movement-pad small { position: absolute; bottom: -15px; left: 50%; translate: -50% 0; color: rgba(255,255,255,.45); font-size: 5px; letter-spacing: .12em; }
+
+.voice-hud { position: absolute; z-index: 25; left: 50%; bottom: 20px; translate: -50% 0; width: min(760px,calc(100% - 260px)); border-radius: 24px; padding: 12px; }
+.voice-context { display: flex; align-items: center; gap: 9px; margin-bottom: 9px; }
+.voice-context > span { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; background: rgba(216,255,95,.13); font-size: 20px; }
+.voice-context small, .voice-context strong { display: block; }
+.voice-context small { color: var(--forest); font-size: 5px; font-weight: 900; letter-spacing: .12em; }
+.voice-context strong { margin-top: 2px; font-size: 9px; }
+.voice-hud form { display: grid; grid-template-columns: 130px 1fr; gap: 8px; }
+.world-mic { min-height: 52px; border: 0; border-radius: 15px; color: #07100d; background: var(--yellow); font-size: 8px; font-weight: 900; cursor: pointer; }
+.world-mic span { margin-right: 7px; }
+.world-mic.listening { color: white; background: var(--coral); animation: micPulse 1.2s infinite; }
+.world-mic:disabled { opacity: .3; cursor: default; }
+.world-text-entry { display: grid; grid-template-columns: 1fr 38px; gap: 6px; border: 1px solid rgba(255,255,255,.09); border-radius: 15px; padding: 6px; background: rgba(255,255,255,.045); }
+.world-text-entry input { min-width: 0; border: 0; outline: 0; padding: 0 8px; color: var(--ink); background: transparent; font-size: 9px; }
+.world-text-entry button { border: 0; border-radius: 11px; color: #07100d; background: #f5f7f6; cursor: pointer; }
+.world-text-entry button:disabled { opacity: .25; }
+.voice-actions { position: absolute; right: 12px; top: 12px; display: flex; gap: 5px; }
+.voice-actions button { border: 1px solid rgba(255,255,255,.1); border-radius: 999px; padding: 6px 8px; color: var(--muted); background: rgba(255,255,255,.04); font-size: 6px; cursor: pointer; }
+.suggestion-strip { display: flex; gap: 5px; margin-top: 8px; overflow-x: auto; scrollbar-width: none; }
+.suggestion-strip button { flex: 0 0 auto; border: 0; border-radius: 999px; padding: 6px 8px; color: rgba(255,255,255,.68); background: rgba(255,255,255,.06); font-size: 6px; cursor: pointer; }
+.suggestion-strip button:disabled { opacity: .3; }
+
+.transcript-drawer { position: absolute; z-index: 40; inset: 76px 20px 176px auto; width: min(390px,calc(100% - 40px)); border-radius: 24px; padding: 16px; }
+.transcript-drawer > div:first-child { display: flex; align-items: center; justify-content: space-between; }
+.transcript-drawer > div:first-child strong { font-size: 12px; }
+.transcript-drawer > div:first-child button { width: 28px; height: 28px; border: 0; border-radius: 50%; color: var(--ink); background: rgba(255,255,255,.08); cursor: pointer; }
+.transcript-drawer .messages { max-height: calc(100% - 38px); min-height: 0; margin: 13px 0 0; }
+
+@media (max-width: 1120px) {
+  .destination-dock .city-list { grid-template-columns: repeat(4,minmax(0,1fr)); }
+  .play-world { min-height: 760px; }
+  .voice-hud { width: calc(100% - 180px); }
+}
+
+@media (max-width: 720px) {
+  .destination-dock { padding: 14px; border-radius: 22px; }
+  .destination-dock .city-list { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .destination-dock .city-card { min-height: 58px; }
+  .journey-section .scene-tabs { width: 100%; overflow-x: auto; }
+  .play-world { min-height: 760px; border-radius: 26px; }
+  .game-mission { top: 12px; left: 12px; right: 12px; grid-template-columns: 28px 1fr; }
+  .game-status { top: 84px; left: 12px; right: auto; }
+  .game-status .model-chip { display: none; }
+  .play-world .skyline-one { height: 245px; }
+  .play-world .skyline-two { height: 220px; }
+  .world-dialogue { top: 21%; }
+  .world-dialogue p { font-size: 10px; }
+  .world-character { width: 64px; }
+  .npc-avatar { width: 58px; height: 82px; font-size: 39px; }
+  .player-character { width: 55px; }
+  .player-character > span { height: 82px; font-size: 42px; }
+  .movement-pad { left: 12px; bottom: 196px; }
+  .approach-hint { bottom: 285px; }
+  .voice-hud { left: 12px; right: 12px; bottom: 12px; translate: none; width: auto; }
+  .voice-hud form { grid-template-columns: 104px 1fr; }
+  .voice-actions { position: static; margin: 8px 0 0; }
+  .transcript-drawer { inset: 132px 12px 260px; width: auto; }
+}

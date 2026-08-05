@@ -363,6 +363,8 @@ export default function Home() {
   const [globeScale, setGlobeScale] = useState(1);
   const [globeDragging, setGlobeDragging] = useState(false);
   const [globeAutoSpin, setGlobeAutoSpin] = useState(true);
+  const [playerPosition, setPlayerPosition] = useState({ x: 38, y: 82 });
+  const [showTranscript, setShowTranscript] = useState(false);
   const [showPronunciation, setShowPronunciation] = useState(false);
   const [pronunciationProvider, setPronunciationProvider] = useState<PronunciationProvider>("local");
   const [pronunciationPrompt, setPronunciationPrompt] = useState(0);
@@ -384,6 +386,11 @@ export default function Home() {
   const playerLevel = Math.floor(xp / 100) + 1;
   const levelProgress = xp % 100;
   const completedQuests = questProgress.filter(Boolean).length;
+  const activeNpcIndex = Math.max(0, city.scenes.findIndex((item) => item.id === scene.id));
+  const npcPositions = [{ x: 24, y: 67 }, { x: 61, y: 60 }, { x: 79, y: 73 }];
+  const activeNpcPosition = npcPositions[activeNpcIndex];
+  const nearCharacter = Math.hypot(playerPosition.x - activeNpcPosition.x, playerPosition.y - activeNpcPosition.y) < 26;
+  const lastNpcMessage = [...messages].reverse().find((message) => message.role === "npc");
 
   useEffect(() => {
     const saved = window.localStorage.getItem("worldling-provider") as Provider | null;
@@ -445,6 +452,27 @@ export default function Home() {
     }, 40);
     return () => window.clearInterval(timer);
   }, [globeAutoSpin, globeDragging]);
+
+  useEffect(() => {
+    function handleMovement(event: KeyboardEvent) {
+      if ((event.target as HTMLElement).closest("input, textarea, button")) return;
+      const movement: Record<string, [number, number]> = {
+        ArrowUp: [0, -3], w: [0, -3], W: [0, -3],
+        ArrowDown: [0, 3], s: [0, 3], S: [0, 3],
+        ArrowLeft: [-3, 0], a: [-3, 0], A: [-3, 0],
+        ArrowRight: [3, 0], d: [3, 0], D: [3, 0],
+      };
+      const direction = movement[event.key];
+      if (!direction) return;
+      event.preventDefault();
+      setPlayerPosition((current) => ({
+        x: Math.min(90, Math.max(10, current.x + direction[0])),
+        y: Math.min(88, Math.max(54, current.y + direction[1])),
+      }));
+    }
+    window.addEventListener("keydown", handleMovement);
+    return () => window.removeEventListener("keydown", handleMovement);
+  }, []);
 
   function speak(text: string) {
     if (!autoSpeak || !("speechSynthesis" in window)) return;
@@ -727,6 +755,14 @@ export default function Home() {
     setSceneId(nextCity.scenes[0].id);
     setGlobeAutoSpin(false);
     setGlobeLongitude(nextCity.mapX * 3.6 - 180);
+    setPlayerPosition({ x: 38, y: 82 });
+  }
+
+  function movePlayer(dx: number, dy: number) {
+    setPlayerPosition((current) => ({
+      x: Math.min(90, Math.max(10, current.x + dx)),
+      y: Math.min(88, Math.max(54, current.y + dy)),
+    }));
   }
 
   function globePoint(item: City) {
@@ -819,7 +855,7 @@ export default function Home() {
             <div className="globe-orbit globe-orbit-one" />
             <div className="globe-orbit globe-orbit-two" />
             <div className="globe-shell" style={{ transform: `scale(${globeScale})` }}>
-              <div className="globe-surface" style={{ backgroundPosition: `${50 + globeLongitude / 3.6}% center` }} />
+              <div className="globe-surface" style={{ backgroundPosition: `${50 + globeLongitude / 1.8}% center` }} />
               <div className="globe-grid" />
               <div className="globe-shade" />
               {CITIES.map((item) => {
@@ -855,7 +891,7 @@ export default function Home() {
         </div>
 
         <div className="destination-dock">
-          <div className="language-heading"><strong>LANGUAGE ATLAS</strong><span>Global top 10 + India</span></div>
+          <div className="language-heading"><strong>CHOOSE A LANGUAGE</strong><span>All destinations visible · select any city</span></div>
           <div className="city-list">
             {CITIES.map((item) => (
               <button key={item.id} className={item.id === city.id ? "city-card active" : "city-card"} onClick={() => chooseCity(item)}>
@@ -899,103 +935,108 @@ export default function Home() {
             ))}
           </div>
 
-          <div className="journey-grid">
-            <div className="scene-column">
-              <div className="scenery" aria-label={`Stylised local scene: ${scene.label}`}>
-                <div className="sun" />
-                <div className="cloud cloud-one" />
-                <div className="cloud cloud-two" />
-                <div className="skyline skyline-one" />
-                <div className="skyline skyline-two" />
-                <div className="awning"><span>{scene.label}</span></div>
-                <div className="street-line" />
-                <div className="plant"><span>✦</span></div>
-                <div className="character-card">
-                  <div className="avatar" aria-hidden="true">{scene.avatar}</div>
-                  <div><strong>{scene.character}</strong><span>{scene.role}</span></div>
-                  <span className="online">ready</span>
-                </div>
-                <div className="scene-stamp">LIVE SCENE<br /><strong>{city.flag} {city.name.toUpperCase()}</strong></div>
-              </div>
+          <div className="play-world" aria-label={`Walkable scene in ${city.name}`}>
+            <div className="sun" />
+            <div className="cloud cloud-one" />
+            <div className="cloud cloud-two" />
+            <div className="skyline skyline-one" />
+            <div className="skyline skyline-two" />
+            <div className="awning"><span>{scene.label}</span></div>
+            <div className="street-line" />
+            <div className="plant"><span>✦</span></div>
 
-              <div className="mission-strip">
-                <span className="mission-icon">{completedQuests === 3 ? "✓" : "◎"}</span>
-                <div><small>YOUR MISSION</small><strong>{scene.goal}</strong></div>
-                <span className="quest-count">{completedQuests}/3</span>
-                <div className="quest-objectives">
-                  {["Greet the local", "Ask a real question", "Complete 3 turns"].map((objective, index) => (
-                    <span key={objective} className={questProgress[index] ? "done" : ""}><i>{questProgress[index] ? "✓" : index + 1}</i>{objective}</span>
-                  ))}
-                </div>
-              </div>
+            <div className="game-mission glass-card">
+              <span className="mission-icon">{completedQuests === 3 ? "✓" : "◎"}</span>
+              <div><small>MISSION · {completedQuests}/3</small><strong>{scene.goal}</strong></div>
             </div>
 
-            <section className="conversation-panel">
-              <div className="conversation-head">
-                <div>
-                  <div className="section-kicker"><span>03</span> Live conversation</div>
-                  <h2>Talk with {scene.character}</h2>
-                  <div className="affinity-meter"><span>Bond</span><i><b style={{ width: `${affinity}%` }} /></i><strong>{affinity}%</strong></div>
+            <div className="game-status glass-card">
+              <span className={`model-chip ${provider}`}>{provider === "local" ? `${ollamaModel} · local` : providerLabels[provider]}</span>
+              <button onClick={() => setShowTranscript((current) => !current)}>{showTranscript ? "Close transcript" : "Transcript"}</button>
+              <button onClick={() => setShowEngine(true)}>AI settings</button>
+            </div>
+
+            {city.scenes.map((person, index) => {
+              const position = npcPositions[index];
+              const isActive = person.id === scene.id;
+              return (
+                <button
+                  key={person.id}
+                  className={`world-character ${isActive ? "active" : ""}`}
+                  style={{ left: `${position.x}%`, top: `${position.y}%`, transform: `translate(-50%, -100%) scale(${.78 + position.y / 170})` }}
+                  onClick={() => setSceneId(person.id)}
+                  aria-label={`Approach ${person.character}, ${person.role}`}
+                >
+                  {isActive && <span className="npc-marker">TALK</span>}
+                  <span className="npc-avatar">{person.avatar}</span>
+                  <span className="npc-name"><strong>{person.character}</strong><small>{person.role}</small></span>
+                </button>
+              );
+            })}
+
+            {(nearCharacter || thinking) && (
+              <div className="world-dialogue glass-card" aria-live="polite">
+                <span>{scene.avatar}</span>
+                <div><small>{thinking ? `${scene.character} is thinking…` : scene.character}</small><p>{thinking ? "•••" : lastNpcMessage?.text}</p></div>
+              </div>
+            )}
+
+            <div className="player-character" style={{ left: `${playerPosition.x}%`, top: `${playerPosition.y}%`, transform: `translate(-50%, -100%) scale(${.78 + playerPosition.y / 170})` }}>
+              <span>🧍</span><small>YOU</small>
+            </div>
+
+            {!nearCharacter && <div className="approach-hint glass-card">Move closer to {scene.character} to talk</div>}
+
+            <div className="movement-pad glass-card" aria-label="Movement controls">
+              <button onClick={() => movePlayer(0, -5)} aria-label="Move up">↑</button>
+              <button onClick={() => movePlayer(-5, 0)} aria-label="Move left">←</button>
+              <button onClick={() => movePlayer(0, 5)} aria-label="Move down">↓</button>
+              <button onClick={() => movePlayer(5, 0)} aria-label="Move right">→</button>
+              <small>WASD</small>
+            </div>
+
+            {showTranscript && (
+              <aside className="transcript-drawer glass-card">
+                <div><strong>Conversation</strong><button onClick={() => setShowTranscript(false)}>×</button></div>
+                <div className="messages">
+                  {messages.map((message) => (
+                    <article key={message.id} className={`message ${message.role}`}>
+                      <span className="speaker">{message.role === "npc" ? scene.avatar : "You"}</span>
+                      <div><p>{message.text}</p>{message.translation && city.locale !== "en-US" && <small>{message.translation}</small>}</div>
+                    </article>
+                  ))}
                 </div>
-                <div className="conversation-tools">
-                  <span className={`model-chip ${provider}`}>{provider === "local" ? `${ollamaModel} · local` : providerLabels[provider]}</span>
-                  <label className="audio-toggle">
-                    <input type="checkbox" checked={autoSpeak} onChange={(event) => setAutoSpeak(event.target.checked)} />
-                    <span>Voice</span>
-                  </label>
-                </div>
-              </div>
+              </aside>
+            )}
 
-              <div className="messages" aria-live="polite">
-                {messages.map((message) => (
-                  <article key={message.id} className={`message ${message.role}`}>
-                    <span className="speaker">{message.role === "npc" ? scene.avatar : message.viaVoice ? "◉" : "You"}</span>
-                    <div>
-                      <p>{message.text}</p>
-                      {message.translation && city.locale !== "en-US" && message.translation.trim().toLocaleLowerCase() !== message.text.trim().toLocaleLowerCase() && <small>{message.translation}</small>}
-                    </div>
-                  </article>
-                ))}
-                {thinking && (
-                  <article className="message npc thinking"><span className="speaker">{scene.avatar}</span><div><i /><i /><i /></div></article>
-                )}
+            <div className="voice-hud glass-card">
+              <div className="voice-context">
+                <span>{scene.avatar}</span>
+                <div><small>{nearCharacter ? `TALKING TO ${scene.character.toUpperCase()}` : "EXPLORE THE SCENE"}</small><strong>{nearCharacter ? `Speak naturally in ${city.language}` : "Use WASD or the arrows to move"}</strong></div>
               </div>
-
-              <div className="prompt-chips">
-                {city.prompts.map((prompt) => <button key={prompt} onClick={() => setInput(prompt)}>{prompt}</button>)}
-              </div>
-
-              <form className="composer" onSubmit={handleSubmit}>
+              <form onSubmit={handleSubmit}>
                 <button
                   type="button"
-                  className={listening ? "mic listening" : "mic"}
+                  className={listening ? "world-mic listening" : "world-mic"}
+                  disabled={!nearCharacter || thinking}
                   onClick={() => listening ? recognitionRef.current?.stop() : startListening()}
-                  aria-label={listening ? "Stop listening" : `Speak in ${city.language}`}
+                  aria-label={listening ? "Stop listening" : `Speak to ${scene.character} in ${city.language}`}
                 >
-                  <span className="mic-icon">●</span>
-                  <span>{listening ? "Listening…" : "Speak"}</span>
+                  <span>●</span>{listening ? "Listening" : "Hold to talk"}
                 </button>
-                <div className="text-entry">
-                  <label htmlFor="reply">Your reply in {city.language}</label>
-                  <div><input id="reply" value={input} onChange={(event) => setInput(event.target.value)} placeholder="Type a message…" /><button type="submit" disabled={!input.trim() || thinking}>↑</button></div>
+                <div className="world-text-entry">
+                  <input value={input} disabled={!nearCharacter || thinking} onChange={(event) => setInput(event.target.value)} placeholder={nearCharacter ? "Or type what you want to say…" : `Walk closer to ${scene.character}`} />
+                  <button type="submit" disabled={!nearCharacter || !input.trim() || thinking}>↑</button>
                 </div>
               </form>
-
-              <div className="agent-trace">
-                <span className={`trace-pulse ${thinking ? "busy" : ""}`} />
-                <p>{engineNote}</p>
-                <button onClick={() => setShowEngine(true)}>Details</button>
+              <div className="voice-actions">
+                <button onClick={() => setShowPronunciation(true)}>Pronunciation</button>
+                <button onClick={() => void finishConversation()}>Finish & grade</button>
               </div>
-
-              <div className="conversation-actions">
-                <button className="pronunciation-button" disabled={thinking} onClick={() => setShowPronunciation(true)}>
-                  <span><b>◉</b><small>PRONUNCIATION</small>Practise this scene</span><strong>Open ↗</strong>
-                </button>
-                <button className="grade-button" disabled={thinking} onClick={() => void finishConversation()}>
-                  <span>Finish & grade</span><strong>{userTurns} turn{userTurns === 1 ? "" : "s"} ↗</strong>
-                </button>
+              <div className="suggestion-strip">
+                {city.prompts.map((prompt) => <button key={prompt} disabled={!nearCharacter} onClick={() => setInput(prompt)}>{prompt}</button>)}
               </div>
-            </section>
+            </div>
           </div>
         </div>
       </section>
