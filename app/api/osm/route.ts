@@ -43,7 +43,13 @@ export async function GET(request: Request) {
   const query = `[out:json][timeout:18];(
     way(around:${RADIUS_METERS},${latitude},${longitude})["highway"~"primary|secondary|tertiary|residential|living_street|pedestrian|service"];
     way(around:${RADIUS_METERS},${latitude},${longitude})["building"];
-  );out tags geom;`;
+    way(around:${RADIUS_METERS},${latitude},${longitude})["landuse"];
+    way(around:${RADIUS_METERS},${latitude},${longitude})["leisure"];
+    way(around:${RADIUS_METERS},${latitude},${longitude})["natural"];
+    node(around:${RADIUS_METERS},${latitude},${longitude})["natural"="tree"];
+    node(around:${RADIUS_METERS},${latitude},${longitude})["amenity"~"bench|waste_basket|bicycle_parking"];
+    node(around:${RADIUS_METERS},${latitude},${longitude})["highway"="street_lamp"];
+  );out body geom;>;out skel qt;`;
 
   try {
     const response = await fetch(OVERPASS_URL, {
@@ -68,7 +74,7 @@ export async function GET(request: Request) {
       .map((element) => ({ id: element.id, height: heightFor(element), points: project(element.geometry!, latitude, longitude) }));
 
     return Response.json(
-      { roads, buildings, center: { latitude, longitude }, radius: RADIUS_METERS },
+      { roads, buildings, osm: JSON.stringify({ version: 0.6, generator: "Worldling via Overpass", elements }), center: { latitude, longitude }, radius: RADIUS_METERS },
       { headers: { "Cache-Control": "public, max-age=86400, s-maxage=604800" } },
     );
   } catch (error) {

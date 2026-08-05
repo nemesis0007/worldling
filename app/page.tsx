@@ -68,6 +68,21 @@ type Reward = {
   newStamp: boolean;
 };
 
+const CITY_CENTERS: Record<string, [number, number]> = {
+  "New York": [40.7580, -73.9855],
+  Beijing: [39.9163, 116.3972],
+  Delhi: [28.6129, 77.2295],
+  Madrid: [40.4200, -3.6880],
+  Paris: [48.8584, 2.2945],
+  Cairo: [29.9792, 31.1342],
+  Dhaka: [23.8103, 90.4125],
+  "São Paulo": [-23.5614, -46.6559],
+  Moscow: [55.7525, 37.6231],
+  Lahore: [31.5925, 74.3095],
+  Mumbai: [18.9220, 72.8347],
+  Bengaluru: [12.9796, 77.5907],
+};
+
 type PronunciationProvider = "local" | "azure";
 type PronunciationResult = {
   provider: PronunciationProvider;
@@ -388,7 +403,8 @@ export default function Home() {
   const playerLevel = Math.floor(xp / 100) + 1;
   const levelProgress = xp % 100;
   const completedQuests = questProgress.filter(Boolean).length;
-  const streetViewUrl = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${encodeURIComponent(`${(90 - city.mapY * 1.8).toFixed(4)},${(city.mapX * 3.6 - 180).toFixed(4)}`)}`;
+  const cityCenter = CITY_CENTERS[city.name] ?? [90 - city.mapY * 1.8, city.mapX * 3.6 - 180];
+  const streetViewUrl = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${encodeURIComponent(`${cityCenter[0].toFixed(4)},${cityCenter[1].toFixed(4)}`)}`;
   const activeNpcIndex = Math.max(0, city.scenes.findIndex((item) => item.id === scene.id));
   const npcPositions = [{ x: 24, y: 67 }, { x: 61, y: 60 }, { x: 79, y: 73 }];
   const activeNpcPosition = npcPositions[activeNpcIndex];
@@ -949,8 +965,8 @@ export default function Home() {
                 onSelectNpc={(index) => setSceneId(city.scenes[index].id)}
                 playerPosition={playerPosition}
                 sceneClass={city.sceneClass}
-                latitude={90 - city.mapY * 1.8}
-                longitude={city.mapX * 3.6 - 180}
+                latitude={cityCenter[0]}
+                longitude={cityCenter[1]}
               />
             </Suspense>
 

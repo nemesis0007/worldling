@@ -1,10 +1,9 @@
 "use client";
 
 import { Suspense, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import { Canvas, ThreeElements, ThreeEvent, useFrame, useLoader, useThree } from "@react-three/fiber";
+import { Canvas, ThreeElements, ThreeEvent, useFrame, useThree } from "@react-three/fiber";
 import { Environment, Html, Line, Sparkles, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
-import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
 import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils.js";
 
 type Point = { x: number; y: number };
@@ -26,10 +25,28 @@ type MapPoint = { x: number; z: number };
 type Neighborhood = {
   roads: Array<{ id: number; kind?: string; points: MapPoint[] }>;
   buildings: Array<{ id: number; height: number; points: MapPoint[] }>;
+  osm?: string;
+};
+
+type O2WMesh = {
+  positions: () => number[];
+  indices: () => number[];
+  normals: () => number[];
+  uvs: () => number[];
+  color: () => number[];
+  baseColorTexture: () => string | null;
+  normalTexture: () => string | null;
+  clampTextures: () => boolean;
+  transparency: () => boolean;
+};
+
+type O2WModule = {
+  O2WConverter: new () => { setConfig: (config: unknown) => void; convertJson: (json: string, success: (meshes: O2WMesh[]) => void, failure: (error: unknown) => void) => void };
+  loadO2WConfig: (url: string, options: { lod: string }, success: (config: unknown) => void, failure: (error: unknown) => void) => void;
 };
 
 const MODEL_ROOT = "/models/kenney-city";
-const CHARACTER_ROOT = "/models/kenney-characters";
+const CHARACTER_ROOT = "/models/quaternius";
 
 function toWorld(point: Point): [number, number, number] {
   return [(point.x - 50) / 3.1, 0, (point.y - 70) / 2.2];
@@ -58,37 +75,32 @@ function Model({ url, ...props }: { url: string } & ThreeElements["group"]) {
   return <primitive object={clone} {...props} />;
 }
 
-function Person({ active = false, name, onClick, player = false, position, skin }: {
+function Person({ active = false, model, name, onClick, player = false, position }: {
   active?: boolean;
+  model: string;
   name?: string;
   onClick?: () => void;
   player?: boolean;
   position: [number, number, number];
-  skin: string;
 }) {
   const group = useRef<THREE.Group>(null);
-  const source = useLoader(FBXLoader, `${CHARACTER_ROOT}/character.fbx`);
-  const idle = useLoader(FBXLoader, `${CHARACTER_ROOT}/idle.fbx`);
-  const texture = useLoader(THREE.TextureLoader, `${CHARACTER_ROOT}/${skin}`);
-  const character = useMemo(() => cloneSkeleton(source) as THREE.Group, [source]);
+  const source = useGLTF(`${CHARACTER_ROOT}/${model}`);
+  const character = useMemo(() => cloneSkeleton(source.scene) as THREE.Group, [source.scene]);
   const mixer = useMemo(() => new THREE.AnimationMixer(character), [character]);
   const destination = useMemo(() => new THREE.Vector3(...position), [position]);
 
   useEffect(() => {
-    texture.colorSpace = THREE.SRGBColorSpace;
-    texture.flipY = false;
     character.traverse((child) => {
       if (child instanceof THREE.Mesh) {
         child.castShadow = true;
         child.receiveShadow = true;
-        child.material = new THREE.MeshStandardMaterial({ map: texture, roughness: .68, metalness: .02 });
       }
     });
-    const clip = idle.animations[0];
+    const clip = source.animations.find((animation) => /idle/i.test(animation.name)) ?? source.animations[0];
     const action = clip ? mixer.clipAction(clip) : null;
     action?.reset().fadeIn(.2).play();
     return () => { action?.fadeOut(.15); mixer.stopAllAction(); };
-  }, [character, idle, mixer, texture]);
+  }, [character, mixer, source.animations]);
 
   useFrame((_, delta) => {
     mixer.update(delta);
@@ -98,7 +110,7 @@ function Person({ active = false, name, onClick, player = false, position, skin 
 
   return (
     <group ref={group} position={position} onClick={(event) => { event.stopPropagation(); onClick?.(); }}>
-      <primitive object={character} scale={.012} rotation={[0, Math.PI, 0]} />
+      <primitive object={character} scale={.92} rotation={[0, Math.PI, 0]} />
       {active && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, .035, 0]}>
           <ringGeometry args={[.7, .86, 40]} />
@@ -161,6 +173,82 @@ function OsmNeighborhood({ data, sceneClass }: { data: Neighborhood; sceneClass:
       {data.buildings.map((building) => <OsmBuilding key={building.id} building={building} sceneClass={sceneClass} />)}
     </group>
   );
+}
+
+function DetailedNeighborhood({ data, sceneClass }: { data: Neighborhood; sceneClass: string }) {
+  const [cityModel, setCityModel] = useState<THREE.Group | null>(null);
+
+  useEffect(() => {
+    if (!data.osm) return;
+    let cancelled = false;
+    const textureLoader = new THREE.TextureLoader();
+    const moduleUrl = "https://osm2world.org/build/web/0.5.0-SNAPSHOT_2026-02-18/osm2world-core-web.mjs";
+
+    import(/* @vite-ignore */ moduleUrl).then((module: O2WModule) => {
+      module.loadO2WConfig("https://tiles.osm2world.org/styles/default/standard.properties", { lod: "3" }, (config) => {
+        if (cancelled) return;
+        const converter = new module.O2WConverter();
+        converter.setConfig(config);
+        converter.convertJson(data.osm!, (meshes) => {
+          if (cancelled) return;
+          const group = new THREE.Group();
+          meshes.slice(0, 420).forEach((source, index) => {
+            const positions = source.positions();
+            if (!positions?.length) return;
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+            if (source.normals()?.length === positions.length) geometry.setAttribute("normal", new THREE.Float32BufferAttribute(source.normals(), 3));
+            else geometry.computeVertexNormals();
+            if (source.uvs()?.length) geometry.setAttribute("uv", new THREE.Float32BufferAttribute(source.uvs(), 2));
+            if (source.indices()?.length) geometry.setIndex(source.indices());
+            const color = source.color?.() ?? [.55, .57, .55];
+            const material = new THREE.MeshStandardMaterial({
+              color: new THREE.Color(color[0] ?? .55, color[1] ?? .57, color[2] ?? .55),
+              roughness: .82,
+              metalness: .04,
+              transparent: source.transparency?.() ?? false,
+              alphaTest: source.transparency?.() ? .25 : 0,
+            });
+            const baseTexture = source.baseColorTexture?.();
+            if (baseTexture) {
+              material.map = textureLoader.load(`https://tiles.osm2world.org/${baseTexture}`);
+              material.map.colorSpace = THREE.SRGBColorSpace;
+              material.map.wrapS = material.map.wrapT = source.clampTextures?.() ? THREE.ClampToEdgeWrapping : THREE.RepeatWrapping;
+            }
+            const normalTexture = source.normalTexture?.();
+            if (normalTexture) material.normalMap = textureLoader.load(`https://tiles.osm2world.org/${normalTexture}`);
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.name = `osm2world-${index}`;
+            mesh.castShadow = index < 180;
+            mesh.receiveShadow = true;
+            group.add(mesh);
+          });
+          const bounds = new THREE.Box3().setFromObject(group);
+          const center = bounds.getCenter(new THREE.Vector3());
+          const scale = .052;
+          group.scale.setScalar(scale);
+          group.position.set(-center.x * scale, -bounds.min.y * scale, -center.z * scale);
+          setCityModel(group);
+        }, () => undefined);
+      }, () => undefined);
+    }).catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+      if (cityModel) {
+        cityModel.traverse((object) => {
+          if (!(object instanceof THREE.Mesh)) return;
+          object.geometry.dispose();
+          const material = object.material as THREE.MeshStandardMaterial;
+          material.map?.dispose();
+          material.normalMap?.dispose();
+          material.dispose();
+        });
+      }
+    };
+  }, [data.osm]);
+
+  return cityModel ? <primitive object={cityModel} /> : <OsmNeighborhood data={data} sceneClass={sceneClass} />;
 }
 
 function FallbackStreet() {
@@ -269,7 +357,7 @@ function CityScene({ activeNpcIndex, cityName, neighborhood, npcNames, npcPositi
         <planeGeometry args={[44, 48]} />
         <meshStandardMaterial color="#70756e" roughness={.96} />
       </mesh>
-      {neighborhood ? <OsmNeighborhood data={neighborhood} sceneClass={sceneClass} /> : <FallbackStreet />}
+      {neighborhood ? <DetailedNeighborhood data={neighborhood} sceneClass={sceneClass} /> : <FallbackStreet />}
       {[-11, -3, 6, 13].map((z, index) => <Model key={`tree-left-${z}`} url={`${MODEL_ROOT}/${index % 2 ? "tree-small" : "tree-large"}.glb`} position={[-5.5, 0, z]} scale={1.7} />)}
       {[-8, 1, 9].map((z, index) => <Model key={`tree-right-${z}`} url={`${MODEL_ROOT}/${index % 2 ? "tree-large" : "tree-small"}.glb`} position={[5.5, 0, z]} scale={1.6} />)}
       <StreetLamp position={[-4.2, 0, -4]} />
@@ -278,9 +366,9 @@ function CityScene({ activeNpcIndex, cityName, neighborhood, npcNames, npcPositi
       <CityLandmark cityName={cityName} />
 
       {npcPositions.map((point, index) => (
-        <Person key={npcNames[index]} active={index === activeNpcIndex} skin={["skaterFemaleA.png", "criminalMaleA.png", "cyborgFemaleA.png"][index]} name={npcNames[index]} onClick={() => onSelectNpc(index)} position={toWorld(point)} />
+        <Person key={npcNames[index]} active={index === activeNpcIndex} model={["animated-woman.glb", "business.glb", "punk-woman.glb"][index]} name={npcNames[index]} onClick={() => onSelectNpc(index)} position={toWorld(point)} />
       ))}
-      <Person player skin="skaterMaleA.png" position={playerWorld} />
+      <Person player model="casual.glb" position={playerWorld} />
       <FollowCamera playerPosition={playerPosition} />
     </>
   );
@@ -316,7 +404,7 @@ export default function World3D(props: World3DProps) {
       <Canvas shadows camera={{ fov: 52, near: .1, far: 90, position: [0, 5, 12] }} dpr={[1, 1.5]} gl={{ antialias: true, powerPreference: "high-performance" }}>
         <Suspense fallback={null}><CityScene {...props} neighborhood={neighborhood} /></Suspense>
       </Canvas>
-      <div className={`osm-world-status ${mapStatus}`}><span />{mapStatus === "live" ? "OSM neighborhood live" : mapStatus === "loading" ? "Generating real streets…" : "Designed fallback district"}</div>
+      <div className={`osm-world-status ${mapStatus}`}><span />{mapStatus === "live" ? "OSM2World district" : mapStatus === "loading" ? "Downloading city area…" : "Designed fallback district"}</div>
       <a className="osm-attribution" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap contributors</a>
       <div className="world3d-loading">Loading city…</div>
     </div>
