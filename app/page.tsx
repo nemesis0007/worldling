@@ -799,12 +799,14 @@ export default function Home() {
         </div>
       </header>
 
-      <section className="experience-grid">
-        <aside className="world-panel" id="world">
-          <div className="section-kicker"><span>01</span> Global operations map</div>
-          <h1>Choose your<br />territory.</h1>
-          <p className="intro">Select a city, enter the street, and talk your way through a live language mission.</p>
+      <section className="world-panel" id="world">
+        <div className="hero-copy">
+          <div className="section-kicker"><span>01</span> Your next conversation</div>
+          <h1>Speak your way<br />around the world.</h1>
+          <p className="intro">Choose a place. Meet someone local. Learn the language by living a small moment there.</p>
+        </div>
 
+        <div className="hero-globe-wrap">
           <div
             className={`world-map globe-viewport ${globeDragging ? "dragging" : ""}`}
             aria-label="Interactive spinning globe with available destinations"
@@ -845,7 +847,14 @@ export default function Home() {
             <div className="globe-coordinate"><span>◉</span>{city.coordinates}</div>
             <div className="map-caption">Drag to spin · scroll to zoom · choose a live signal</div>
           </div>
+          <div className="hero-city-card">
+            <span>{city.flag}</span>
+            <div><small>NOW EXPLORING</small><strong>{city.name}</strong><p>{city.language} · {level}</p></div>
+            <button onClick={() => document.getElementById("journey")?.scrollIntoView({ behavior: "smooth" })}>Enter city ↓</button>
+          </div>
+        </div>
 
+        <div className="destination-dock">
           <div className="language-heading"><strong>LANGUAGE ATLAS</strong><span>Global top 10 + India</span></div>
           <div className="city-list">
             {CITIES.map((item) => (
@@ -862,14 +871,16 @@ export default function Home() {
               {CITIES.map((item) => <span key={item.id} className={stamps.includes(item.id) ? "earned" : ""} title={`${item.name} stamp`}>{stamps.includes(item.id) ? item.flag : "·"}</span>)}
             </div>
           </div>
-        </aside>
+        </div>
+      </section>
 
-        <section className={`scene-panel scene-${city.sceneClass}`}>
+      <section className={`journey-section scene-${city.sceneClass}`} id="journey">
+        <div className="journey-shell">
           <div className="scene-heading">
             <div>
-              <div className="section-kicker light"><span>02</span> Step into the scene</div>
+              <div className="section-kicker light"><span>02</span> Today in {city.name}</div>
               <h2>{city.name}</h2>
-              <p>{city.coordinates} · Speaking {city.language}</p>
+              <p>{city.coordinates} · A conversation in {city.language}</p>
             </div>
             <div className="weather"><span>26°</span><small>LOCAL TIME<br />08:42</small></div>
           </div>
@@ -888,96 +899,105 @@ export default function Home() {
             ))}
           </div>
 
-          <div className="scenery" aria-label={`Stylised local scene: ${scene.label}`}>
-            <div className="sun" />
-            <div className="cloud cloud-one" />
-            <div className="cloud cloud-two" />
-            <div className="skyline skyline-one" />
-            <div className="skyline skyline-two" />
-            <div className="awning"><span>{scene.label}</span></div>
-            <div className="street-line" />
-            <div className="plant"><span>✦</span></div>
-            <div className="character-card">
-              <div className="avatar" aria-hidden="true">{scene.avatar}</div>
-              <div><strong>{scene.character}</strong><span>{scene.role}</span></div>
-              <span className="online">ready</span>
-            </div>
-            <div className="scene-stamp">LIVE SCENE<br /><strong>{city.flag} {city.name.toUpperCase()}</strong></div>
-          </div>
-
-          <div className="mission-strip">
-            <span className="mission-icon">{completedQuests === 3 ? "✓" : "◎"}</span>
-              <div><small>MISSION ACTIVE · {city.name.toUpperCase()}</small><strong>{scene.goal}</strong></div>
-            <span className="quest-count">{completedQuests}/3</span>
-            <div className="quest-objectives">
-              {["Greet the local", "Ask a real question", "Complete 3 turns"].map((objective, index) => (
-                <span key={objective} className={questProgress[index] ? "done" : ""}><i>{questProgress[index] ? "✓" : index + 1}</i>{objective}</span>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="conversation-panel">
-          <div className="conversation-head">
-            <div>
-              <div className="section-kicker"><span>03</span> Join the conversation</div>
-              <h2>Talk with {scene.character}</h2>
-              <div className="affinity-meter"><span>Bond with {scene.character}</span><i><b style={{ width: `${affinity}%` }} /></i><strong>{affinity}%</strong></div>
-            </div>
-            <label className="audio-toggle">
-              <input type="checkbox" checked={autoSpeak} onChange={(event) => setAutoSpeak(event.target.checked)} />
-              <span>Voice replies</span>
-            </label>
-          </div>
-
-          <div className="messages" aria-live="polite">
-            {messages.map((message) => (
-              <article key={message.id} className={`message ${message.role}`}>
-                <span className="speaker">{message.role === "npc" ? scene.avatar : message.viaVoice ? "◉" : "You"}</span>
-                <div>
-                  <p>{message.text}</p>
-                  {message.translation && <small>{message.translation}</small>}
+          <div className="journey-grid">
+            <div className="scene-column">
+              <div className="scenery" aria-label={`Stylised local scene: ${scene.label}`}>
+                <div className="sun" />
+                <div className="cloud cloud-one" />
+                <div className="cloud cloud-two" />
+                <div className="skyline skyline-one" />
+                <div className="skyline skyline-two" />
+                <div className="awning"><span>{scene.label}</span></div>
+                <div className="street-line" />
+                <div className="plant"><span>✦</span></div>
+                <div className="character-card">
+                  <div className="avatar" aria-hidden="true">{scene.avatar}</div>
+                  <div><strong>{scene.character}</strong><span>{scene.role}</span></div>
+                  <span className="online">ready</span>
                 </div>
-              </article>
-            ))}
-            {thinking && (
-              <article className="message npc thinking"><span className="speaker">{scene.avatar}</span><div><i /><i /><i /></div></article>
-            )}
-          </div>
+                <div className="scene-stamp">LIVE SCENE<br /><strong>{city.flag} {city.name.toUpperCase()}</strong></div>
+              </div>
 
-          <div className="prompt-chips">
-            {city.prompts.map((prompt) => <button key={prompt} onClick={() => setInput(prompt)}>{prompt}</button>)}
-          </div>
-
-          <form className="composer" onSubmit={handleSubmit}>
-            <button
-              type="button"
-              className={listening ? "mic listening" : "mic"}
-              onClick={() => listening ? recognitionRef.current?.stop() : startListening()}
-              aria-label={listening ? "Stop listening" : `Speak in ${city.language}`}
-            >
-              <span className="mic-icon">●</span>
-              <span>{listening ? "Listening…" : "Tap to speak"}</span>
-            </button>
-            <div className="text-entry">
-              <label htmlFor="reply">Or type your reply</label>
-              <div><input id="reply" value={input} onChange={(event) => setInput(event.target.value)} placeholder={`Say something in ${city.language}…`} /><button type="submit" disabled={!input.trim() || thinking}>↑</button></div>
+              <div className="mission-strip">
+                <span className="mission-icon">{completedQuests === 3 ? "✓" : "◎"}</span>
+                <div><small>YOUR MISSION</small><strong>{scene.goal}</strong></div>
+                <span className="quest-count">{completedQuests}/3</span>
+                <div className="quest-objectives">
+                  {["Greet the local", "Ask a real question", "Complete 3 turns"].map((objective, index) => (
+                    <span key={objective} className={questProgress[index] ? "done" : ""}><i>{questProgress[index] ? "✓" : index + 1}</i>{objective}</span>
+                  ))}
+                </div>
+              </div>
             </div>
-          </form>
 
-          <div className="agent-trace">
-            <span className={`trace-pulse ${thinking ? "busy" : ""}`} />
-            <p>{engineNote}</p>
-            <button onClick={() => setShowEngine(true)}>Engine</button>
+            <section className="conversation-panel">
+              <div className="conversation-head">
+                <div>
+                  <div className="section-kicker"><span>03</span> Live conversation</div>
+                  <h2>Talk with {scene.character}</h2>
+                  <div className="affinity-meter"><span>Bond</span><i><b style={{ width: `${affinity}%` }} /></i><strong>{affinity}%</strong></div>
+                </div>
+                <div className="conversation-tools">
+                  <span className={`model-chip ${provider}`}>{provider === "local" ? `${ollamaModel} · local` : providerLabels[provider]}</span>
+                  <label className="audio-toggle">
+                    <input type="checkbox" checked={autoSpeak} onChange={(event) => setAutoSpeak(event.target.checked)} />
+                    <span>Voice</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="messages" aria-live="polite">
+                {messages.map((message) => (
+                  <article key={message.id} className={`message ${message.role}`}>
+                    <span className="speaker">{message.role === "npc" ? scene.avatar : message.viaVoice ? "◉" : "You"}</span>
+                    <div>
+                      <p>{message.text}</p>
+                      {message.translation && city.locale !== "en-US" && message.translation.trim().toLocaleLowerCase() !== message.text.trim().toLocaleLowerCase() && <small>{message.translation}</small>}
+                    </div>
+                  </article>
+                ))}
+                {thinking && (
+                  <article className="message npc thinking"><span className="speaker">{scene.avatar}</span><div><i /><i /><i /></div></article>
+                )}
+              </div>
+
+              <div className="prompt-chips">
+                {city.prompts.map((prompt) => <button key={prompt} onClick={() => setInput(prompt)}>{prompt}</button>)}
+              </div>
+
+              <form className="composer" onSubmit={handleSubmit}>
+                <button
+                  type="button"
+                  className={listening ? "mic listening" : "mic"}
+                  onClick={() => listening ? recognitionRef.current?.stop() : startListening()}
+                  aria-label={listening ? "Stop listening" : `Speak in ${city.language}`}
+                >
+                  <span className="mic-icon">●</span>
+                  <span>{listening ? "Listening…" : "Speak"}</span>
+                </button>
+                <div className="text-entry">
+                  <label htmlFor="reply">Your reply in {city.language}</label>
+                  <div><input id="reply" value={input} onChange={(event) => setInput(event.target.value)} placeholder="Type a message…" /><button type="submit" disabled={!input.trim() || thinking}>↑</button></div>
+                </div>
+              </form>
+
+              <div className="agent-trace">
+                <span className={`trace-pulse ${thinking ? "busy" : ""}`} />
+                <p>{engineNote}</p>
+                <button onClick={() => setShowEngine(true)}>Details</button>
+              </div>
+
+              <div className="conversation-actions">
+                <button className="pronunciation-button" disabled={thinking} onClick={() => setShowPronunciation(true)}>
+                  <span><b>◉</b><small>PRONUNCIATION</small>Practise this scene</span><strong>Open ↗</strong>
+                </button>
+                <button className="grade-button" disabled={thinking} onClick={() => void finishConversation()}>
+                  <span>Finish & grade</span><strong>{userTurns} turn{userTurns === 1 ? "" : "s"} ↗</strong>
+                </button>
+              </div>
+            </section>
           </div>
-
-          <button className="pronunciation-button" disabled={thinking} onClick={() => setShowPronunciation(true)}>
-            <span><b>◉</b><small>PRONUNCIATION LAB</small>Train the sounds, not just the transcript</span><strong>Audio scoring ↗</strong>
-          </button>
-          <button className="grade-button" disabled={thinking} onClick={() => void finishConversation()}>
-            <span>Finish & grade conversation</span><strong>{userTurns} turn{userTurns === 1 ? "" : "s"} ↗</strong>
-          </button>
-        </section>
+        </div>
       </section>
 
       <footer>

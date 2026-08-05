@@ -794,3 +794,143 @@ footer { border-top: 1px solid rgba(216,255,95,.22); }
   .pronunciation-score { margin: 0 auto; }
   .pronunciation-metrics, .recognized-line, .word-heatmap, .pronunciation-feedback, .phoneme-warning { grid-column: 1; }
 }
+
+/* Worldling 04 — cinematic single-journey layout */
+:root {
+  --ink: #f5f7f6;
+  --paper: #111715;
+  --deep: #070a09;
+  --cream: #050706;
+  --line: rgba(255,255,255,.1);
+  --muted: #9ca7a2;
+  --yellow: #d8ff5f;
+  --forest: #70e3b3;
+}
+
+body { background: #050706; }
+.app-shell { overflow: clip; background: radial-gradient(circle at 50% 0, rgba(63,118,91,.12), transparent 30%), #050706; }
+.topbar { position: sticky; top: 0; height: 68px; min-height: 68px; padding: 0 max(22px, calc((100vw - 1440px) / 2)); border-bottom: 1px solid rgba(255,255,255,.08); background: rgba(5,7,6,.72); backdrop-filter: blur(24px) saturate(140%); }
+.brand { font-size: 16px; letter-spacing: -.02em; }
+.brand-mark { width: 30px; height: 30px; border: 0; border-radius: 9px; font-family: var(--font-sans), sans-serif; font-size: 14px; font-weight: 900; color: #06100c; background: var(--yellow); }
+.brand small { font-size: 7px; font-weight: 700; }
+.player-hud { grid-template-columns: 28px 84px auto; }
+.level-medal { width: 28px; height: 28px; border: 0; box-shadow: none; font-family: var(--font-sans), sans-serif; font-size: 11px; font-weight: 900; color: #07100d; }
+.level-control, .engine-button { background: rgba(255,255,255,.055); border-color: rgba(255,255,255,.1); }
+.level-control button { padding: 7px 11px; font-size: 9px; }
+.level-control button.active { color: #06100c; background: #f5f7f6; }
+.engine-button { padding: 9px 11px; font-size: 9px; }
+
+.world-panel { position: relative; display: grid; grid-template-columns: minmax(340px,.8fr) minmax(520px,1.2fr); gap: clamp(38px,6vw,100px); align-items: center; width: min(1440px,100%); min-height: calc(100vh - 68px); margin: 0 auto; padding: 72px max(24px,4vw) 42px; border: 0; background: transparent; }
+.hero-copy { align-self: center; max-width: 560px; }
+.hero-copy .section-kicker { color: var(--forest); }
+.hero-copy h1 { margin: 24px 0; font-family: var(--font-sans), sans-serif; font-size: clamp(54px,6vw,96px); font-weight: 650; line-height: .93; letter-spacing: -.075em; text-wrap: balance; }
+.hero-copy .intro { max-width: 510px; font-size: clamp(16px,1.35vw,20px); line-height: 1.55; color: #aab4af; }
+.hero-globe-wrap { position: relative; align-self: center; }
+.world-map.globe-viewport { height: min(600px,65vh); min-height: 470px; margin: 0; border: 0; border-radius: 42px; background: radial-gradient(circle at 50% 44%, rgba(67,145,108,.2), transparent 40%), rgba(255,255,255,.025); box-shadow: inset 0 0 0 1px rgba(255,255,255,.08), 0 40px 100px rgba(0,0,0,.42); }
+.globe-shell { width: min(390px,34vw); height: min(390px,34vw); min-width: 300px; min-height: 300px; }
+.globe-orbit { width: min(465px,40vw); height: 175px; }
+.globe-orbit-two { width: 175px; height: min(465px,40vw); }
+.globe-coordinate { top: 22px; left: 22px; }
+.globe-controls { top: 18px; right: 18px; }
+.map-caption { bottom: 22px; }
+.hero-city-card { position: absolute; left: 24px; right: 24px; bottom: 48px; z-index: 12; display: grid; grid-template-columns: 42px 1fr auto; align-items: center; gap: 12px; border: 1px solid rgba(255,255,255,.1); border-radius: 20px; padding: 12px 13px; background: rgba(6,10,8,.68); backdrop-filter: blur(20px) saturate(140%); box-shadow: 0 16px 40px rgba(0,0,0,.3); }
+.hero-city-card > span { font-size: 30px; }
+.hero-city-card small { display: block; color: var(--forest); font-size: 6px; font-weight: 800; letter-spacing: .14em; }
+.hero-city-card strong { display: block; margin-top: 2px; font-size: 15px; }
+.hero-city-card p { margin: 1px 0 0; color: var(--muted); font-size: 8px; }
+.hero-city-card button { border: 0; border-radius: 999px; padding: 10px 14px; background: #f5f7f6; color: #07100d; font-size: 8px; font-weight: 800; cursor: pointer; }
+
+.destination-dock { grid-column: 1 / -1; border-top: 1px solid rgba(255,255,255,.08); padding-top: 25px; }
+.destination-dock .language-heading { margin-bottom: 12px; }
+.destination-dock .city-list { display: flex; gap: 8px; max-height: none; overflow-x: auto; padding: 0 0 10px; scroll-snap-type: x proximity; }
+.destination-dock .city-card { flex: 0 0 180px; grid-template-columns: 27px 1fr; scroll-snap-align: start; border-color: rgba(255,255,255,.07); padding: 11px 12px; background: rgba(255,255,255,.025); }
+.destination-dock .city-card.active { border-color: rgba(216,255,95,.55); background: rgba(216,255,95,.09); }
+.destination-dock .language-rank { display: none; }
+.destination-dock .passport-strip { margin-top: 7px; border: 0; padding: 8px 0 0; background: transparent; }
+
+.journey-section { position: relative; padding: 100px max(24px,4vw) 120px; background: linear-gradient(180deg,#0a100e,#050706); border-top: 1px solid rgba(255,255,255,.08); }
+.journey-shell { width: min(1320px,100%); margin: 0 auto; }
+.journey-section .scene-heading { align-items: flex-end; margin-bottom: 22px; }
+.journey-section .scene-heading h2 { margin: 14px 0 8px; font-family: var(--font-sans), sans-serif; font-size: clamp(56px,7vw,104px); font-weight: 650; line-height: .82; letter-spacing: -.075em; }
+.journey-section .scene-heading p { font-size: 9px; }
+.journey-section .weather > span { font-family: var(--font-sans), sans-serif; font-size: 27px; font-weight: 500; }
+.journey-section .scene-tabs { margin: 0 0 20px; }
+.journey-section .scene-tabs button { padding: 9px 13px; background: rgba(255,255,255,.035); }
+.journey-section .scene-tabs button.active { border-color: rgba(216,255,95,.4); background: var(--yellow); color: #07100d; }
+.journey-grid { display: grid; grid-template-columns: minmax(0,1.08fr) minmax(390px,.92fr); gap: 18px; align-items: stretch; }
+.scene-column { display: flex; min-width: 0; flex-direction: column; }
+.journey-section .scenery { flex: 1; min-height: 580px; border-radius: 32px 32px 12px 12px; border-color: rgba(255,255,255,.12); }
+.journey-section .mission-strip { border-radius: 12px 12px 28px 28px; padding: 15px 16px; background: #121a17; }
+
+.conversation-panel { min-height: 710px; padding: 26px; border: 1px solid rgba(255,255,255,.1); border-radius: 32px; background: rgba(16,23,20,.9); box-shadow: 0 30px 80px rgba(0,0,0,.28); }
+.conversation-head { align-items: flex-start; }
+.conversation-head h2 { margin-top: 12px; font-family: var(--font-sans), sans-serif; font-size: 34px; font-weight: 620; letter-spacing: -.045em; }
+.conversation-tools { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.model-chip { display: inline-flex; align-items: center; gap: 5px; border: 1px solid rgba(255,255,255,.1); border-radius: 999px; padding: 6px 8px; color: var(--muted); background: rgba(255,255,255,.04); font-size: 6px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.model-chip.local::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--forest); box-shadow: 0 0 10px var(--forest); }
+.conversation-panel .messages { flex: 1; min-height: 260px; max-height: 385px; margin-top: 20px; }
+.message { max-width: 88%; }
+.message > div { color: var(--ink); background: rgba(255,255,255,.075); }
+.message.user > div { color: #08100d; background: #eef4f0; }
+.message p { font-size: 12px; }
+.prompt-chips { margin-left: 0; }
+.composer { grid-template-columns: 78px 1fr; border-color: rgba(255,255,255,.1); padding: 7px; background: rgba(255,255,255,.045); }
+.mic { min-height: 61px; background: var(--yellow); color: #08100d; }
+.mic-icon { border-color: #08100d; }
+.text-entry input { color: var(--ink); }
+.text-entry button { color: #07100d; background: #f5f7f6; }
+.conversation-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: auto; }
+.conversation-actions .pronunciation-button, .conversation-actions .grade-button { min-height: 58px; margin: 0; }
+.conversation-actions .pronunciation-button { padding: 10px 12px; }
+.conversation-actions .grade-button { background: var(--yellow); color: #07100d; }
+footer { min-height: 64px; padding-inline: max(24px,calc((100vw - 1320px)/2)); background: #050706; }
+
+@media (max-width: 1050px) {
+  .topbar { padding-inline: 20px; }
+  .world-panel { grid-template-columns: 1fr; padding-top: 70px; }
+  .hero-copy { max-width: 760px; text-align: center; justify-self: center; }
+  .hero-copy .section-kicker { justify-content: center; }
+  .hero-copy .intro { margin-inline: auto; }
+  .hero-globe-wrap { width: min(760px,100%); justify-self: center; }
+  .world-map.globe-viewport { height: 580px; }
+  .globe-shell { width: 370px; height: 370px; }
+  .globe-orbit { width: 440px; }
+  .globe-orbit-two { width: 165px; height: 440px; }
+  .journey-grid { grid-template-columns: 1fr; }
+  .journey-section .scenery { min-height: 560px; }
+  .conversation-panel { min-height: 680px; }
+}
+
+@media (max-width: 720px) {
+  .topbar { height: 60px; min-height: 60px; }
+  .brand small, .player-hud { display: none; }
+  .top-actions { gap: 6px; }
+  .level-control button { padding: 7px 8px; font-size: 7px; }
+  .engine-button { width: 34px; height: 34px; justify-content: center; padding: 0; font-size: 0; }
+  .engine-button > span:last-child { display: none; }
+  .world-panel { min-height: auto; padding: 58px 16px 38px; gap: 42px; }
+  .hero-copy h1 { font-size: clamp(48px,15vw,72px); }
+  .hero-copy .intro { font-size: 15px; }
+  .world-map.globe-viewport { height: 440px; min-height: 0; border-radius: 28px; }
+  .globe-shell { width: 270px; height: 270px; min-width: 270px; min-height: 270px; }
+  .globe-orbit { width: 320px; height: 120px; }
+  .globe-orbit-two { width: 120px; height: 320px; }
+  .hero-city-card { left: 12px; right: 12px; bottom: 34px; grid-template-columns: 34px 1fr; }
+  .hero-city-card > span { font-size: 24px; }
+  .hero-city-card button { display: none; }
+  .destination-dock .city-card { flex-basis: 160px; }
+  .destination-dock .passport-strip { align-items: flex-start; flex-direction: column; }
+  .stamp-row { justify-content: flex-start; }
+  .journey-section { padding: 70px 16px 80px; }
+  .journey-section .scene-heading h2 { font-size: 62px; }
+  .journey-section .weather { display: none; }
+  .journey-section .scenery { min-height: 430px; }
+  .journey-grid { gap: 12px; }
+  .conversation-panel { min-height: 650px; padding: 20px 14px 14px; border-radius: 24px; }
+  .conversation-head h2 { font-size: 29px; }
+  .conversation-tools { gap: 5px; }
+  .composer { grid-template-columns: 64px 1fr; }
+  .conversation-actions { grid-template-columns: 1fr; }
+  .quest-objectives { grid-template-columns: 1fr; }
+  footer { display: block; padding: 18px 16px; line-height: 1.5; }
+}
