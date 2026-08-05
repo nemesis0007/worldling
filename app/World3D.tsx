@@ -2,7 +2,7 @@
 
 import { Suspense, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, ThreeElements, ThreeEvent, useFrame, useThree } from "@react-three/fiber";
-import { Environment, Html, Line, Sparkles, useGLTF } from "@react-three/drei";
+import { Environment, Html, Sparkles, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils.js";
 
@@ -25,8 +25,9 @@ type World3DProps = {
 type MapPoint = { x: number; z: number };
 type Neighborhood = {
   roads: Array<{ id: number; kind?: string; points: MapPoint[] }>;
-  buildings: Array<{ id: number; height: number; points: MapPoint[] }>;
+  buildings: Array<{ id: number; height: number; heightMeters?: number; year?: number | null; bin?: string; points: MapPoint[] }>;
   osm?: string;
+  detailLevel?: string;
 };
 
 type O2WMesh = {
@@ -137,7 +138,70 @@ function StreetLamp({ position }: { position: [number, number, number] }) {
   );
 }
 
-function OsmBuilding({ building, sceneClass }: { building: Neighborhood["buildings"][number]; sceneClass: string }) {
+function Taxi({ position, rotation = 0 }: { position: [number, number, number]; rotation?: number }) {
+  return <group position={position} rotation={[0, rotation, 0]}>
+    <mesh castShadow position={[0, .32, 0]}><boxGeometry args={[1.08, .38, 2.05]} /><meshStandardMaterial color="#f2bd16" roughness={.52} metalness={.18} /></mesh>
+    <mesh castShadow position={[0, .62, -.05]}><boxGeometry args={[.92, .38, 1.05]} /><meshStandardMaterial color="#e4aa0d" roughness={.5} metalness={.15} /></mesh>
+    <mesh position={[0, .67, -.58]}><boxGeometry args={[.78, .27, .018]} /><meshStandardMaterial color="#18262e" metalness={.55} roughness={.2} /></mesh>
+    {[-.45, .45].flatMap((x) => [-.68, .68].map((z) => <mesh key={`${x}-${z}`} position={[x, .21, z]} rotation={[0, 0, Math.PI / 2]}><cylinderGeometry args={[.18, .18, .14, 14]} /><meshStandardMaterial color="#121515" roughness={.8} /></mesh>))}
+    <mesh position={[0, .89, 0]}><boxGeometry args={[.44, .14, .3]} /><meshStandardMaterial color="#f4f0df" emissive="#fff3bc" emissiveIntensity={1.2} /></mesh>
+  </group>;
+}
+
+function TrafficSignal({ position }: { position: [number, number, number] }) {
+  return <group position={position}>
+    <mesh castShadow position={[0, 1.65, 0]}><cylinderGeometry args={[.045, .065, 3.3, 10]} /><meshStandardMaterial color="#252a28" metalness={.65} /></mesh>
+    <mesh castShadow position={[0, 3.18, 0]}><boxGeometry args={[.3, .78, .3]} /><meshStandardMaterial color="#e2b520" roughness={.58} /></mesh>
+    {[.25, 0, -.25].map((y, index) => <mesh key={y} position={[0, 3.18 + y, -.16]}><circleGeometry args={[.085, 16]} /><meshBasicMaterial color={["#e7463f", "#e5b638", "#42d477"][index]} /></mesh>)}
+  </group>;
+}
+
+function NewYorkStreetLife() {
+  return <group>
+    <Taxi position={[-1.2, .08, -7.8]} rotation={.08} />
+    <Taxi position={[1.3, .08, 7.4]} rotation={Math.PI + .08} />
+    <Taxi position={[-1.15, .08, 13]} rotation={.08} />
+    <TrafficSignal position={[-3.2, 0, -2.8]} />
+    <TrafficSignal position={[3.1, 0, 5.5]} />
+    {[-10.5, -3.3, 4.5, 11.8].map((z, index) => <group key={z} position={[index % 2 ? 3.9 : -3.9, 0, z]}>
+      <mesh castShadow position={[0, .32, 0]}><cylinderGeometry args={[.1, .14, .64, 10]} /><meshStandardMaterial color="#b83227" roughness={.72} /></mesh>
+      <mesh position={[0, .68, 0]}><sphereGeometry args={[.15, 12, 8]} /><meshStandardMaterial color="#bd3a2c" /></mesh>
+    </group>)}
+    <group position={[0, 0, -14.5]}>
+      <mesh castShadow position={[-3.6, 3.2, 0]}><boxGeometry args={[3.2, 5.8, .45]} /><meshStandardMaterial color="#24282b" metalness={.25} /></mesh>
+      <mesh position={[-3.35, 4.1, -.25]}><planeGeometry args={[2.45, 2.1]} /><meshStandardMaterial color="#ed375e" emissive="#d51646" emissiveIntensity={1.7} /></mesh>
+      <mesh castShadow position={[3.65, 3.5, .1]}><boxGeometry args={[3.5, 6.5, .5]} /><meshStandardMaterial color="#272b2e" metalness={.25} /></mesh>
+      <mesh position={[3.4, 4.35, -.18]}><planeGeometry args={[2.7, 2.35]} /><meshStandardMaterial color="#3cc5e8" emissive="#1678d4" emissiveIntensity={1.8} /></mesh>
+      <Html position={[0, 7.15, 0]} center distanceFactor={13} className="landmark-label"><span>Times Square · Broadway</span></Html>
+    </group>
+  </group>;
+}
+
+function facadeTexture(seed: number) {
+  const size = 64;
+  const data = new Uint8Array(size * size * 4);
+  const warm = seed % 5 === 0;
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      const frame = x % 12 < 2 || y % 10 < 2;
+      const lit = ((Math.floor(x / 12) * 7 + Math.floor(y / 10) * 11 + seed) % 6) < 2;
+      const index = (y * size + x) * 4;
+      const value = frame ? 52 : lit ? (warm ? 218 : 145) : 23;
+      data[index] = frame ? 64 : value;
+      data[index + 1] = frame ? 67 : lit ? (warm ? 177 : 172) : 31;
+      data[index + 2] = frame ? 65 : lit ? (warm ? 92 : 188) : 38;
+      data[index + 3] = 255;
+    }
+  }
+  const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(1.4, 2.4);
+  texture.needsUpdate = true;
+  return texture;
+}
+
+function OsmBuilding({ building, sceneClass, detailed = false }: { building: Neighborhood["buildings"][number]; sceneClass: string; detailed?: boolean }) {
   const geometry = useMemo(() => {
     const shape = new THREE.Shape();
     building.points.forEach((point, index) => {
@@ -151,27 +215,53 @@ function OsmBuilding({ building, sceneClass }: { building: Neighborhood["buildin
     return result;
   }, [building]);
 
-  useEffect(() => () => geometry.dispose(), [geometry]);
-  const palette = sceneClass === "desert" ? ["#b99b72", "#d0b88f", "#927e63"] : sceneClass === "india" ? ["#ba8b70", "#d4ad80", "#846c62"] : sceneClass === "east" ? ["#7c8589", "#a0958a", "#657174"] : ["#8f9694", "#b2aaa0", "#707977"];
-  const color = palette[building.id % palette.length];
+  const texture = useMemo(() => detailed ? facadeTexture(building.id) : null, [building.id, detailed]);
 
-  return <mesh geometry={geometry} castShadow receiveShadow><meshStandardMaterial color={color} roughness={.86} metalness={.04} /></mesh>;
+  useEffect(() => () => { geometry.dispose(); texture?.dispose(); }, [geometry, texture]);
+  const palette = detailed ? ["#b7aaa0", "#837c78", "#c0b8ae", "#716d69", "#9c8e82"] : sceneClass === "desert" ? ["#b99b72", "#d0b88f", "#927e63"] : sceneClass === "india" ? ["#ba8b70", "#d4ad80", "#846c62"] : sceneClass === "east" ? ["#7c8589", "#a0958a", "#657174"] : ["#8f9694", "#b2aaa0", "#707977"];
+  const color = palette[building.id % palette.length];
+  const center = building.points.reduce((total, point) => ({ x: total.x + point.x / building.points.length, z: total.z + point.z / building.points.length }), { x: 0, z: 0 });
+
+  return (
+    <group>
+      <mesh geometry={geometry} castShadow receiveShadow>
+        <meshStandardMaterial color={color} map={texture ?? undefined} emissive={detailed ? "#171b1e" : "#000000"} emissiveMap={texture ?? undefined} emissiveIntensity={detailed ? .34 : 0} roughness={detailed ? .68 : .86} metalness={detailed ? .16 : .04} />
+      </mesh>
+      {detailed && building.height > 2.6 && (
+        <group position={[center.x, building.height, center.z]}>
+          <mesh castShadow position={[0, .16, 0]}><boxGeometry args={[.55, .32, .55]} /><meshStandardMaterial color="#575b5b" roughness={.72} metalness={.38} /></mesh>
+          {building.id % 4 === 0 && <mesh position={[0, .62, 0]}><cylinderGeometry args={[.2, .24, .65, 12]} /><meshStandardMaterial color="#443b35" roughness={.82} /></mesh>}
+        </group>
+      )}
+    </group>
+  );
 }
 
 function OsmNeighborhood({ data, sceneClass }: { data: Neighborhood; sceneClass: string }) {
+  const detailed = data.detailLevel === "nyc-official";
   return (
     <group>
       {data.roads.map((road) => {
         const major = ["primary", "secondary", "tertiary"].includes(road.kind ?? "");
-        const points = road.points.map((point) => [point.x, .04, point.z] as [number, number, number]);
         return (
           <group key={road.id}>
-            <Line points={points} color="#1d2222" lineWidth={major ? 12 : 8} />
-            <Line points={points} color={major ? "#d9c974" : "#aaa58e"} lineWidth={major ? .7 : .35} dashed dashSize={.45} gapSize={.55} />
+            {road.points.slice(1).map((point, index) => {
+              const start = road.points[index];
+              const dx = point.x - start.x;
+              const dz = point.z - start.z;
+              const length = Math.hypot(dx, dz);
+              const angle = Math.atan2(dx, dz);
+              const width = major ? 1.5 : road.kind === "pedestrian" ? .8 : 1.05;
+              return <group key={`${road.id}-${index}`} position={[(start.x + point.x) / 2, 0, (start.z + point.z) / 2]} rotation={[0, angle, 0]}>
+                {detailed && <mesh receiveShadow position={[0, .005, 0]}><boxGeometry args={[width + .48, .08, length + .18]} /><meshStandardMaterial color="#aaa79f" roughness={.98} /></mesh>}
+                <mesh receiveShadow position={[0, .055, 0]}><boxGeometry args={[width, .075, length + .1]} /><meshStandardMaterial color={detailed ? "#222628" : "#303534"} roughness={.93} /></mesh>
+                {road.kind !== "pedestrian" && <mesh position={[0, .096, 0]}><boxGeometry args={[.035, .012, Math.max(.1, length - .18)]} /><meshBasicMaterial color={major ? "#e3c956" : "#c9c8be"} /></mesh>}
+              </group>;
+            })}
           </group>
         );
       })}
-      {data.buildings.map((building) => <OsmBuilding key={building.id} building={building} sceneClass={sceneClass} />)}
+      {data.buildings.map((building) => <OsmBuilding key={building.id} building={building} sceneClass={sceneClass} detailed={detailed} />)}
     </group>
   );
 }
@@ -359,12 +449,15 @@ function CityScene({ activeNpcIndex, cityName, neighborhood, npcNames, npcPositi
         <meshStandardMaterial color="#70756e" roughness={.96} />
       </mesh>
       {neighborhood ? <DetailedNeighborhood data={neighborhood} sceneClass={sceneClass} /> : <FallbackStreet />}
-      {[-11, -3, 6, 13].map((z, index) => <Model key={`tree-left-${z}`} url={`${MODEL_ROOT}/${index % 2 ? "tree-small" : "tree-large"}.glb`} position={[-5.5, 0, z]} scale={1.7} />)}
-      {[-8, 1, 9].map((z, index) => <Model key={`tree-right-${z}`} url={`${MODEL_ROOT}/${index % 2 ? "tree-large" : "tree-small"}.glb`} position={[5.5, 0, z]} scale={1.6} />)}
-      <StreetLamp position={[-4.2, 0, -4]} />
-      <StreetLamp position={[4.2, 0, 4]} />
-      <StreetLamp position={[-4.2, 0, 11]} />
-      <CityLandmark cityName={cityName} />
+      {cityName !== "New York" && <>
+        {[-11, -3, 6, 13].map((z, index) => <Model key={`tree-left-${z}`} url={`${MODEL_ROOT}/${index % 2 ? "tree-small" : "tree-large"}.glb`} position={[-5.5, 0, z]} scale={1.7} />)}
+        {[-8, 1, 9].map((z, index) => <Model key={`tree-right-${z}`} url={`${MODEL_ROOT}/${index % 2 ? "tree-large" : "tree-small"}.glb`} position={[5.5, 0, z]} scale={1.6} />)}
+        <StreetLamp position={[-4.2, 0, -4]} />
+        <StreetLamp position={[4.2, 0, 4]} />
+        <StreetLamp position={[-4.2, 0, 11]} />
+        <CityLandmark cityName={cityName} />
+      </>}
+      {cityName === "New York" && <NewYorkStreetLife />}
 
       {npcPositions.map((point, index) => (
         <Person key={npcNames[index]} active={index === activeNpcIndex} model={["animated-woman.glb", "business.glb", "punk-woman.glb"][index]} name={npcNames[index]} onClick={() => onSelectNpc(index)} position={toWorld(point)} />
