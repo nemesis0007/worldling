@@ -20,6 +20,8 @@
 
 # misc
 .DS_Store
+local-pronunciation/.venv/
+local-pronunciation/test-*.wav
 *.pem
 
 # debug

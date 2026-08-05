@@ -1,0 +1,3 @@
+allosaurus>=1.0,<2
+epitran>=1.26,<2
+

@@ -66,6 +66,30 @@ type Reward = {
   newStamp: boolean;
 };
 
+type PronunciationProvider = "local" | "azure";
+type PronunciationResult = {
+  provider: PronunciationProvider;
+  overall: number;
+  accuracy: number;
+  fluency: number;
+  completeness: number;
+  prosody?: number | null;
+  recognizedText: string;
+  feedback: string;
+  phonemeScoring: boolean;
+  phonemeAccuracy?: number | null;
+  expectedIpa?: string | null;
+  observedIpa?: string | null;
+  words: Array<{
+    word: string;
+    accuracy: number;
+    errorType: string;
+    phonemes?: Array<{ phoneme: string; accuracy: number }>;
+  }>;
+};
+
+type WavCapture = { stop: () => Promise<Blob> };
+
 const questGoals = [
   "Greet a local, introduce yourself, and ask one natural follow-up question.",
   "Complete a useful everyday exchange and confirm one important detail.",
@@ -188,6 +212,76 @@ const providerLabels: Record<Provider, string> = {
   api: "API model",
 };
 
+function encodeWav(samples: Float32Array, sourceRate: number) {
+  const targetRate = 16000;
+  const targetLength = Math.max(1, Math.round(samples.length * targetRate / sourceRate));
+  const resampled = new Float32Array(targetLength);
+  for (let index = 0; index < targetLength; index++) {
+    const position = index * sourceRate / targetRate;
+    const left = Math.floor(position);
+    const right = Math.min(samples.length - 1, left + 1);
+    const mix = position - left;
+    resampled[index] = samples[left] * (1 - mix) + samples[right] * mix;
+  }
+  const buffer = new ArrayBuffer(44 + resampled.length * 2);
+  const view = new DataView(buffer);
+  const write = (offset: number, value: string) => {
+    for (let index = 0; index < value.length; index++) view.setUint8(offset + index, value.charCodeAt(index));
+  };
+  write(0, "RIFF");
+  view.setUint32(4, 36 + resampled.length * 2, true);
+  write(8, "WAVE");
+  write(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, targetRate, true);
+  view.setUint32(28, targetRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  write(36, "data");
+  view.setUint32(40, resampled.length * 2, true);
+  for (let index = 0; index < resampled.length; index++) {
+    const sample = Math.max(-1, Math.min(1, resampled[index]));
+    view.setInt16(44 + index * 2, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
+  }
+  return new Blob([buffer], { type: "audio/wav" });
+}
+
+async function beginWavCapture(): Promise<WavCapture> {
+  const stream = await navigator.mediaDevices.getUserMedia({
+    audio: { channelCount: 1, echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+  });
+  const context = new AudioContext();
+  await context.resume();
+  const source = context.createMediaStreamSource(stream);
+  const processor = context.createScriptProcessor(4096, 1, 1);
+  const mute = context.createGain();
+  const chunks: Float32Array[] = [];
+  mute.gain.value = 0;
+  processor.onaudioprocess = (event) => chunks.push(new Float32Array(event.inputBuffer.getChannelData(0)));
+  source.connect(processor);
+  processor.connect(mute);
+  mute.connect(context.destination);
+  return {
+    stop: async () => {
+      processor.disconnect();
+      source.disconnect();
+      mute.disconnect();
+      stream.getTracks().forEach((track) => track.stop());
+      await context.close();
+      const length = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+      const samples = new Float32Array(length);
+      let offset = 0;
+      for (const chunk of chunks) {
+        samples.set(chunk, offset);
+        offset += chunk.length;
+      }
+      return encodeWav(samples, context.sampleRate);
+    },
+  };
+}
+
 function cityWelcome(city: City, level: Level): Message {
   return {
     id: Date.now(),
@@ -269,10 +363,20 @@ export default function Home() {
   const [globeScale, setGlobeScale] = useState(1);
   const [globeDragging, setGlobeDragging] = useState(false);
   const [globeAutoSpin, setGlobeAutoSpin] = useState(true);
+  const [showPronunciation, setShowPronunciation] = useState(false);
+  const [pronunciationProvider, setPronunciationProvider] = useState<PronunciationProvider>("local");
+  const [pronunciationPrompt, setPronunciationPrompt] = useState(0);
+  const [pronunciationRecording, setPronunciationRecording] = useState(false);
+  const [pronunciationBusy, setPronunciationBusy] = useState(false);
+  const [pronunciationNote, setPronunciationNote] = useState("Choose a phrase and record one clear attempt.");
+  const [pronunciationResult, setPronunciationResult] = useState<PronunciationResult | null>(null);
+  const [localPronunciationEndpoint, setLocalPronunciationEndpoint] = useState("http://127.0.0.1:8787");
   const [hydrated, setHydrated] = useState(false);
   const recognitionRef = useRef<{ start: () => void; stop: () => void } | null>(null);
   const messageId = useRef(1);
   const globeDragRef = useRef<{ x: number; longitude: number } | null>(null);
+  const pronunciationCaptureRef = useRef<WavCapture | null>(null);
+  const pronunciationTimerRef = useRef<number | null>(null);
 
   const city = useMemo(() => CITIES.find((item) => item.id === cityId) ?? CITIES[0], [cityId]);
   const scene = useMemo(() => city.scenes.find((item) => item.id === sceneId) ?? city.scenes[0], [city, sceneId]);
@@ -292,6 +396,9 @@ export default function Home() {
       if (typeof progress?.xp === "number") setXp(progress.xp);
       if (typeof progress?.coins === "number") setCoins(progress.coins);
       if (Array.isArray(progress?.stamps)) setStamps(progress.stamps);
+      const pronunciation = JSON.parse(window.localStorage.getItem("worldling-pronunciation") ?? "null") as { provider?: PronunciationProvider; endpoint?: string } | null;
+      if (pronunciation?.provider === "local" || pronunciation?.provider === "azure") setPronunciationProvider(pronunciation.provider);
+      if (pronunciation?.endpoint) setLocalPronunciationEndpoint(pronunciation.endpoint);
     } catch {
       // Ignore malformed device-local prototype state.
     }
@@ -306,6 +413,9 @@ export default function Home() {
     setAffinity(12);
     setReward(null);
     setRewarded(false);
+    setPronunciationPrompt(0);
+    setPronunciationResult(null);
+    setPronunciationNote("Choose a phrase and record one clear attempt.");
     setEngineNote(provider === "demo" ? "Ready · no account or key required" : provider === "local" ? "Ollama selected · test the connection in Engine" : "API model selected · server connection checked on first message");
   }, [city, scene, level, provider]);
 
@@ -322,6 +432,11 @@ export default function Home() {
     if (!hydrated) return;
     window.localStorage.setItem("worldling-progress", JSON.stringify({ xp, coins, stamps }));
   }, [hydrated, xp, coins, stamps]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    window.localStorage.setItem("worldling-pronunciation", JSON.stringify({ provider: pronunciationProvider, endpoint: localPronunciationEndpoint }));
+  }, [hydrated, pronunciationProvider, localPronunciationEndpoint]);
 
   useEffect(() => {
     if (!globeAutoSpin || globeDragging || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -551,6 +666,60 @@ export default function Home() {
     }
     setEvaluation(result);
     setThinking(false);
+  }
+
+  async function assessPronunciation(audio: Blob) {
+    const phrase = city.prompts[pronunciationPrompt];
+    const form = new FormData();
+    form.append("audio", audio, "worldling-attempt.wav");
+    form.append("referenceText", phrase);
+    form.append("locale", city.locale);
+    const endpoint = pronunciationProvider === "azure"
+      ? "/api/pronunciation"
+      : `${localPronunciationEndpoint.trim().replace(/\/$/, "")}/assess`;
+    const response = await fetch(endpoint, { method: "POST", body: form });
+    const payload = await response.json() as PronunciationResult & { error?: string; detail?: string };
+    if (!response.ok) throw new Error(payload.error || payload.detail || "Pronunciation assessment failed.");
+    setPronunciationResult(payload);
+    setPronunciationNote(payload.phonemeScoring
+      ? `${pronunciationProvider === "local" ? "Local phoneme model" : "Azure Speech"} scored this attempt.`
+      : "Intelligibility and timing were scored; phoneme scoring was unavailable for this attempt.");
+  }
+
+  async function finishPronunciationCapture() {
+    const capture = pronunciationCaptureRef.current;
+    if (!capture) return;
+    pronunciationCaptureRef.current = null;
+    if (pronunciationTimerRef.current) window.clearTimeout(pronunciationTimerRef.current);
+    pronunciationTimerRef.current = null;
+    setPronunciationRecording(false);
+    setPronunciationBusy(true);
+    setPronunciationNote("Analysing sounds, word timing, and completeness…");
+    try {
+      const audio = await capture.stop();
+      if (audio.size < 1000) throw new Error("The recording was too short. Try speaking for at least one second.");
+      await assessPronunciation(audio);
+    } catch (error) {
+      setPronunciationNote(error instanceof Error ? error.message : "Pronunciation assessment failed.");
+    } finally {
+      setPronunciationBusy(false);
+    }
+  }
+
+  async function togglePronunciationRecording() {
+    if (pronunciationRecording) {
+      await finishPronunciationCapture();
+      return;
+    }
+    setPronunciationResult(null);
+    setPronunciationNote("Listening… read the highlighted phrase once.");
+    try {
+      pronunciationCaptureRef.current = await beginWavCapture();
+      setPronunciationRecording(true);
+      pronunciationTimerRef.current = window.setTimeout(() => void finishPronunciationCapture(), 12000);
+    } catch {
+      setPronunciationNote("Microphone access was not available. Allow microphone permission and try again.");
+    }
   }
 
   function chooseCity(nextCity: City) {
@@ -802,6 +971,9 @@ export default function Home() {
             <button onClick={() => setShowEngine(true)}>Engine</button>
           </div>
 
+          <button className="pronunciation-button" disabled={thinking} onClick={() => setShowPronunciation(true)}>
+            <span><b>◉</b><small>PRONUNCIATION LAB</small>Train the sounds, not just the transcript</span><strong>Audio scoring ↗</strong>
+          </button>
           <button className="grade-button" disabled={thinking} onClick={() => void finishConversation()}>
             <span>Finish & grade conversation</span><strong>{userTurns} turn{userTurns === 1 ? "" : "s"} ↗</strong>
           </button>
@@ -839,6 +1011,66 @@ export default function Home() {
             </div>
             <div className="takeaway"><span>Phrase to keep</span><strong>{evaluation.phrase}</strong></div>
             <button className="replay-button" onClick={() => { setMessages([cityWelcome(city, level)]); setEvaluation(null); setReward(null); setRewarded(false); setQuestProgress([false, false, false]); setAffinity(12); }}>Play this scene again</button>
+          </section>
+        </div>
+      )}
+
+      {showPronunciation && (
+        <div className="modal-backdrop pronunciation-backdrop" role="presentation" onClick={() => { if (!pronunciationRecording) setShowPronunciation(false); }}>
+          <section className="pronunciation-sheet" role="dialog" aria-modal="true" aria-labelledby="pronunciation-title" onClick={(event) => event.stopPropagation()}>
+            <button className="close-button" disabled={pronunciationRecording} onClick={() => setShowPronunciation(false)} aria-label="Close pronunciation lab">×</button>
+            <span className="score-kicker">ACOUSTIC MISSION · {city.flag} {city.name.toUpperCase()}</span>
+            <h2 id="pronunciation-title">Make every sound land.</h2>
+            <p className="pronunciation-intro">Read one known phrase. Unlike conversation grading, this mission sends the recording to a speech model and scores the audio itself.</p>
+
+            <div className="pronunciation-providers" aria-label="Pronunciation provider">
+              <button disabled={pronunciationRecording || pronunciationBusy} className={pronunciationProvider === "local" ? "active" : ""} onClick={() => { setPronunciationProvider("local"); setPronunciationResult(null); }}>
+                <strong>⌂ Local lab</strong><small>Whisper + phoneme model</small>
+              </button>
+              <button disabled={pronunciationRecording || pronunciationBusy} className={pronunciationProvider === "azure" ? "active" : ""} onClick={() => { setPronunciationProvider("azure"); setPronunciationResult(null); }}>
+                <strong>☁ Azure Speech</strong><small>Production assessment API</small>
+              </button>
+            </div>
+
+            {pronunciationProvider === "local" && (
+              <label className="pronunciation-endpoint">Local service address<input value={localPronunciationEndpoint} disabled={pronunciationRecording || pronunciationBusy} onChange={(event) => setLocalPronunciationEndpoint(event.target.value)} /></label>
+            )}
+
+            <div className="phrase-selector">
+              <span>CHOOSE A LINE</span>
+              <div>{city.prompts.map((prompt, index) => <button disabled={pronunciationRecording || pronunciationBusy} className={pronunciationPrompt === index ? "active" : ""} key={prompt} onClick={() => { setPronunciationPrompt(index); setPronunciationResult(null); }}>{index + 1}</button>)}</div>
+            </div>
+            <div className="target-phrase">
+              <span>TARGET · {city.language.toUpperCase()}</span>
+              <strong>{city.prompts[pronunciationPrompt]}</strong>
+              <button onClick={() => speak(city.prompts[pronunciationPrompt])}>Listen ↗</button>
+            </div>
+
+            <button className={`record-pronunciation ${pronunciationRecording ? "recording" : ""}`} disabled={pronunciationBusy} onClick={() => void togglePronunciationRecording()}>
+              <i>{pronunciationBusy ? "◌" : pronunciationRecording ? "■" : "●"}</i>
+              <span><strong>{pronunciationBusy ? "Scoring attempt" : pronunciationRecording ? "Stop and score" : "Record attempt"}</strong><small>{pronunciationRecording ? "Maximum 12 seconds" : "Audio is used only for this assessment"}</small></span>
+            </button>
+            <p className="pronunciation-note" aria-live="polite">{pronunciationNote}</p>
+
+            {pronunciationResult && (
+              <div className="pronunciation-result">
+                <div className="pronunciation-score">
+                  <strong>{pronunciationResult.overall}</strong><span>/100</span><small>{pronunciationResult.phonemeScoring ? "ACOUSTIC SCORE" : "INTELLIGIBILITY SCORE"}</small>
+                </div>
+                <div className="pronunciation-metrics">
+                  {(["accuracy", "fluency", "completeness"] as const).map((metric) => (
+                    <div key={metric}><span>{metric}</span><i><b style={{ width: `${pronunciationResult[metric]}%` }} /></i><strong>{pronunciationResult[metric]}</strong></div>
+                  ))}
+                  {typeof pronunciationResult.prosody === "number" && <div><span>prosody</span><i><b style={{ width: `${pronunciationResult.prosody}%` }} /></i><strong>{pronunciationResult.prosody}</strong></div>}
+                </div>
+                <div className="recognized-line"><span>MODEL HEARD</span><p>{pronunciationResult.recognizedText || "No clear words detected."}</p></div>
+                <div className="word-heatmap" aria-label="Word accuracy scores">
+                  {pronunciationResult.words.map((word, index) => <span key={`${word.word}-${index}`} className={word.accuracy >= 80 ? "good" : word.accuracy >= 55 ? "close" : "retry"} title={`${word.accuracy}/100 · ${word.errorType}`}>{word.word}<small>{word.accuracy}</small></span>)}
+                </div>
+                <div className="pronunciation-feedback"><span>COACHING NOTE</span><p>{pronunciationResult.feedback}</p></div>
+                {!pronunciationResult.phonemeScoring && pronunciationProvider === "local" && <p className="phoneme-warning">Install the optional Allosaurus and Epitran packages for phoneme-level scoring. The current result uses Whisper intelligibility and timing.</p>}
+              </div>
+            )}
           </section>
         </div>
       )}

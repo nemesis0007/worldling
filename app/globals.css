@@ -719,3 +719,78 @@ footer { border-top: 1px solid rgba(216,255,95,.22); }
   .globe-orbit { width: 274px; }
   .globe-orbit-two { width: 108px; height: 274px; }
 }
+
+/* Pronunciation lab */
+.pronunciation-button { width: 100%; margin: auto 0 8px; border: 1px solid rgba(98,230,174,.3); border-radius: 13px; padding: 11px 13px; background: linear-gradient(135deg, rgba(98,230,174,.1), rgba(255,255,255,.025)); display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: left; cursor: pointer; }
+.pronunciation-button > span { display: grid; grid-template-columns: 22px 1fr; align-items: center; font-size: 9px; font-weight: 800; }
+.pronunciation-button b { grid-row: 1 / 3; width: 16px; color: var(--forest); text-shadow: 0 0 14px rgba(98,230,174,.7); }
+.pronunciation-button small { display: block; font-size: 6px; letter-spacing: .12em; color: var(--forest); }
+.pronunciation-button > strong { font-size: 7px; color: var(--muted); white-space: nowrap; }
+.pronunciation-button:hover { border-color: var(--forest); background: rgba(98,230,174,.14); }
+.pronunciation-button:disabled { opacity: .5; }
+.grade-button { margin-top: 0; }
+
+.pronunciation-backdrop { padding: 22px; }
+.pronunciation-sheet { width: min(720px, 100%); max-height: calc(100vh - 38px); overflow-y: auto; position: relative; border: 1px solid rgba(216,255,95,.24); border-radius: 26px; padding: 32px; background: radial-gradient(circle at 82% 4%, rgba(98,230,174,.12), transparent 28%), #08110e; box-shadow: 0 30px 90px rgba(0,0,0,.62); }
+.pronunciation-sheet > h2 { margin: 8px 0 5px; font-family: var(--font-display), serif; font-size: 42px; font-weight: 400; letter-spacing: -.035em; }
+.pronunciation-intro { max-width: 580px; margin: 0; color: var(--muted); font-size: 10px; line-height: 1.65; }
+.pronunciation-providers { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 22px 0 12px; }
+.pronunciation-providers button { border: 1px solid var(--line); border-radius: 14px; padding: 12px 13px; background: rgba(255,255,255,.025); text-align: left; cursor: pointer; }
+.pronunciation-providers button.active { border-color: var(--forest); background: rgba(98,230,174,.1); box-shadow: inset 0 0 0 1px rgba(98,230,174,.12); }
+.pronunciation-providers strong { display: block; font-size: 10px; }
+.pronunciation-providers small { display: block; margin-top: 3px; color: var(--muted); font-size: 7px; }
+.pronunciation-endpoint { display: block; margin: 10px 0 14px; font-size: 7px; font-weight: 800; letter-spacing: .1em; color: var(--muted); text-transform: uppercase; }
+.pronunciation-endpoint input { width: 100%; margin-top: 6px; border: 1px solid var(--line); border-radius: 10px; padding: 9px 10px; background: #050a08; color: var(--ink); font-size: 9px; outline: none; }
+.pronunciation-endpoint input:focus { border-color: var(--forest); }
+.phrase-selector { display: flex; justify-content: space-between; align-items: center; margin: 17px 0 8px; }
+.phrase-selector > span { font-size: 7px; font-weight: 800; letter-spacing: .12em; color: var(--muted); }
+.phrase-selector > div { display: flex; gap: 5px; }
+.phrase-selector button { width: 25px; height: 25px; border: 1px solid var(--line); border-radius: 50%; background: transparent; color: var(--muted); cursor: pointer; font-size: 8px; }
+.phrase-selector button.active { border-color: var(--yellow); background: var(--yellow); color: #07110f; }
+.target-phrase { position: relative; border: 1px solid rgba(216,255,95,.2); border-radius: 17px; padding: 15px 90px 15px 15px; background: linear-gradient(135deg, rgba(216,255,95,.08), rgba(255,255,255,.015)); }
+.target-phrase > span { display: block; margin-bottom: 7px; color: var(--yellow); font-size: 6px; font-weight: 800; letter-spacing: .11em; }
+.target-phrase > strong { display: block; font-size: 18px; line-height: 1.45; }
+.target-phrase > button { position: absolute; right: 12px; top: 50%; translate: 0 -50%; border: 0; border-radius: 999px; padding: 7px 10px; background: rgba(255,255,255,.07); color: var(--ink); cursor: pointer; font-size: 7px; }
+.record-pronunciation { width: 100%; margin-top: 12px; min-height: 62px; border: 0; border-radius: 15px; padding: 11px 14px; background: var(--coral); color: white; display: flex; align-items: center; justify-content: center; gap: 11px; cursor: pointer; }
+.record-pronunciation i { width: 29px; height: 29px; border: 2px solid rgba(255,255,255,.8); border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 8px; }
+.record-pronunciation strong, .record-pronunciation small { display: block; text-align: left; }
+.record-pronunciation strong { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; }
+.record-pronunciation small { margin-top: 3px; font-size: 7px; opacity: .75; }
+.record-pronunciation.recording { background: #d9473c; animation: micPulse 1.2s infinite; }
+.record-pronunciation:disabled { opacity: .65; cursor: wait; }
+.pronunciation-note { min-height: 17px; margin: 8px 2px 0; color: var(--muted); font-size: 8px; text-align: center; }
+.pronunciation-result { display: grid; grid-template-columns: 116px 1fr; gap: 17px; margin-top: 17px; border-top: 1px solid var(--line); padding-top: 18px; }
+.pronunciation-score { width: 112px; height: 112px; border: 1px solid var(--yellow); border-radius: 50%; display: flex; flex-wrap: wrap; align-content: center; justify-content: center; background: radial-gradient(circle, rgba(216,255,95,.15), transparent 68%); box-shadow: inset 0 0 30px rgba(216,255,95,.08); }
+.pronunciation-score strong { font-family: var(--font-display), serif; font-size: 48px; line-height: .8; }
+.pronunciation-score > span { align-self: flex-end; font-size: 8px; }
+.pronunciation-score small { flex-basis: 100%; margin-top: 8px; color: var(--yellow); font-size: 5px; font-weight: 800; letter-spacing: .1em; text-align: center; }
+.pronunciation-metrics { display: grid; align-content: center; gap: 10px; }
+.pronunciation-metrics > div { display: grid; grid-template-columns: 85px 1fr 26px; align-items: center; gap: 9px; }
+.pronunciation-metrics span { font-size: 8px; text-transform: capitalize; }
+.pronunciation-metrics i { height: 6px; border-radius: 99px; background: rgba(237,247,242,.1); overflow: hidden; }
+.pronunciation-metrics b { display: block; height: 100%; border-radius: inherit; background: var(--forest); }
+.pronunciation-metrics strong { font-size: 8px; }
+.recognized-line, .word-heatmap, .pronunciation-feedback, .phoneme-warning { grid-column: 1 / -1; }
+.recognized-line { border-radius: 12px; padding: 11px 12px; background: rgba(255,255,255,.03); }
+.recognized-line span, .pronunciation-feedback span { color: var(--muted); font-size: 6px; font-weight: 800; letter-spacing: .11em; }
+.recognized-line p, .pronunciation-feedback p { margin: 5px 0 0; font-size: 10px; line-height: 1.5; }
+.word-heatmap { display: flex; flex-wrap: wrap; gap: 6px; }
+.word-heatmap > span { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 999px; padding: 6px 8px; font-size: 9px; }
+.word-heatmap small { font-size: 6px; opacity: .7; }
+.word-heatmap .good { border-color: rgba(98,230,174,.5); background: rgba(98,230,174,.1); }
+.word-heatmap .close { border-color: rgba(243,202,82,.5); background: rgba(243,202,82,.1); }
+.word-heatmap .retry { border-color: rgba(255,109,77,.55); background: rgba(255,109,77,.12); }
+.pronunciation-feedback { border-left: 3px solid var(--yellow); padding: 9px 12px; background: rgba(216,255,95,.06); }
+.pronunciation-feedback span { color: var(--yellow); }
+.phoneme-warning { margin: 0; color: var(--muted); font-size: 7px; line-height: 1.5; }
+
+@media (max-width: 580px) {
+  .pronunciation-sheet { padding: 27px 17px; }
+  .pronunciation-sheet > h2 { font-size: 34px; }
+  .pronunciation-providers { grid-template-columns: 1fr; }
+  .target-phrase { padding-right: 15px; }
+  .target-phrase > button { position: static; translate: none; margin-top: 10px; }
+  .pronunciation-result { grid-template-columns: 1fr; }
+  .pronunciation-score { margin: 0 auto; }
+  .pronunciation-metrics, .recognized-line, .word-heatmap, .pronunciation-feedback, .phoneme-warning { grid-column: 1; }
+}
