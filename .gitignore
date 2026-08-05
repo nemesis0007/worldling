@@ -21,6 +21,7 @@
 # misc
 .DS_Store
 local-pronunciation/.venv/
+__pycache__/
 local-pronunciation/test-*.wav
 *.pem
 
