@@ -265,13 +265,14 @@ export default function Home() {
   const [questProgress, setQuestProgress] = useState([false, false, false]);
   const [reward, setReward] = useState<Reward | null>(null);
   const [rewarded, setRewarded] = useState(false);
-  const [mapZoom, setMapZoom] = useState(1);
-  const [mapPan, setMapPan] = useState({ x: 0, y: 0 });
-  const [mapDragging, setMapDragging] = useState(false);
+  const [globeLongitude, setGlobeLongitude] = useState(78);
+  const [globeScale, setGlobeScale] = useState(1);
+  const [globeDragging, setGlobeDragging] = useState(false);
+  const [globeAutoSpin, setGlobeAutoSpin] = useState(true);
   const [hydrated, setHydrated] = useState(false);
   const recognitionRef = useRef<{ start: () => void; stop: () => void } | null>(null);
   const messageId = useRef(1);
-  const mapDragRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
+  const globeDragRef = useRef<{ x: number; longitude: number } | null>(null);
 
   const city = useMemo(() => CITIES.find((item) => item.id === cityId) ?? CITIES[0], [cityId]);
   const scene = useMemo(() => city.scenes.find((item) => item.id === sceneId) ?? city.scenes[0], [city, sceneId]);
@@ -321,6 +322,14 @@ export default function Home() {
     if (!hydrated) return;
     window.localStorage.setItem("worldling-progress", JSON.stringify({ xp, coins, stamps }));
   }, [hydrated, xp, coins, stamps]);
+
+  useEffect(() => {
+    if (!globeAutoSpin || globeDragging || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const timer = window.setInterval(() => {
+      setGlobeLongitude((current) => ((current + .32 + 180) % 360) - 180);
+    }, 40);
+    return () => window.clearInterval(timer);
+  }, [globeAutoSpin, globeDragging]);
 
   function speak(text: string) {
     if (!autoSpeak || !("speechSynthesis" in window)) return;
@@ -547,46 +556,51 @@ export default function Home() {
   function chooseCity(nextCity: City) {
     setCityId(nextCity.id);
     setSceneId(nextCity.scenes[0].id);
+    setGlobeAutoSpin(false);
+    setGlobeLongitude(nextCity.mapX * 3.6 - 180);
   }
 
-  function changeMapZoom(delta: number) {
-    setMapZoom((current) => {
-      const next = Math.min(3, Math.max(1, Number((current + delta).toFixed(2))));
-      if (next === 1) setMapPan({ x: 0, y: 0 });
-      return next;
-    });
+  function globePoint(item: City) {
+    const longitude = item.mapX * 3.6 - 180;
+    const latitude = 90 - item.mapY * 1.8;
+    const delta = (longitude - globeLongitude) * Math.PI / 180;
+    const latitudeRadians = latitude * Math.PI / 180;
+    const depth = Math.cos(latitudeRadians) * Math.cos(delta);
+    return {
+      x: 50 + 46 * Math.cos(latitudeRadians) * Math.sin(delta),
+      y: 50 - 46 * Math.sin(latitudeRadians),
+      depth,
+      visible: depth > .04,
+    };
   }
 
-  function resetMapView() {
-    setMapZoom(1);
-    setMapPan({ x: 0, y: 0 });
+  function changeGlobeScale(delta: number) {
+    setGlobeScale((current) => Math.min(1.3, Math.max(.84, Number((current + delta).toFixed(2)))));
   }
 
-  function handleMapWheel(event: ReactWheelEvent<HTMLDivElement>) {
+  function handleGlobeWheel(event: ReactWheelEvent<HTMLDivElement>) {
     event.preventDefault();
-    changeMapZoom(event.deltaY < 0 ? .2 : -.2);
+    changeGlobeScale(event.deltaY < 0 ? .08 : -.08);
   }
 
-  function handleMapPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
-    if (mapZoom === 1 || (event.target as HTMLElement).closest("button")) return;
+  function handleGlobePointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+    if ((event.target as HTMLElement).closest("button")) return;
     event.currentTarget.setPointerCapture(event.pointerId);
-    mapDragRef.current = { x: event.clientX, y: event.clientY, panX: mapPan.x, panY: mapPan.y };
-    setMapDragging(true);
+    globeDragRef.current = { x: event.clientX, longitude: globeLongitude };
+    setGlobeDragging(true);
+    setGlobeAutoSpin(false);
   }
 
-  function handleMapPointerMove(event: ReactPointerEvent<HTMLDivElement>) {
-    const origin = mapDragRef.current;
+  function handleGlobePointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+    const origin = globeDragRef.current;
     if (!origin) return;
-    const limit = 170 * mapZoom;
-    setMapPan({
-      x: Math.max(-limit, Math.min(limit, origin.panX + event.clientX - origin.x)),
-      y: Math.max(-limit * .6, Math.min(limit * .6, origin.panY + event.clientY - origin.y)),
-    });
+    const next = origin.longitude - (event.clientX - origin.x) * .75;
+    setGlobeLongitude(((next + 180) % 360 + 360) % 360 - 180);
   }
 
-  function stopMapDrag() {
-    mapDragRef.current = null;
-    setMapDragging(false);
+  function stopGlobeDrag() {
+    globeDragRef.current = null;
+    setGlobeDragging(false);
   }
 
   return (
@@ -623,38 +637,44 @@ export default function Home() {
           <p className="intro">Select a city, enter the street, and talk your way through a live language mission.</p>
 
           <div
-            className={`world-map ${mapDragging ? "dragging" : ""}`}
-            aria-label="Zoomable world map with available destinations"
-            onWheel={handleMapWheel}
-            onPointerDown={handleMapPointerDown}
-            onPointerMove={handleMapPointerMove}
-            onPointerUp={stopMapDrag}
-            onPointerCancel={stopMapDrag}
-            onDoubleClick={() => changeMapZoom(.4)}
+            className={`world-map globe-viewport ${globeDragging ? "dragging" : ""}`}
+            aria-label="Interactive spinning globe with available destinations"
+            onWheel={handleGlobeWheel}
+            onPointerDown={handleGlobePointerDown}
+            onPointerMove={handleGlobePointerMove}
+            onPointerUp={stopGlobeDrag}
+            onPointerCancel={stopGlobeDrag}
           >
-            <div className="map-grid" />
-            <div className="map-stage" style={{ transform: `translate3d(${mapPan.x}px, ${mapPan.y}px, 0) scale(${mapZoom})` }}>
-              <img className="world-map-image" src="/world-map.png" alt="World map" draggable="false" />
-              {CITIES.map((item) => (
-                <button
-                  key={item.id}
-                  className={`map-pin ${item.id === city.id ? "selected" : ""}`}
-                  style={{ left: `${item.mapX}%`, top: `${item.mapY}%` }}
-                  onClick={() => chooseCity(item)}
-                  aria-label={`Visit ${item.name} to practise ${item.language}`}
-                >
-                  <span>{item.flag}</span>
-                  <strong>{item.name}</strong>
-                </button>
-              ))}
+            <div className="globe-orbit globe-orbit-one" />
+            <div className="globe-orbit globe-orbit-two" />
+            <div className="globe-shell" style={{ transform: `scale(${globeScale})` }}>
+              <div className="globe-surface" style={{ backgroundPosition: `${50 + globeLongitude / 3.6}% center` }} />
+              <div className="globe-grid" />
+              <div className="globe-shade" />
+              {CITIES.map((item) => {
+                const point = globePoint(item);
+                return (
+                  <button
+                    key={item.id}
+                    className={`map-pin globe-pin ${item.id === city.id ? "selected" : ""} ${point.visible ? "" : "backside"}`}
+                    style={{ left: `${point.x}%`, top: `${point.y}%`, opacity: point.visible ? Math.max(.38, point.depth) : 0 }}
+                    onClick={() => chooseCity(item)}
+                    tabIndex={point.visible ? 0 : -1}
+                    aria-label={`Visit ${item.name} to practise ${item.language}`}
+                  >
+                    <span>{item.flag}</span>
+                    <strong>{item.name}</strong>
+                  </button>
+                );
+              })}
             </div>
-            <div className="map-controls" aria-label="Map zoom controls">
-              <button onClick={() => changeMapZoom(-.25)} disabled={mapZoom <= 1} aria-label="Zoom map out">−</button>
-              <span>{Math.round(mapZoom * 100)}%</span>
-              <button onClick={() => changeMapZoom(.25)} disabled={mapZoom >= 3} aria-label="Zoom map in">+</button>
-              <button className="map-reset" onClick={resetMapView}>RESET</button>
+            <div className="map-controls globe-controls" aria-label="Globe controls">
+              <button onClick={() => changeGlobeScale(-.08)} disabled={globeScale <= .84} aria-label="Zoom globe out">−</button>
+              <button className="spin-control" onClick={() => setGlobeAutoSpin((current) => !current)}>{globeAutoSpin ? "PAUSE" : "SPIN"}</button>
+              <button onClick={() => changeGlobeScale(.08)} disabled={globeScale >= 1.3} aria-label="Zoom globe in">+</button>
             </div>
-            <div className="map-caption">Scroll or use controls to zoom · drag to pan</div>
+            <div className="globe-coordinate"><span>◉</span>{city.coordinates}</div>
+            <div className="map-caption">Drag to spin · scroll to zoom · choose a live signal</div>
           </div>
 
           <div className="language-heading"><strong>LANGUAGE ATLAS</strong><span>Global top 10 + India</span></div>
