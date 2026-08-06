@@ -273,9 +273,10 @@ function NewYorkNeighborhood({ data }: { data: Neighborhood }) {
       const slot = Math.floor(index / 2);
       const target = { x: side * (6.15 + (index % 3) * .18), z: -19.2 + slot * 4.8 };
       const center = buildingCenter(building);
+      const footprintScale = .78;
       return <group key={building.id}>
         <mesh castShadow receiveShadow position={[side * 5.75, 1.35, target.z]}><boxGeometry args={[3.35, 2.7, 4.55]} /><meshStandardMaterial color={index % 3 === 0 ? "#77736d" : index % 3 === 1 ? "#918a80" : "#686c6c"} roughness={.8} metalness={.08} /></mesh>
-        <group position={[target.x - center.x, 0, target.z - center.z]} scale={[.78, 1, .78]}><OsmBuilding building={building} sceneClass="atlantic" detailed /></group>
+        <group position={[target.x - center.x * footprintScale, 0, target.z - center.z * footprintScale]} scale={[footprintScale, 1, footprintScale]}><OsmBuilding building={building} sceneClass="atlantic" detailed /></group>
       </group>;
     })}
   </group>;
