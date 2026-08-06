@@ -1095,3 +1095,318 @@ footer { min-height: 64px; padding-inline: max(24px,calc((100vw - 1320px)/2)); b
   .movement-pad { bottom: 245px; }
   .voice-hud form { grid-template-columns: 94px minmax(0,1fr); }
 }
+
+/* Worldling 07 — warm editorial game shell */
+:root {
+  --ink: #f5eedc;
+  --paper: #161813;
+  --deep: #090b09;
+  --cream: #0b0d0b;
+  --line: rgba(245,238,220,.12);
+  --muted: #aaa99f;
+  --yellow: #f2ca63;
+  --forest: #82d7ad;
+  --coral: #ff785b;
+}
+
+html { scroll-behavior: smooth; }
+body {
+  background: #090b09;
+  color: var(--ink);
+}
+.app-shell {
+  background:
+    radial-gradient(circle at 76% 8%, rgba(242,202,99,.09), transparent 24%),
+    radial-gradient(circle at 16% 28%, rgba(130,215,173,.07), transparent 28%),
+    #090b09;
+}
+
+.topbar {
+  height: 74px;
+  min-height: 74px;
+  padding-inline: max(28px,calc((100vw - 1460px)/2));
+  border-bottom-color: rgba(245,238,220,.1);
+  background: rgba(9,11,9,.78);
+  box-shadow: 0 12px 40px rgba(0,0,0,.18);
+}
+.brand { gap: 10px; font-size: 15px; font-weight: 820; letter-spacing: -.025em; }
+.brand-mark {
+  width: 34px;
+  height: 34px;
+  border-radius: 5px;
+  color: #15130d;
+  background: var(--yellow);
+  box-shadow: 4px 4px 0 var(--coral);
+}
+.brand small { padding-left: 2px; color: #85877f; letter-spacing: .17em; }
+.level-control, .engine-button {
+  border-color: rgba(245,238,220,.11);
+  background: rgba(245,238,220,.045);
+  box-shadow: inset 0 1px rgba(255,255,255,.05);
+}
+.level-control button.active { color: #16130b; background: var(--yellow); }
+.engine-button:hover { border-color: rgba(242,202,99,.45); background: rgba(242,202,99,.08); }
+
+.world-panel {
+  grid-template-columns: minmax(380px,.82fr) minmax(540px,1.18fr);
+  min-height: calc(100vh - 74px);
+  gap: clamp(44px,6vw,110px);
+  padding-top: clamp(62px,8vh,104px);
+  padding-bottom: 58px;
+}
+.world-panel::before {
+  content: "";
+  position: absolute;
+  top: 7%;
+  right: -5%;
+  width: min(660px,48vw);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle,rgba(242,202,99,.11),rgba(130,215,173,.03) 48%,transparent 70%);
+  filter: blur(8px);
+  pointer-events: none;
+}
+.hero-copy { position: relative; z-index: 2; max-width: 620px; }
+.hero-copy .section-kicker { color: var(--yellow); }
+.hero-copy h1 {
+  max-width: 650px;
+  margin: 26px 0 24px;
+  font-family: var(--font-display),Georgia,serif;
+  font-size: clamp(68px,6.6vw,108px);
+  font-weight: 400;
+  line-height: .82;
+  letter-spacing: -.058em;
+}
+.hero-copy .intro { max-width: 550px; color: #bbb9ad; font-size: clamp(16px,1.28vw,19px); line-height: 1.65; }
+.hero-loop {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 34px;
+}
+.hero-loop span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(245,238,220,.11);
+  border-radius: 999px;
+  padding: 9px 12px 9px 9px;
+  color: #c9c5b8;
+  background: rgba(245,238,220,.035);
+  font-size: 8px;
+  font-weight: 750;
+  letter-spacing: .02em;
+}
+.hero-loop b {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  color: #17140c;
+  background: var(--yellow);
+  font-size: 6px;
+}
+.hero-globe-wrap { z-index: 1; }
+.world-map.globe-viewport {
+  height: min(650px,69vh);
+  min-height: 520px;
+  border-radius: 24px;
+  background:
+    linear-gradient(145deg,rgba(242,202,99,.045),transparent 42%),
+    radial-gradient(circle at 50% 44%,rgba(67,145,108,.22),transparent 42%),
+    rgba(245,238,220,.025);
+  box-shadow:
+    inset 0 0 0 1px rgba(245,238,220,.12),
+    10px 10px 0 rgba(242,202,99,.045),
+    0 48px 110px rgba(0,0,0,.44);
+}
+.globe-controls { border-color: rgba(245,238,220,.12); background: rgba(9,11,9,.6); }
+.globe-coordinate { color: rgba(245,238,220,.65); }
+.map-caption { color: rgba(245,238,220,.45); }
+.hero-city-card {
+  left: 20px;
+  right: 20px;
+  bottom: 42px;
+  border-radius: 14px;
+  border-color: rgba(245,238,220,.14);
+  background: rgba(13,15,12,.76);
+  box-shadow: 7px 7px 0 rgba(0,0,0,.24),inset 0 1px rgba(255,255,255,.06);
+}
+.hero-city-card small { color: var(--yellow); }
+.hero-city-card button {
+  border-radius: 8px;
+  color: #18140b;
+  background: var(--yellow);
+  box-shadow: 3px 3px 0 var(--coral);
+  transition: translate .2s,box-shadow .2s;
+}
+.hero-city-card button:hover { translate: 2px 2px; box-shadow: 1px 1px 0 var(--coral); }
+
+.destination-dock {
+  position: relative;
+  z-index: 2;
+  margin-top: 10px;
+  padding: 24px;
+  border-radius: 18px;
+  border-color: rgba(245,238,220,.12);
+  background: rgba(245,238,220,.025);
+  box-shadow: none;
+}
+.destination-dock .language-heading { margin: 0 0 15px; }
+.language-heading strong { color: var(--yellow); font-size: 7px; letter-spacing: .16em; }
+.language-heading span { color: #85877f; font-size: 7px; }
+.destination-dock .city-list { gap: 7px; }
+.destination-dock .city-card {
+  min-height: 60px;
+  border-radius: 10px;
+  border-color: rgba(245,238,220,.075);
+  background: rgba(245,238,220,.025);
+  transition: transform .18s ease,border-color .18s ease,background .18s ease;
+}
+.destination-dock .city-card:hover { transform: translateY(-2px); border-color: rgba(242,202,99,.38); background: rgba(242,202,99,.055); }
+.destination-dock .city-card.active {
+  border-color: var(--yellow);
+  border-radius: 10px;
+  background: var(--yellow);
+  color: #17140d;
+  box-shadow: 4px 4px 0 var(--coral);
+}
+.destination-dock .city-card.active small { color: rgba(23,20,13,.65); }
+.destination-dock .passport-strip { color: #aaa99f; }
+
+.journey-section {
+  padding: 112px max(24px,4vw) 118px;
+  border-top-color: rgba(245,238,220,.1);
+  background:
+    radial-gradient(circle at 80% 4%,rgba(242,202,99,.09),transparent 25%),
+    linear-gradient(180deg,#10130f,#090b09 70%);
+}
+.journey-section .scene-heading { margin-bottom: 26px; }
+.journey-section .scene-heading h2 {
+  margin-top: 18px;
+  font-family: var(--font-display),Georgia,serif;
+  font-size: clamp(76px,9vw,132px);
+  font-weight: 400;
+  line-height: .72;
+  letter-spacing: -.055em;
+}
+.journey-section .scene-heading p { color: #8d8e86; letter-spacing: .15em; }
+.journey-section .weather {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  gap: 12px;
+  border-left: 1px solid rgba(245,238,220,.16);
+  padding-left: 20px;
+}
+.journey-section .weather > span { color: var(--yellow); font-size: 13px; font-weight: 850; letter-spacing: .12em; }
+.journey-section .weather small { color: #8d8e86; line-height: 1.5; }
+.journey-section .scene-tabs { gap: 4px; margin-bottom: 14px; padding: 4px; border-radius: 12px; }
+.journey-section .scene-tabs button { border-radius: 8px; padding: 10px 14px; }
+.journey-section .scene-tabs button.active { border-color: var(--yellow); background: var(--yellow); }
+
+.play-world {
+  min-height: min(850px,calc(100vh - 76px));
+  border-radius: 22px;
+  border-color: rgba(245,238,220,.18);
+  box-shadow: 9px 9px 0 rgba(242,202,99,.06),0 55px 130px rgba(0,0,0,.48);
+}
+.play-world::before {
+  background:
+    linear-gradient(180deg,rgba(5,7,6,.28),transparent 28%,transparent 62%,rgba(5,7,6,.7)),
+    radial-gradient(circle at 50% 45%,transparent 40%,rgba(0,0,0,.26) 115%);
+}
+.glass-card {
+  border-color: rgba(245,238,220,.15);
+  background: rgba(12,15,12,.7);
+  box-shadow: inset 0 1px rgba(255,255,255,.07),0 18px 45px rgba(0,0,0,.28);
+}
+.game-mission {
+  top: 18px;
+  left: 18px;
+  border-radius: 11px;
+  border-left: 3px solid var(--yellow);
+}
+.game-mission small { color: var(--yellow); }
+.game-status { top: 18px; right: 18px; border-radius: 10px; }
+.game-status > button, .game-status > a { border-radius: 7px; }
+.osm-world-status { top: 75px; left: 18px; border-radius: 8px; background: rgba(12,15,12,.68); }
+.world-dialogue { top: 12%; border-radius: 14px; border-left: 3px solid var(--yellow); }
+.world-dialogue > span { border-radius: 8px; }
+.approach-hint { bottom: 156px; border-radius: 9px; }
+.movement-pad { left: 18px; bottom: 20px; border-radius: 12px; }
+.movement-pad button { border-radius: 6px; }
+.game-minimap { right: 18px; bottom: 18px; width: 116px; height: 116px; border-radius: 14px; }
+.game-minimap::after { border-radius: 9px; }
+
+.voice-hud {
+  bottom: 18px;
+  width: min(720px,calc(100% - 248px));
+  border-radius: 15px;
+  padding: 10px;
+  background: rgba(12,15,12,.78);
+  transition: width .25s ease,background .25s ease,border-color .25s ease;
+}
+.voice-hud.engaged { border-color: rgba(242,202,99,.42); }
+.voice-context { margin-bottom: 8px; }
+.voice-context > span { border-radius: 8px; background: rgba(242,202,99,.14); }
+.voice-context small { color: var(--yellow); }
+.world-mic { border-radius: 9px; background: var(--yellow); box-shadow: 3px 3px 0 var(--coral); }
+.world-text-entry { border-radius: 9px; }
+.world-text-entry button { border-radius: 6px; background: var(--yellow); }
+.voice-actions button, .suggestion-strip button { border-radius: 7px; }
+.voice-actions button:hover, .suggestion-strip button:hover { color: var(--ink); background: rgba(242,202,99,.12); }
+.voice-hud.roaming .suggestion-strip, .voice-hud.roaming .voice-actions { display: none; }
+.voice-hud.roaming { width: min(520px,calc(100% - 248px)); }
+.voice-hud.roaming .voice-context { margin-bottom: 0; }
+.voice-hud.roaming form { display: none; }
+
+footer {
+  min-height: 78px;
+  border-top: 1px solid rgba(245,238,220,.08);
+  color: #777a72;
+  background: #090b09;
+}
+footer strong { color: #b9b6a9; }
+
+@media (max-width: 1120px) {
+  .world-panel { grid-template-columns: 1fr; }
+  .world-panel::before { right: 10%; width: 70vw; }
+  .hero-copy { text-align: center; justify-self: center; }
+  .hero-loop { justify-content: center; }
+  .voice-hud, .voice-hud.roaming { width: calc(100% - 180px); }
+}
+
+@media (max-width: 720px) {
+  .topbar { height: 62px; min-height: 62px; padding-inline: 15px; }
+  .brand-mark { width: 30px; height: 30px; box-shadow: 3px 3px 0 var(--coral); }
+  .world-panel { padding: 54px 15px 38px; }
+  .hero-copy h1 { font-size: clamp(61px,18vw,82px); }
+  .hero-loop { gap: 5px; }
+  .hero-loop span { padding-right: 9px; font-size: 7px; }
+  .world-map.globe-viewport { height: 460px; min-height: 0; }
+  .destination-dock { padding: 13px; }
+  .language-heading span { display: none; }
+  .destination-dock .city-list { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .journey-section { padding: 76px 14px 82px; }
+  .journey-section .scene-heading h2 { font-size: clamp(70px,22vw,96px); }
+  .play-world { min-height: 760px; border-radius: 16px; }
+  .game-mission { top: 10px; left: 10px; right: 10px; }
+  .game-status { top: 80px; left: 10px; right: auto; }
+  .osm-world-status { top: 124px; left: 10px; }
+  .game-minimap { right: 10px; bottom: 198px; border-radius: 12px; }
+  .movement-pad { left: 10px; bottom: 198px; }
+  .voice-hud, .voice-hud.roaming { left: 10px; right: 10px; bottom: 10px; width: auto; }
+  .voice-hud.roaming { padding: 9px; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .hero-copy { animation: worldling-rise .7s ease both; }
+  .hero-globe-wrap { animation: worldling-rise .8s .08s ease both; }
+  .destination-dock { animation: worldling-rise .8s .16s ease both; }
+  @keyframes worldling-rise {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}

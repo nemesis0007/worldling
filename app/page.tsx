@@ -845,7 +845,7 @@ export default function Home() {
         <a className="brand" href="#world" aria-label="Worldling home">
           <span className="brand-mark">W</span>
           <span>WORLDLING</span>
-          <small>FREE ROAM / VOICE OPS</small>
+          <small>WALK · MEET · SPEAK</small>
         </a>
         <div className="top-actions">
           <div className="player-hud" aria-label={`Player level ${playerLevel}, ${levelProgress} percent to next level, ${coins} travel coins`}>
@@ -868,9 +868,14 @@ export default function Home() {
 
       <section className="world-panel" id="world">
         <div className="hero-copy">
-          <div className="section-kicker"><span>01</span> Your next conversation</div>
-          <h1>Speak your way<br />around the world.</h1>
-          <p className="intro">Choose a place. Meet someone local. Learn the language by living a small moment there.</p>
+          <div className="section-kicker"><span>01</span> A living language game</div>
+          <h1>The world is waiting to talk.</h1>
+          <p className="intro">Drop into a real place, walk up to someone local and learn the language inside the moment.</p>
+          <div className="hero-loop" aria-label="How Worldling works">
+            <span><b>01</b> Pick a street</span>
+            <span><b>02</b> Meet a local</span>
+            <span><b>03</b> Speak to progress</span>
+          </div>
         </div>
 
         <div className="hero-globe-wrap">
@@ -917,12 +922,12 @@ export default function Home() {
           <div className="hero-city-card">
             <span>{city.flag}</span>
             <div><small>NOW EXPLORING</small><strong>{city.name}</strong><p>{city.language} · {level}</p></div>
-            <button onClick={() => document.getElementById("journey")?.scrollIntoView({ behavior: "smooth" })}>Enter city ↓</button>
+            <button onClick={() => document.getElementById("journey")?.scrollIntoView({ behavior: "smooth" })}>Drop into {city.name} ↓</button>
           </div>
         </div>
 
         <div className="destination-dock">
-          <div className="language-heading"><strong>CHOOSE A LANGUAGE</strong><span>All destinations visible · select any city</span></div>
+          <div className="language-heading"><strong>PICK YOUR NEXT CITY</strong><span>{CITIES.length} destinations · every language unlocked</span></div>
           <div className="city-list">
             {CITIES.map((item) => (
               <button key={item.id} className={item.id === city.id ? "city-card active" : "city-card"} onClick={() => chooseCity(item)}>
@@ -945,11 +950,11 @@ export default function Home() {
         <div className="journey-shell">
           <div className="scene-heading">
             <div>
-              <div className="section-kicker light"><span>02</span> Today in {city.name}</div>
+              <div className="section-kicker light"><span>02</span> Live street · {city.name}</div>
               <h2>{city.name}</h2>
               <p>{city.coordinates} · A conversation in {city.language}</p>
             </div>
-            <div className="weather"><span>26°</span><small>LOCAL TIME<br />08:42</small></div>
+            <div className="weather"><span>LIVE</span><small>FREE ROAM<br />VOICE READY</small></div>
           </div>
 
           <div className="scene-tabs" role="tablist" aria-label={`${city.name} locations`}>
@@ -1033,7 +1038,7 @@ export default function Home() {
               </aside>
             )}
 
-            <div className="voice-hud glass-card">
+            <div className={`voice-hud glass-card ${nearCharacter ? "engaged" : "roaming"}`}>
               <div className="voice-context">
                 <span>{scene.avatar}</span>
                 <div><small>{nearCharacter ? `TALKING TO ${scene.character.toUpperCase()}` : "EXPLORE THE SCENE"}</small><strong>{nearCharacter ? `Speak naturally in ${city.language}` : "Use WASD or the arrows to move"}</strong></div>
@@ -1046,7 +1051,7 @@ export default function Home() {
                   onClick={() => listening ? recognitionRef.current?.stop() : startListening()}
                   aria-label={listening ? "Stop listening" : `Speak to ${scene.character} in ${city.language}`}
                 >
-                  <span>●</span>{listening ? "Listening" : "Hold to talk"}
+                  <span>●</span>{listening ? "Listening" : "Tap to speak"}
                 </button>
                 <div className="world-text-entry">
                   <input value={input} disabled={!nearCharacter || thinking} onChange={(event) => setInput(event.target.value)} placeholder={nearCharacter ? "Or type what you want to say…" : `Walk closer to ${scene.character}`} />
@@ -1066,7 +1071,7 @@ export default function Home() {
       </section>
 
       <footer>
-        <p><strong>WORLDLING / 3D FREE ROAM BUILD 06</strong> · Browser voice recognition supplies the transcript.</p>
+        <p><strong>WORLDLING / STREET BUILD 07</strong> · Walk. Meet. Speak. Get understood.</p>
         <p>3D city assets by <a href="https://kenney.nl/assets/city-kit-suburban" target="_blank" rel="noreferrer">Kenney, CC0</a> · Map by <a href="https://commons.wikimedia.org/wiki/File:Blank_Map_of_The_World_Equirectangular_Projection.png" target="_blank" rel="noreferrer">FelixCountryBalls163, CC BY 4.0</a></p>
       </footer>
 
