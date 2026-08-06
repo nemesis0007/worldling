@@ -1282,6 +1282,7 @@ body {
     radial-gradient(circle at 80% 4%,rgba(242,202,99,.09),transparent 25%),
     linear-gradient(180deg,#10130f,#090b09 70%);
 }
+.journey-shell { position: relative; color: var(--ink); }
 .journey-section .scene-heading { margin-bottom: 26px; }
 .journey-section .scene-heading h2 {
   margin-top: 18px;
@@ -1290,6 +1291,7 @@ body {
   font-weight: 400;
   line-height: .72;
   letter-spacing: -.055em;
+  color: #f5eedc;
 }
 .journey-section .scene-heading p { color: #8d8e86; letter-spacing: .15em; }
 .journey-section .weather {
@@ -1302,8 +1304,8 @@ body {
 }
 .journey-section .weather > span { color: var(--yellow); font-size: 13px; font-weight: 850; letter-spacing: .12em; }
 .journey-section .weather small { color: #8d8e86; line-height: 1.5; }
-.journey-section .scene-tabs { gap: 4px; margin-bottom: 14px; padding: 4px; border-radius: 12px; }
-.journey-section .scene-tabs button { border-radius: 8px; padding: 10px 14px; }
+.journey-section .scene-tabs { position: relative; z-index: 5; gap: 4px; margin-bottom: 14px; padding: 4px; border-radius: 12px; background: rgba(245,238,220,.045); }
+.journey-section .scene-tabs button { border-color: rgba(245,238,220,.13); border-radius: 8px; padding: 10px 14px; color: rgba(245,238,220,.72); }
 .journey-section .scene-tabs button.active { border-color: var(--yellow); background: var(--yellow); }
 
 .play-world {
