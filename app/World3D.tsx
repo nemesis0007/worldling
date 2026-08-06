@@ -90,6 +90,11 @@ function Person({ active = false, model, name, onClick, player = false, position
   const character = useMemo(() => cloneSkeleton(source.scene) as THREE.Group, [source.scene]);
   const mixer = useMemo(() => new THREE.AnimationMixer(character), [character]);
   const destination = useMemo(() => new THREE.Vector3(...position), [position]);
+  const initialPosition = useRef(new THREE.Vector3(...position));
+  const activeAction = useRef<THREE.AnimationAction | null>(null);
+  const activeClipName = useRef("");
+  const idleClip = useMemo(() => source.animations.find((animation) => /idle/i.test(animation.name)) ?? source.animations[0], [source.animations]);
+  const walkClip = useMemo(() => source.animations.find((animation) => /walk|run/i.test(animation.name)) ?? idleClip, [source.animations, idleClip]);
 
   useEffect(() => {
     character.traverse((child) => {
@@ -98,20 +103,35 @@ function Person({ active = false, model, name, onClick, player = false, position
         child.receiveShadow = true;
       }
     });
-    const clip = source.animations.find((animation) => /idle/i.test(animation.name)) ?? source.animations[0];
-    const action = clip ? mixer.clipAction(clip) : null;
+    const action = idleClip ? mixer.clipAction(idleClip) : null;
     action?.reset().fadeIn(.2).play();
-    return () => { action?.fadeOut(.15); mixer.stopAllAction(); };
-  }, [character, mixer, source.animations]);
+    activeAction.current = action;
+    activeClipName.current = idleClip?.name ?? "";
+    return () => { action?.fadeOut(.15); mixer.stopAllAction(); activeAction.current = null; };
+  }, [character, idleClip, mixer]);
 
   useFrame((_, delta) => {
     mixer.update(delta);
     if (!group.current) return;
+    const distance = group.current.position.distanceTo(destination);
+    const desiredClip = player && distance > .035 ? walkClip : idleClip;
+    if (desiredClip && desiredClip.name !== activeClipName.current) {
+      const next = mixer.clipAction(desiredClip);
+      activeAction.current?.fadeOut(.18);
+      next.reset().fadeIn(.18).play();
+      activeAction.current = next;
+      activeClipName.current = desiredClip.name;
+    }
+    if (player && distance > .025) {
+      const dx = destination.x - group.current.position.x;
+      const dz = destination.z - group.current.position.z;
+      group.current.rotation.y = THREE.MathUtils.lerp(group.current.rotation.y, Math.atan2(dx, dz), .18);
+    }
     group.current.position.lerp(destination, player ? .16 : .08);
   });
 
   return (
-    <group ref={group} position={position} onClick={(event) => { event.stopPropagation(); onClick?.(); }}>
+    <group ref={group} position={initialPosition.current} onClick={(event) => { event.stopPropagation(); onClick?.(); }}>
       <primitive object={character} scale={.92} rotation={[0, Math.PI, 0]} />
       {active && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, .035, 0]}>
@@ -186,17 +206,17 @@ function facadeTexture(seed: number) {
       const frame = x % 12 < 2 || y % 10 < 2;
       const lit = ((Math.floor(x / 12) * 7 + Math.floor(y / 10) * 11 + seed) % 6) < 2;
       const index = (y * size + x) * 4;
-      const value = frame ? 52 : lit ? (warm ? 218 : 145) : 23;
-      data[index] = frame ? 64 : value;
-      data[index + 1] = frame ? 67 : lit ? (warm ? 177 : 172) : 31;
-      data[index + 2] = frame ? 65 : lit ? (warm ? 92 : 188) : 38;
+      const value = frame ? 190 : lit ? (warm ? 128 : 112) : 48;
+      data[index] = frame ? 196 : value;
+      data[index + 1] = frame ? 198 : lit ? (warm ? 116 : 128) : 55;
+      data[index + 2] = frame ? 194 : lit ? (warm ? 88 : 144) : 62;
       data[index + 3] = 255;
     }
   }
   const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(1.4, 2.4);
+  texture.repeat.set(.62, 1.1);
   texture.needsUpdate = true;
   return texture;
 }
@@ -225,7 +245,7 @@ function OsmBuilding({ building, sceneClass, detailed = false }: { building: Nei
   return (
     <group>
       <mesh geometry={geometry} castShadow receiveShadow>
-        <meshStandardMaterial color={color} map={texture ?? undefined} emissive={detailed ? "#171b1e" : "#000000"} emissiveMap={texture ?? undefined} emissiveIntensity={detailed ? .34 : 0} roughness={detailed ? .68 : .86} metalness={detailed ? .16 : .04} />
+        <meshStandardMaterial color={color} map={texture ?? undefined} emissive={detailed ? "#101415" : "#000000"} emissiveIntensity={detailed ? .05 : 0} roughness={detailed ? .72 : .86} metalness={detailed ? .1 : .04} />
       </mesh>
       {detailed && building.height > 2.6 && (
         <group position={[center.x, building.height, center.z]}>
@@ -237,8 +257,33 @@ function OsmBuilding({ building, sceneClass, detailed = false }: { building: Nei
   );
 }
 
+function buildingCenter(building: Neighborhood["buildings"][number]) {
+  return building.points.reduce((total, point) => ({ x: total.x + point.x / building.points.length, z: total.z + point.z / building.points.length }), { x: 0, z: 0 });
+}
+
+function NewYorkNeighborhood({ data }: { data: Neighborhood }) {
+  const towers = useMemo(() => [...data.buildings].sort((a, b) => b.height - a.height).slice(0, 18), [data.buildings]);
+  return <group>
+    <mesh receiveShadow position={[0, .01, 0]}><boxGeometry args={[5.4, .09, 48]} /><meshStandardMaterial color="#202427" roughness={.94} /></mesh>
+    {[-3.35, 3.35].map((x) => <mesh key={x} receiveShadow position={[x, .055, 0]}><boxGeometry args={[1.25, .16, 48]} /><meshStandardMaterial color="#a9a49b" roughness={.96} /></mesh>)}
+    {[-.92, .92].map((x) => <group key={x}>{Array.from({ length: 16 }, (_, index) => <mesh key={index} position={[x, .075, -22.5 + index * 3]}><boxGeometry args={[.055, .018, 1.35]} /><meshBasicMaterial color="#e7d477" /></mesh>)}</group>)}
+    {[-17, -5, 7, 19].map((z) => <group key={z}>{Array.from({ length: 7 }, (_, index) => <mesh key={index} position={[-2.15 + index * .72, .082, z]}><boxGeometry args={[.46, .018, .16]} /><meshBasicMaterial color="#eeeadd" /></mesh>)}</group>)}
+    {towers.map((building, index) => {
+      const side = index % 2 === 0 ? -1 : 1;
+      const slot = Math.floor(index / 2);
+      const target = { x: side * (6.15 + (index % 3) * .18), z: -19.2 + slot * 4.8 };
+      const center = buildingCenter(building);
+      return <group key={building.id}>
+        <mesh castShadow receiveShadow position={[side * 5.75, 1.35, target.z]}><boxGeometry args={[3.35, 2.7, 4.55]} /><meshStandardMaterial color={index % 3 === 0 ? "#77736d" : index % 3 === 1 ? "#918a80" : "#686c6c"} roughness={.8} metalness={.08} /></mesh>
+        <group position={[target.x - center.x, 0, target.z - center.z]} scale={[.78, 1, .78]}><OsmBuilding building={building} sceneClass="atlantic" detailed /></group>
+      </group>;
+    })}
+  </group>;
+}
+
 function OsmNeighborhood({ data, sceneClass }: { data: Neighborhood; sceneClass: string }) {
   const detailed = data.detailLevel === "nyc-official";
+  if (detailed) return <NewYorkNeighborhood data={data} />;
   return (
     <group>
       {data.roads.map((road) => {
@@ -448,7 +493,7 @@ function CityScene({ activeNpcIndex, cityName, neighborhood, npcNames, npcPositi
         <planeGeometry args={[44, 48]} />
         <meshStandardMaterial color="#70756e" roughness={.96} />
       </mesh>
-      {neighborhood ? <DetailedNeighborhood data={neighborhood} sceneClass={sceneClass} /> : <FallbackStreet />}
+      <group onClick={moveOnGround}>{neighborhood ? <DetailedNeighborhood data={neighborhood} sceneClass={sceneClass} /> : <FallbackStreet />}</group>
       {cityName !== "New York" && <>
         {[-11, -3, 6, 13].map((z, index) => <Model key={`tree-left-${z}`} url={`${MODEL_ROOT}/${index % 2 ? "tree-small" : "tree-large"}.glb`} position={[-5.5, 0, z]} scale={1.7} />)}
         {[-8, 1, 9].map((z, index) => <Model key={`tree-right-${z}`} url={`${MODEL_ROOT}/${index % 2 ? "tree-large" : "tree-small"}.glb`} position={[5.5, 0, z]} scale={1.6} />)}
@@ -462,7 +507,7 @@ function CityScene({ activeNpcIndex, cityName, neighborhood, npcNames, npcPositi
       {npcPositions.map((point, index) => (
         <Person key={npcNames[index]} active={index === activeNpcIndex} model={["animated-woman.glb", "business.glb", "punk-woman.glb"][index]} name={npcNames[index]} onClick={() => onSelectNpc(index)} position={toWorld(point)} />
       ))}
-      <Person player model="casual.glb" position={playerWorld} />
+      <Person key={`player-${cityName}`} player model="casual.glb" position={playerWorld} />
       <FollowCamera playerPosition={playerPosition} />
     </>
   );
@@ -513,8 +558,8 @@ export default function World3D(props: World3DProps) {
       <Canvas shadows camera={{ fov: 52, near: .1, far: 90, position: [0, 5, 12] }} dpr={[1, 1.5]} gl={{ antialias: true, powerPreference: "high-performance" }}>
         <Suspense fallback={null}><CityScene {...props} neighborhood={neighborhood} /></Suspense>
       </Canvas>
-      <button className={`osm-world-status ${mapStatus}`} onClick={refreshMap} disabled={mapStatus === "loading" || mapStatus === "refreshing"} title="Load the newest map data from OpenStreetMap">
-        <span />{mapStatus === "live" ? "Live OSM district" : mapStatus === "bundled" ? "Downloaded OSM district · refresh" : mapStatus === "loading" ? "Loading city area…" : mapStatus === "refreshing" ? "Refreshing map…" : "Designed fallback district"}
+      <button className={`osm-world-status ${mapStatus}`} onClick={props.cityId === "new-york" ? undefined : refreshMap} disabled={props.cityId === "new-york" || mapStatus === "loading" || mapStatus === "refreshing"} title={props.cityId === "new-york" ? "Official NYC building footprints and roof heights" : "Load the newest map data from OpenStreetMap"}>
+        <span />{props.cityId === "new-york" && mapStatus === "bundled" ? "NYC official digital street" : mapStatus === "live" ? "Live OSM district" : mapStatus === "bundled" ? "Downloaded OSM district · refresh" : mapStatus === "loading" ? "Loading city area…" : mapStatus === "refreshing" ? "Refreshing map…" : "Designed fallback district"}
       </button>
       <a className="osm-attribution" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap contributors</a>
       <div className="world3d-loading">Loading city…</div>

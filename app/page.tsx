@@ -132,7 +132,7 @@ const CITIES: City[] = [
     greeting: "Hey! Welcome to New York. What brings you to the city?", translation: "A friendly local welcome.",
     prompts: ["What do you recommend nearby?", "How do I get to the subway?", "What do locals do on weekends?"],
     demoText: "You’re doing great. There’s a brilliant little place around the corner—what kind of experience are you looking for?", demoTranslation: "The local understood you and asked a follow-up question.",
-    scenes: localScenes(["Brooklyn deli", "Subway platform", "Central Park"], ["Maya", "Theo", "Jordan"], ["👩🏽", "👨🏿", "🧑🏻"]),
+    scenes: localScenes(["Times Square deli", "42 St subway", "Bryant Park"], ["Maya", "Theo", "Jordan"], ["👩🏽", "👨🏿", "🧑🏻"]),
   },
   {
     id: "beijing", name: "Beijing", country: "China", language: "Mandarin Chinese", nativeLanguage: "普通话", locale: "zh-CN", flag: "🇨🇳",
@@ -406,7 +406,9 @@ export default function Home() {
   const cityCenter = CITY_CENTERS[city.name] ?? [90 - city.mapY * 1.8, city.mapX * 3.6 - 180];
   const streetViewUrl = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${encodeURIComponent(`${cityCenter[0].toFixed(4)},${cityCenter[1].toFixed(4)}`)}`;
   const activeNpcIndex = Math.max(0, city.scenes.findIndex((item) => item.id === scene.id));
-  const npcPositions = [{ x: 24, y: 67 }, { x: 61, y: 60 }, { x: 79, y: 73 }];
+  const npcPositions = city.id === "new-york"
+    ? [{ x: 62, y: 66 }, { x: 38, y: 59 }, { x: 62, y: 54 }]
+    : [{ x: 24, y: 67 }, { x: 61, y: 60 }, { x: 79, y: 73 }];
   const activeNpcPosition = npcPositions[activeNpcIndex];
   const nearCharacter = Math.hypot((playerPosition.x - activeNpcPosition.x) / 3.1, (playerPosition.y - activeNpcPosition.y) / 2.2) < 3.4;
   const lastNpcMessage = [...messages].reverse().find((message) => message.role === "npc");
@@ -484,14 +486,16 @@ export default function Home() {
       const direction = movement[event.key];
       if (!direction) return;
       event.preventDefault();
+      const minX = city.id === "new-york" ? 38 : 10;
+      const maxX = city.id === "new-york" ? 62 : 90;
       setPlayerPosition((current) => ({
-        x: Math.min(90, Math.max(10, current.x + direction[0])),
+        x: Math.min(maxX, Math.max(minX, current.x + direction[0])),
         y: Math.min(88, Math.max(54, current.y + direction[1])),
       }));
     }
     window.addEventListener("keydown", handleMovement);
     return () => window.removeEventListener("keydown", handleMovement);
-  }, []);
+  }, [city.id]);
 
   function speak(text: string) {
     if (!autoSpeak || !("speechSynthesis" in window)) return;
@@ -774,14 +778,22 @@ export default function Home() {
     setSceneId(nextCity.scenes[0].id);
     setGlobeAutoSpin(false);
     setGlobeLongitude(nextCity.mapX * 3.6 - 180);
-    setPlayerPosition({ x: 31, y: 73 });
+    setPlayerPosition(nextCity.id === "new-york" ? { x: 50, y: 82 } : { x: 31, y: 73 });
   }
 
   function movePlayer(dx: number, dy: number) {
+    const minX = city.id === "new-york" ? 38 : 10;
+    const maxX = city.id === "new-york" ? 62 : 90;
     setPlayerPosition((current) => ({
-      x: Math.min(90, Math.max(10, current.x + dx)),
+      x: Math.min(maxX, Math.max(minX, current.x + dx)),
       y: Math.min(88, Math.max(54, current.y + dy)),
     }));
+  }
+
+  function movePlayerTo(point: { x: number; y: number }) {
+    const minX = city.id === "new-york" ? 38 : 10;
+    const maxX = city.id === "new-york" ? 62 : 90;
+    setPlayerPosition({ x: Math.min(maxX, Math.max(minX, point.x)), y: Math.min(88, Math.max(54, point.y)) });
   }
 
   function globePoint(item: City) {
@@ -962,7 +974,7 @@ export default function Home() {
                 cityName={city.name}
                 npcNames={city.scenes.map((person) => person.character)}
                 npcPositions={npcPositions}
-                onMoveTo={setPlayerPosition}
+                onMoveTo={movePlayerTo}
                 onSelectNpc={(index) => setSceneId(city.scenes[index].id)}
                 playerPosition={playerPosition}
                 sceneClass={city.sceneClass}
