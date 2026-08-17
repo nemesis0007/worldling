@@ -1412,3 +1412,139 @@ footer strong { color: #b9b6a9; }
     to { opacity: 1; transform: translateY(0); }
   }
 }
+
+/* Worldling 08 — street-first game layer */
+.mission-steps { display: flex; gap: 4px; margin-top: 7px; }
+.mission-steps i {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid rgba(245,238,220,.16);
+  border-radius: 50%;
+  color: rgba(245,238,220,.42);
+  background: rgba(245,238,220,.04);
+  font: 800 6px/1 var(--font-sans),sans-serif;
+  font-style: normal;
+}
+.mission-steps i.done { border-color: var(--yellow); color: #17140d; background: var(--yellow); }
+.game-status kbd { margin-left: 3px; opacity: .55; font: inherit; }
+
+.street-intro {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  padding: 30px;
+  color: #f5eedc;
+  text-align: center;
+  background: radial-gradient(circle at center,rgba(31,44,36,.7),rgba(7,9,7,.94));
+  animation: streetIntro 2.6s ease both;
+  pointer-events: none;
+}
+.street-intro > span { color: var(--yellow); font-size: 8px; font-weight: 850; letter-spacing: .16em; text-transform: uppercase; }
+.street-intro h3 { margin: 12px 0 8px; font: 400 clamp(70px,11vw,154px)/.75 var(--font-display),serif; letter-spacing: -.06em; }
+.street-intro p { margin: 10px 0 28px; color: #b9b6aa; font-size: 13px; }
+.street-intro div { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 13px; color: #8f9188; font-size: 7px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.street-intro kbd, .pause-panel kbd { border: 1px solid rgba(245,238,220,.2); border-radius: 5px; padding: 4px 6px; color: #f5eedc; background: rgba(245,238,220,.08); box-shadow: inset 0 -1px rgba(0,0,0,.35); font: inherit; }
+@keyframes streetIntro {
+  0% { opacity: 0; }
+  12%,72% { opacity: 1; }
+  100% { opacity: 0; visibility: hidden; }
+}
+
+.phrasebook-panel {
+  position: absolute;
+  z-index: 70;
+  top: 50%;
+  left: 50%;
+  translate: -50% -50%;
+  width: min(620px,calc(100% - 36px));
+  border-radius: 18px;
+  padding: 22px;
+  background: rgba(12,15,12,.92);
+}
+.overlay-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.overlay-head small { color: var(--yellow); font-size: 6px; font-weight: 850; letter-spacing: .15em; }
+.overlay-head h3 { margin: 8px 0 0; font: 400 38px/.9 var(--font-display),serif; letter-spacing: -.04em; }
+.overlay-head > button { width: 32px; height: 32px; border: 1px solid rgba(245,238,220,.12); border-radius: 8px; color: var(--ink); background: rgba(245,238,220,.06); cursor: pointer; }
+.phrasebook-panel > p { margin: 14px 0 18px; color: #93958c; font-size: 9px; line-height: 1.6; }
+.phrasebook-list { display: grid; gap: 7px; }
+.phrasebook-list article { display: grid; grid-template-columns: 28px minmax(0,1fr) auto; align-items: center; gap: 10px; border: 1px solid rgba(245,238,220,.1); border-radius: 11px; padding: 12px; background: rgba(245,238,220,.035); }
+.phrasebook-list article > span { display: grid; place-items: center; width: 25px; height: 25px; border-radius: 50%; color: #17140d; background: var(--yellow); font-size: 6px; font-weight: 900; }
+.phrasebook-list article > strong { font-size: 11px; font-weight: 650; line-height: 1.4; }
+.phrasebook-list article > div { display: flex; gap: 5px; }
+.phrasebook-list button { border: 1px solid rgba(245,238,220,.12); border-radius: 7px; padding: 8px 9px; color: #bfc0b8; background: rgba(245,238,220,.05); font-size: 6px; font-weight: 800; cursor: pointer; }
+.phrasebook-list button:last-child { border-color: var(--yellow); color: #17140d; background: var(--yellow); }
+.overlay-shortcut { display: block; margin-top: 14px; color: #70736c; font-size: 6px; text-align: center; text-transform: uppercase; letter-spacing: .12em; }
+
+.pause-panel {
+  position: absolute;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(5,7,6,.7);
+  backdrop-filter: blur(10px);
+}
+.pause-panel > section { display: grid; width: min(390px,100%); border-radius: 18px; padding: 25px; background: rgba(13,16,13,.95); }
+.pause-panel small { color: var(--yellow); font-size: 6px; font-weight: 850; letter-spacing: .15em; }
+.pause-panel h3 { margin: 10px 0 7px; font: 400 46px/.88 var(--font-display),serif; letter-spacing: -.045em; }
+.pause-panel p { margin: 0 0 20px; color: #92948b; font-size: 9px; line-height: 1.55; }
+.pause-panel button { min-height: 42px; margin-top: 6px; border: 1px solid rgba(245,238,220,.12); border-radius: 8px; color: #d4d1c5; background: rgba(245,238,220,.045); font-size: 8px; font-weight: 800; cursor: pointer; }
+.pause-panel button.primary { border-color: var(--yellow); color: #17140d; background: var(--yellow); box-shadow: 3px 3px 0 var(--coral); }
+.pause-panel button.danger { color: #ff9a86; }
+.pause-panel > section > span { margin-top: 18px; color: #70736c; font-size: 6px; text-align: center; text-transform: uppercase; letter-spacing: .1em; }
+
+.journey-section.focus-mode {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  width: 100%;
+  height: 100dvh;
+  padding: 0;
+  border: 0;
+  background: #070907;
+}
+.focus-mode .journey-shell { width: 100%; height: 100%; max-width: none; }
+.focus-mode .scene-heading, .focus-mode .scene-tabs { display: none; }
+.focus-mode .play-world { width: 100%; height: 100dvh; min-height: 100dvh; border: 0; border-radius: 0; box-shadow: none; }
+.focus-mode .game-mission { top: 18px; left: 18px; }
+.focus-mode .game-status { top: 18px; right: 18px; }
+.focus-mode .voice-hud { bottom: 18px; }
+.focus-mode .movement-pad { bottom: 20px; }
+.focus-mode .game-minimap { bottom: 18px; }
+
+.virtual-joystick { position: absolute; z-index: 27; left: 16px; bottom: 190px; display: none; touch-action: none; user-select: none; }
+.virtual-joystick.disabled { opacity: .35; pointer-events: none; }
+.virtual-joystick-base { position: relative; width: 82px; height: 82px; border: 1px solid rgba(245,238,220,.22); border-radius: 50%; background: rgba(10,13,11,.62); box-shadow: inset 0 0 0 8px rgba(245,238,220,.025),0 12px 30px rgba(0,0,0,.24); backdrop-filter: blur(12px); }
+.virtual-joystick-knob { position: absolute; top: 50%; left: 50%; width: 38px; height: 38px; transform: translate(-50%,-50%); border: 1px solid rgba(23,20,13,.7); border-radius: 50%; background: var(--yellow); box-shadow: 3px 3px 0 var(--coral); }
+
+@media (max-width: 900px) {
+  .game-status > a { display: none; }
+  .game-status > button { padding-inline: 7px; }
+  .game-status > button:nth-last-child(2) { display: none; }
+  .phrasebook-list article { grid-template-columns: 25px minmax(0,1fr); }
+  .phrasebook-list article > div { grid-column: 2; }
+}
+
+@media (max-width: 580px) {
+  .focus-mode .game-mission { top: 10px; left: 10px; right: 10px; }
+  .focus-mode .game-status { top: 102px; left: 10px; right: auto; max-width: calc(100% - 20px); overflow-x: auto; }
+  .focus-mode .osm-world-status { top: 148px; }
+  .game-status .model-chip { display: none; }
+  .game-status > button { white-space: nowrap; }
+  .phrasebook-panel { width: calc(100% - 20px); padding: 16px; }
+  .overlay-head h3 { font-size: 32px; }
+  .phrasebook-list article > strong { font-size: 9px; }
+  .street-intro h3 { font-size: 68px; }
+}
+
+@media (pointer: coarse) {
+  .movement-pad { display: none; }
+  .virtual-joystick { display: block; }
+}

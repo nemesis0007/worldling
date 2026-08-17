@@ -1,58 +1,166 @@
 # Worldling
 
-Worldling is a voice-first language travel game prototype. Players choose a city and local scene, talk freely with an AI character, and finish with a level-aware conversation score.
+Worldling is a voice-first language travel game. Choose a city, walk through a small 3D district, meet a local character, complete an everyday conversation mission, and receive practical feedback on how clearly you communicated.
 
-## What works
+**Live build:** [worldling-voice-lab.niraj-khumkar24.chatgpt.site](https://worldling-voice-lab.niraj-khumkar24.chatgpt.site/)
 
-- Bengaluru, Tokyo, and Paris destination packs
-- Three local scenes and characters per city
-- Browser speech recognition and speech synthesis with typed fallback
-- Beginner, intermediate, and advanced modes
-- Open-ended NPC conversations
-- End-of-conversation evaluation with evidence-based feedback
-- Demo, local-model, and hosted-API provider modes
-- Automatic demo fallback when a configured model is unavailable
-- Persistent traveller XP, coins, passport stamps, scene quests, and character affinity
+## Why Worldling
 
-## Run locally
+Most people do not need to master an entire language before a trip. They need enough confidence to greet someone, order food, ask for directions, confirm a detail, and recover when a conversation goes off script. Worldling turns those moments into short playable missions.
+
+## Current experience
+
+- 12 destinations covering the world's ten most spoken languages plus Marathi and Kannada
+- Walkable Three.js districts generated from cached OpenStreetMap geometry
+- Three local characters and conversation scenes per city
+- Browser speech recognition, browser speech synthesis, and typed fallback
+- Open-ended NPC conversations with recent-turn memory
+- Beginner, intermediate, and advanced difficulty
+- Transparent end-of-conversation grading and rewards
+- Local Ollama, hosted API, and offline demo providers
+- Local Whisper/phoneme or Azure pronunciation assessment
+- Persistent XP, coins, passport stamps, mission progress, and character affinity
+- Street focus mode, sprinting, pause menu, phrasebook, transcript, radar, keyboard controls, and touch joystick
+
+## Quick start
+
+Requirements: Node.js 22.13 or newer.
 
 ```bash
 npm install
 npm run dev
 ```
 
-The demo provider works without configuration.
+Open the local URL printed by the development server. Demo mode needs no keys, account, or model download.
 
-## Local model with Ollama
+Useful checks:
 
-Open **Engine → Local model** in the game, enter the Ollama address and an installed model, then use **Test Ollama connection**. The browser calls Ollama's native `/api/tags` and `/api/chat` endpoints directly; prompts and responses do not pass through the Worldling deployment.
+```bash
+npm run build
+npm test
+npm run lint
+```
 
-The default address is `http://127.0.0.1:11434`. Download a multilingual model before connecting, for example:
+## Controls
+
+| Input | Action |
+| --- | --- |
+| `W` `A` `S` `D` or arrow keys | Walk |
+| `Shift` + movement | Run |
+| Click/tap the ground | Move to a point |
+| `E` near a character | Focus the conversation input |
+| `P` | Open or close pocket phrases |
+| `F` | Enter or leave street focus mode |
+| `Esc` | Pause, resume, or close the current overlay |
+| Touch joystick | Move on phones and tablets |
+
+## AI providers
+
+### Demo
+
+The default deterministic provider keeps the complete game loop playable without external services. It is intentionally simple and clearly labelled.
+
+### Ollama on your device
+
+Install a multilingual model, for example:
 
 ```bash
 ollama pull qwen3:8b
 ```
 
-When using the hosted Worldling URL, add that exact site origin to Ollama's `OLLAMA_ORIGINS` configuration and restart Ollama. Running Worldling locally is simpler because Ollama allows loopback web origins by default.
+Start Ollama, open **AI & voice settings**, select **Local model**, enter `http://127.0.0.1:11434`, and test the connection. The browser talks directly to Ollama's `/api/tags` and `/api/chat` endpoints.
 
-The server-side OpenAI-compatible route remains available for local development. Copy `.env.example` to `.env.local`, then configure:
+When the hosted site calls a local Ollama instance, allow the Worldling origin through `OLLAMA_ORIGINS`. Running both Worldling and Ollama locally usually needs no extra origin configuration.
 
-```env
-LOCAL_AI_BASE_URL=http://127.0.0.1:11434/v1
-LOCAL_AI_MODEL=qwen3:8b
-```
+### Hosted API
 
-## Hosted API
-
-Configure the key on the server, never in the browser:
+Copy `.env.example` to `.env.local` and configure server-side values:
 
 ```env
-OPENAI_API_KEY=your_server_side_key
+OPENAI_API_KEY=
 OPENAI_MODEL=gpt-5.6-luna
 ```
 
-The API route uses the Responses API for hosted requests and an OpenAI-compatible chat-completions contract for local models.
+Keys stay on the server. The client receives only the NPC response or evaluation result.
 
-## Agent design
+## Pronunciation assessment
 
-The prototype separates four responsibilities: world state, NPC conversation, provider routing, and evaluation. The model may respond in character, but deterministic application code owns city selection, level, scene goal, transcript, fallback behavior, and score presentation.
+Worldling separates conversation success from acoustic pronunciation. Conversation grading judges whether a player communicated; pronunciation mode evaluates a known recorded phrase.
+
+- **Local:** run the service in `local-pronunciation/` for Whisper intelligibility and optional phoneme scoring.
+- **Azure:** configure `AZURE_SPEECH_KEY` and `AZURE_SPEECH_REGION` for Azure Speech pronunciation assessment.
+
+See [local-pronunciation/README.md](local-pronunciation/README.md) for installation details.
+
+## How the world is built
+
+The browser loads a cached district from `public/city-data/`. Road paths and building footprints come from OpenStreetMap. Building outlines are projected into local coordinates and extruded in Three.js; explicit height or level metadata is used when available. A richer OSM2World conversion is attempted when its runtime and textures are available, with a lightweight local renderer as the fallback.
+
+New York additionally uses official NYC building footprints and roof heights. Its current playable street is an authored composition using those real shapes, not a survey-accurate digital twin.
+
+Read [docs/CITY-PIPELINE.md](docs/CITY-PIPELINE.md) for the data flow, refresh commands, limitations, and licensing boundaries.
+
+## Architecture
+
+```text
+Browser
+  ├─ React game shell and local progression
+  ├─ React Three Fiber district renderer
+  ├─ Web Speech transcription / playback
+  └─ Direct Ollama connection (optional)
+          │
+          ├─ /api/agent ───────── hosted conversation and grading
+          ├─ /api/osm ─────────── live OpenStreetMap refresh
+          └─ /api/pronunciation ─ Azure acoustic assessment
+```
+
+Application code owns world state, proximity, movement, goals, rewards, fallbacks, and UI. Language models are limited to in-character conversation and transcript-based evaluation.
+
+More detail: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+## Project layout
+
+```text
+app/
+  page.tsx                 Game shell, dialogue, progression, overlays
+  World3D.tsx              Three.js district, characters, camera, map rendering
+  VirtualJoystick.tsx      Touch movement control
+  api/agent/               Provider-routed conversation and evaluation
+  api/osm/                 OpenStreetMap district refresh
+  api/pronunciation/       Azure pronunciation provider
+public/
+  city-data/               Cached playable map districts
+  models/                  Licensed GLB characters and city props
+local-pronunciation/       Optional local acoustic scoring service
+scripts/                   City data preparation tools
+tests/                     Rendered deployment checks
+```
+
+## Design provenance and permissions
+
+Worldling's street-first interaction model is informed by [Sadak](https://github.com/mittal-parth/sadak), created by Parth Mittal and contributors. On 17 August 2026, Parth Mittal explicitly granted permission in the Worldling development session to use and adapt Sadak's original code. Adapted source is identified in code comments where applicable. Third-party assets remain governed by their original licenses.
+
+Worldling currently uses:
+
+- Kenney City Kit assets — CC0
+- Quaternius character assets — see `public/models/quaternius/LICENSE.txt`
+- OpenStreetMap data — © OpenStreetMap contributors, ODbL
+- NYC Open Data building footprints where noted
+
+See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for details.
+
+## Known limitations
+
+- City quality depends on map coverage around the selected coordinates.
+- The browser's built-in speech recognition support varies by browser and language.
+- Browser speech synthesis voices vary by operating system.
+- Most landmarks are stylised approximations rather than production models.
+- Progress is device-local in the current prototype.
+- This is not Google Street View, photogrammetry, or a survey-accurate city twin.
+
+## Documentation
+
+- [Architecture](docs/ARCHITECTURE.md)
+- [City data pipeline](docs/CITY-PIPELINE.md)
+- [Contribution guide](CONTRIBUTING.md)
+- [Third-party notices](THIRD_PARTY_NOTICES.md)

@@ -21,5 +21,8 @@ test("server-renders the Worldling experience", async () => {
   assert.match(html, /The world is/);
   assert.match(html, /Demo brain/);
   assert.match(html, /Bengaluru/);
+  assert.match(html, /Phrases/);
+  assert.match(html, /Full screen/);
+  assert.match(html, /MISSION/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/i);
 });

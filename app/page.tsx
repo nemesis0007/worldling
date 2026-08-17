@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, PointerEvent as ReactPointerEvent, Suspense, WheelEvent as ReactWheelEvent, lazy, useEffect, useMemo, useRef, useState } from "react";
+import VirtualJoystick from "./VirtualJoystick";
 
 const World3D = lazy(() => import("./World3D"));
 
@@ -106,6 +107,23 @@ type PronunciationResult = {
 };
 
 type WavCapture = { stop: () => Promise<Blob> };
+
+type BrowserSpeechRecognition = {
+  lang: string;
+  interimResults: boolean;
+  continuous: boolean;
+  onstart: (() => void) | null;
+  onend: (() => void) | null;
+  onerror: (() => void) | null;
+  onresult: ((event: { results?: ArrayLike<{ 0?: { transcript?: string } }> }) => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+
+type SpeechRecognitionWindow = Window & {
+  SpeechRecognition?: new () => BrowserSpeechRecognition;
+  webkitSpeechRecognition?: new () => BrowserSpeechRecognition;
+};
 
 const questGoals = [
   "Greet a local, introduce yourself, and ask one natural follow-up question.",
@@ -382,6 +400,10 @@ export default function Home() {
   const [globeAutoSpin, setGlobeAutoSpin] = useState(true);
   const [playerPosition, setPlayerPosition] = useState({ x: 31, y: 73 });
   const [showTranscript, setShowTranscript] = useState(false);
+  const [focusMode, setFocusMode] = useState(false);
+  const [showPhrasebook, setShowPhrasebook] = useState(false);
+  const [showPause, setShowPause] = useState(false);
+  const [showStreetIntro, setShowStreetIntro] = useState(false);
   const [showPronunciation, setShowPronunciation] = useState(false);
   const [pronunciationProvider, setPronunciationProvider] = useState<PronunciationProvider>("local");
   const [pronunciationPrompt, setPronunciationPrompt] = useState(0);
@@ -396,6 +418,7 @@ export default function Home() {
   const globeDragRef = useRef<{ x: number; longitude: number } | null>(null);
   const pronunciationCaptureRef = useRef<WavCapture | null>(null);
   const pronunciationTimerRef = useRef<number | null>(null);
+  const worldInputRef = useRef<HTMLInputElement | null>(null);
 
   const city = useMemo(() => CITIES.find((item) => item.id === cityId) ?? CITIES[0], [cityId]);
   const scene = useMemo(() => city.scenes.find((item) => item.id === sceneId) ?? city.scenes[0], [city, sceneId]);
@@ -475,13 +498,59 @@ export default function Home() {
   }, [globeAutoSpin, globeDragging]);
 
   useEffect(() => {
+    if (!focusMode) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    setShowStreetIntro(true);
+    const timer = window.setTimeout(() => setShowStreetIntro(false), 2600);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.clearTimeout(timer);
+    };
+  }, [focusMode, city.id]);
+
+  useEffect(() => {
+    function handleGameShortcuts(event: KeyboardEvent) {
+      if ((event.target as HTMLElement).closest("input, textarea")) return;
+      if (event.key === "p" || event.key === "P") {
+        if (!focusMode) return;
+        event.preventDefault();
+        setShowPhrasebook((current) => !current);
+        setShowPause(false);
+        return;
+      }
+      if (event.key === "f" || event.key === "F") {
+        event.preventDefault();
+        setFocusMode((current) => !current);
+        setShowPause(false);
+        setShowPhrasebook(false);
+        return;
+      }
+      if (event.key === "Escape" && focusMode) {
+        event.preventDefault();
+        if (showPhrasebook) setShowPhrasebook(false);
+        else setShowPause((current) => !current);
+        return;
+      }
+      if ((event.key === "e" || event.key === "E") && focusMode && nearCharacter) {
+        event.preventDefault();
+        worldInputRef.current?.focus();
+      }
+    }
+    window.addEventListener("keydown", handleGameShortcuts);
+    return () => window.removeEventListener("keydown", handleGameShortcuts);
+  }, [focusMode, nearCharacter, showPhrasebook]);
+
+  useEffect(() => {
     function handleMovement(event: KeyboardEvent) {
       if ((event.target as HTMLElement).closest("input, textarea, button")) return;
+      if (showPause || showPhrasebook || showEngine || showPronunciation) return;
+      const speed = event.shiftKey ? 6 : 3;
       const movement: Record<string, [number, number]> = {
-        ArrowUp: [0, -3], w: [0, -3], W: [0, -3],
-        ArrowDown: [0, 3], s: [0, 3], S: [0, 3],
-        ArrowLeft: [-3, 0], a: [-3, 0], A: [-3, 0],
-        ArrowRight: [3, 0], d: [3, 0], D: [3, 0],
+        ArrowUp: [0, -speed], w: [0, -speed], W: [0, -speed],
+        ArrowDown: [0, speed], s: [0, speed], S: [0, speed],
+        ArrowLeft: [-speed, 0], a: [-speed, 0], A: [-speed, 0],
+        ArrowRight: [speed, 0], d: [speed, 0], D: [speed, 0],
       };
       const direction = movement[event.key];
       if (!direction) return;
@@ -495,7 +564,7 @@ export default function Home() {
     }
     window.addEventListener("keydown", handleMovement);
     return () => window.removeEventListener("keydown", handleMovement);
-  }, [city.id]);
+  }, [city.id, showEngine, showPause, showPhrasebook, showPronunciation]);
 
   function speak(text: string) {
     if (!autoSpeak || !("speechSynthesis" in window)) return;
@@ -636,8 +705,8 @@ export default function Home() {
   }
 
   function startListening() {
-    const SpeechRecognition = (window as unknown as { SpeechRecognition?: new () => any; webkitSpeechRecognition?: new () => any }).SpeechRecognition
-      ?? (window as unknown as { webkitSpeechRecognition?: new () => any }).webkitSpeechRecognition;
+    const speechWindow = window as SpeechRecognitionWindow;
+    const SpeechRecognition = speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition;
     if (!SpeechRecognition) {
       setEngineNote("Voice recognition is not available in this browser · type your reply below");
       return;
@@ -653,7 +722,7 @@ export default function Home() {
       setListening(false);
       setEngineNote("I couldn’t hear that clearly · try again or type your reply");
     };
-    recognition.onresult = (event: any) => {
+    recognition.onresult = (event) => {
       const transcript = event.results?.[0]?.[0]?.transcript ?? "";
       setInput(transcript);
       void submitText(transcript, true);
@@ -779,6 +848,20 @@ export default function Home() {
     setGlobeAutoSpin(false);
     setGlobeLongitude(nextCity.mapX * 3.6 - 180);
     setPlayerPosition(nextCity.id === "new-york" ? { x: 50, y: 82 } : { x: 31, y: 73 });
+  }
+
+  function enterStreet() {
+    setFocusMode(true);
+    setShowPause(false);
+    setShowPhrasebook(false);
+    document.getElementById("journey")?.scrollIntoView({ behavior: "smooth" });
+  }
+
+  function leaveStreet() {
+    setFocusMode(false);
+    setShowPause(false);
+    setShowPhrasebook(false);
+    document.getElementById("world")?.scrollIntoView({ behavior: "smooth" });
   }
 
   function movePlayer(dx: number, dy: number) {
@@ -922,7 +1005,7 @@ export default function Home() {
           <div className="hero-city-card">
             <span>{city.flag}</span>
             <div><small>NOW EXPLORING</small><strong>{city.name}</strong><p>{city.language} · {level}</p></div>
-            <button onClick={() => document.getElementById("journey")?.scrollIntoView({ behavior: "smooth" })}>Drop into {city.name} ↓</button>
+            <button onClick={enterStreet}>Drop into {city.name} ↓</button>
           </div>
         </div>
 
@@ -946,7 +1029,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className={`journey-section scene-${city.sceneClass}`} id="journey">
+      <section className={`journey-section scene-${city.sceneClass} ${focusMode ? "focus-mode" : ""}`} id="journey">
         <div className="journey-shell">
           <div className="scene-heading">
             <div>
@@ -988,17 +1071,68 @@ export default function Home() {
               />
             </Suspense>
 
+            {focusMode && showStreetIntro && (
+              <div className="street-intro" aria-live="polite">
+                <span>{city.flag} {city.country}</span>
+                <h3>{city.name}</h3>
+                <p>Walk the street. Meet a local. Complete the conversation.</p>
+                <div><kbd>WASD</kbd> move <kbd>SHIFT</kbd> run <kbd>P</kbd> phrases <kbd>ESC</kbd> pause</div>
+              </div>
+            )}
+
             <div className="game-mission glass-card">
               <span className="mission-icon">{completedQuests === 3 ? "✓" : "◎"}</span>
-              <div><small>MISSION · {completedQuests}/3</small><strong>{scene.goal}</strong></div>
+              <div>
+                <small>MISSION · {completedQuests}/3</small>
+                <strong>{scene.goal}</strong>
+                <span className="mission-steps" aria-label={`${completedQuests} of 3 mission steps complete`}>
+                  {questProgress.map((done, index) => <i key={index} className={done ? "done" : ""}>{done ? "✓" : index + 1}</i>)}
+                </span>
+              </div>
             </div>
 
             <div className="game-status glass-card">
-              <span className={`model-chip ${provider}`}>{provider === "local" ? `${ollamaModel} · local` : providerLabels[provider]}</span>
+              <span className={`model-chip ${provider}`} title={engineNote}>{provider === "local" ? `${ollamaModel} · local` : providerLabels[provider]}</span>
               <a href={streetViewUrl} target="_blank" rel="noreferrer">Real streets ↗</a>
-              <button onClick={() => setShowTranscript((current) => !current)}>{showTranscript ? "Close transcript" : "Transcript"}</button>
-              <button onClick={() => setShowEngine(true)}>AI settings</button>
+              <button onClick={() => setShowPhrasebook(true)} aria-label="Open phrasebook">Phrases <kbd>P</kbd></button>
+              <button onClick={() => setShowTranscript((current) => !current)}>{showTranscript ? "Close log" : "Log"}</button>
+              <button onClick={() => setAutoSpeak((current) => !current)} aria-label={autoSpeak ? "Mute character voice" : "Enable character voice"}>{autoSpeak ? "Sound on" : "Muted"}</button>
+              <button onClick={() => setFocusMode((current) => !current)} aria-label={focusMode ? "Exit focus mode" : "Enter focus mode"}>{focusMode ? "Exit full" : "Full screen"}</button>
+              <button onClick={() => setShowPause(true)} aria-label="Open game menu">Menu</button>
             </div>
+
+            {showPhrasebook && (
+              <aside className="phrasebook-panel glass-card" role="dialog" aria-modal="true" aria-labelledby="phrasebook-title">
+                <div className="overlay-head"><div><small>POCKET PHRASES · {city.language.toUpperCase()}</small><h3 id="phrasebook-title">Say something useful.</h3></div><button onClick={() => setShowPhrasebook(false)} aria-label="Close phrasebook">×</button></div>
+                <p>Listen first, then place a phrase directly into the conversation bar.</p>
+                <div className="phrasebook-list">
+                  {city.prompts.map((prompt, index) => (
+                    <article key={prompt}>
+                      <span>0{index + 1}</span>
+                      <strong>{prompt}</strong>
+                      <div><button onClick={() => speak(prompt)}>Listen</button><button onClick={() => { setInput(prompt); setShowPhrasebook(false); window.setTimeout(() => worldInputRef.current?.focus(), 0); }}>Use phrase</button></div>
+                    </article>
+                  ))}
+                </div>
+                <small className="overlay-shortcut">Press P to close</small>
+              </aside>
+            )}
+
+            {showPause && (
+              <div className="pause-panel" role="dialog" aria-modal="true" aria-labelledby="pause-title">
+                <section className="glass-card">
+                  <small>WORLDLING · {city.name.toUpperCase()}</small>
+                  <h3 id="pause-title">Street paused.</h3>
+                  <p>Your conversation and mission progress stay on this device.</p>
+                  <button className="primary" onClick={() => setShowPause(false)}>Resume street</button>
+                  <button onClick={() => { setShowPause(false); setShowPhrasebook(true); }}>Open phrasebook</button>
+                  <button onClick={() => setAutoSpeak((current) => !current)}>{autoSpeak ? "Mute character voice" : "Enable character voice"}</button>
+                  <button onClick={() => { setShowPause(false); setShowEngine(true); }}>AI & voice settings</button>
+                  <button className="danger" onClick={leaveStreet}>Return to world map</button>
+                  <span><kbd>ESC</kbd> resume</span>
+                </section>
+              </div>
+            )}
 
             {(nearCharacter || thinking) && (
               <div className="world-dialogue glass-card" aria-live="polite">
@@ -1016,6 +1150,11 @@ export default function Home() {
               <button onClick={() => movePlayer(5, 0)} aria-label="Move right">→</button>
               <small>WASD</small>
             </div>
+
+            <VirtualJoystick
+              disabled={showPause || showPhrasebook || showEngine || showPronunciation}
+              onMove={(x, y) => movePlayer(x * 1.15, y * 1.15)}
+            />
 
             <div className="game-minimap glass-card" aria-label="Street radar">
               <i className="radar-road horizontal" /><i className="radar-road vertical" />
@@ -1041,7 +1180,7 @@ export default function Home() {
             <div className={`voice-hud glass-card ${nearCharacter ? "engaged" : "roaming"}`}>
               <div className="voice-context">
                 <span>{scene.avatar}</span>
-                <div><small>{nearCharacter ? `TALKING TO ${scene.character.toUpperCase()}` : "EXPLORE THE SCENE"}</small><strong>{nearCharacter ? `Speak naturally in ${city.language}` : "Use WASD or the arrows to move"}</strong></div>
+                <div><small>{nearCharacter ? `TALKING TO ${scene.character.toUpperCase()} · BOND ${affinity}%` : "EXPLORE THE SCENE"}</small><strong>{nearCharacter ? `Speak naturally in ${city.language}` : "Use WASD or the arrows to move"}</strong></div>
               </div>
               <form onSubmit={handleSubmit}>
                 <button
@@ -1054,7 +1193,7 @@ export default function Home() {
                   <span>●</span>{listening ? "Listening" : "Tap to speak"}
                 </button>
                 <div className="world-text-entry">
-                  <input value={input} disabled={!nearCharacter || thinking} onChange={(event) => setInput(event.target.value)} placeholder={nearCharacter ? "Or type what you want to say…" : `Walk closer to ${scene.character}`} />
+                  <input ref={worldInputRef} value={input} disabled={!nearCharacter || thinking} onChange={(event) => setInput(event.target.value)} placeholder={nearCharacter ? "Or type what you want to say…" : `Walk closer to ${scene.character}`} />
                   <button type="submit" disabled={!nearCharacter || !input.trim() || thinking}>↑</button>
                 </div>
               </form>

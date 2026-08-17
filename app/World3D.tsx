@@ -90,7 +90,7 @@ function Person({ active = false, model, name, onClick, player = false, position
   const character = useMemo(() => cloneSkeleton(source.scene) as THREE.Group, [source.scene]);
   const mixer = useMemo(() => new THREE.AnimationMixer(character), [character]);
   const destination = useMemo(() => new THREE.Vector3(...position), [position]);
-  const initialPosition = useRef(new THREE.Vector3(...position));
+  const [initialPosition] = useState(() => new THREE.Vector3(...position));
   const activeAction = useRef<THREE.AnimationAction | null>(null);
   const activeClipName = useRef("");
   const idleClip = useMemo(() => source.animations.find((animation) => /idle/i.test(animation.name)) ?? source.animations[0], [source.animations]);
@@ -131,7 +131,7 @@ function Person({ active = false, model, name, onClick, player = false, position
   });
 
   return (
-    <group ref={group} position={initialPosition.current} onClick={(event) => { event.stopPropagation(); onClick?.(); }}>
+    <group ref={group} position={initialPosition} onClick={(event) => { event.stopPropagation(); onClick?.(); }}>
       <primitive object={character} scale={.92} rotation={[0, Math.PI, 0]} />
       {active && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, .035, 0]}>
@@ -318,6 +318,7 @@ function DetailedNeighborhood({ data, sceneClass }: { data: Neighborhood; sceneC
   useEffect(() => {
     if (!data.osm) return;
     let cancelled = false;
+    let generatedModel: THREE.Group | null = null;
     const textureLoader = new THREE.TextureLoader();
     const moduleUrl = "https://osm2world.org/build/web/0.5.0-SNAPSHOT_2026-02-18/osm2world-core-web.mjs";
 
@@ -365,6 +366,7 @@ function DetailedNeighborhood({ data, sceneClass }: { data: Neighborhood; sceneC
           const scale = .052;
           group.scale.setScalar(scale);
           group.position.set(-center.x * scale, -bounds.min.y * scale, -center.z * scale);
+          generatedModel = group;
           setCityModel(group);
         }, () => undefined);
       }, () => undefined);
@@ -372,8 +374,8 @@ function DetailedNeighborhood({ data, sceneClass }: { data: Neighborhood; sceneC
 
     return () => {
       cancelled = true;
-      if (cityModel) {
-        cityModel.traverse((object) => {
+      if (generatedModel) {
+        generatedModel.traverse((object) => {
           if (!(object instanceof THREE.Mesh)) return;
           object.geometry.dispose();
           const material = object.material as THREE.MeshStandardMaterial;
