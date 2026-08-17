@@ -20,7 +20,8 @@ Most people do not need to master an entire language before a trip. They need en
 - Local Ollama, hosted API, and offline demo providers
 - Local Whisper/phoneme or Azure pronunciation assessment
 - Persistent XP, coins, passport stamps, mission progress, and character affinity
-- Street focus mode, sprinting, pause menu, phrasebook, transcript, radar, keyboard controls, and touch joystick
+- Sadak-style district selector and full-screen street HUD
+- Sprinting, pause menu, phrasebook, transcript, radar, keyboard controls, and touch joystick
 
 ## Quick start
 
@@ -50,7 +51,6 @@ npm run lint
 | Click/tap the ground | Move to a point |
 | `E` near a character | Focus the conversation input |
 | `P` | Open or close pocket phrases |
-| `F` | Enter or leave street focus mode |
 | `Esc` | Pause, resume, or close the current overlay |
 | Touch joystick | Move on phones and tablets |
 
@@ -96,6 +96,8 @@ See [local-pronunciation/README.md](local-pronunciation/README.md) for installat
 
 The browser loads a cached district from `public/city-data/`. Road paths and building footprints come from OpenStreetMap. Building outlines are projected into local coordinates and extruded in Three.js; explicit height or level metadata is used when available. A richer OSM2World conversion is attempted when its runtime and textures are available, with a lightweight local renderer as the fallback.
 
+The playable street then adds a Sadak-derived human-scale facade layer: recessed windows, shop bays, floor ledges, balconies, awnings, signboards, and rooftop tanks. Those details are merged into four geometries per building to keep the scene efficient while the OSM shapes provide the surrounding city mass.
+
 New York additionally uses official NYC building footprints and roof heights. Its current playable street is an authored composition using those real shapes, not a survey-accurate digital twin.
 
 Read [docs/CITY-PIPELINE.md](docs/CITY-PIPELINE.md) for the data flow, refresh commands, limitations, and licensing boundaries.
@@ -124,6 +126,7 @@ More detail: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 app/
   page.tsx                 Game shell, dialogue, progression, overlays
   World3D.tsx              Three.js district, characters, camera, map rendering
+  SadakStreetBuilding.tsx  Merged street-facing building geometry
   VirtualJoystick.tsx      Touch movement control
   api/agent/               Provider-routed conversation and evaluation
   api/osm/                 OpenStreetMap district refresh
@@ -138,7 +141,7 @@ tests/                     Rendered deployment checks
 
 ## Design provenance and permissions
 
-Worldling's street-first interaction model is informed by [Sadak](https://github.com/mittal-parth/sadak), created by Parth Mittal and contributors. On 17 August 2026, Parth Mittal explicitly granted permission in the Worldling development session to use and adapt Sadak's original code. Adapted source is identified in code comments where applicable. Third-party assets remain governed by their original licenses.
+Worldling's district selector, street HUD, interaction framing, virtual joystick, and street-building geometry are adapted from [Sadak](https://github.com/mittal-parth/sadak), created by Parth Mittal and contributors. On 17 August 2026, Parth Mittal explicitly granted permission in the Worldling development session to use and adapt Sadak's original code. Adapted source is identified in code comments where applicable. Third-party assets remain governed by their original licenses.
 
 Worldling currently uses:
 

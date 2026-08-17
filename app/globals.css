@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
 :root {
+  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display: Georgia, "Times New Roman", serif;
   --ink: #edf7f2;
   --deep: #07110f;
   --forest: #43d69a;
@@ -1547,4 +1549,387 @@ footer strong { color: #b9b6a9; }
 @media (pointer: coarse) {
   .movement-pad { display: none; }
   .virtual-joystick { display: block; }
+}
+
+/* Worldling 09 — full Sadak replacement shell.
+   The earlier marketing/globe interface is intentionally removed from the
+   rendered experience. The game now opens as a district-first street game. */
+.sadak-replace {
+  --sadak-paper: #fffdf1;
+  --sadak-cream: #f7efcb;
+  --sadak-main: #f4c430;
+  --sadak-green: #58cc02;
+  --sadak-blue: #45a8f5;
+  --sadak-red: #ef5b4c;
+  --sadak-ink: #12120f;
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100dvh;
+  overflow: hidden;
+  color: var(--sadak-ink);
+  background: #111;
+}
+.sadak-replace > .topbar,
+.sadak-replace > .world-panel,
+.sadak-replace > footer { display: none !important; }
+.sadak-replace .journey-section,
+.sadak-replace .journey-section.focus-mode {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: #111;
+}
+.sadak-replace .journey-shell { width: 100%; height: 100%; max-width: none; }
+.sadak-replace .scene-heading,
+.sadak-replace .scene-tabs { display: none; }
+.sadak-replace .play-world {
+  width: 100%;
+  height: 100dvh;
+  min-height: 100dvh;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.sadak-replace .play-world::before {
+  z-index: 2;
+  background: linear-gradient(180deg,rgba(0,0,0,.24),transparent 24%,transparent 58%,rgba(0,0,0,.38));
+  pointer-events: none;
+}
+.sadak-replace .glass-card {
+  border: 2px solid var(--sadak-ink);
+  border-radius: 6px;
+  color: var(--sadak-ink);
+  background: var(--sadak-paper);
+  box-shadow: 4px 4px 0 var(--sadak-ink);
+  backdrop-filter: none;
+}
+.sadak-replace button,
+.sadak-replace a { font-family: var(--font-sans),system-ui,sans-serif; }
+
+.sadak-brand-hud {
+  position: absolute;
+  z-index: 34;
+  top: 18px;
+  left: 18px;
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  gap: 8px 14px;
+  min-width: 252px;
+  border: 2px solid var(--sadak-ink);
+  border-radius: 6px;
+  padding: 10px 12px;
+  color: var(--sadak-ink);
+  background: var(--sadak-paper);
+  box-shadow: 4px 4px 0 var(--sadak-ink);
+}
+.sadak-wordmark {
+  grid-column: 1/-1;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(18,18,15,.22);
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: .12em;
+}
+.sadak-wordmark b {
+  display: grid;
+  place-items: center;
+  width: 25px;
+  height: 25px;
+  border: 2px solid var(--sadak-ink);
+  border-radius: 4px;
+  color: var(--sadak-ink);
+  background: var(--sadak-main);
+  box-shadow: 2px 2px 0 var(--sadak-ink);
+}
+.sadak-brand-hud > div strong { display: block; font-size: 15px; line-height: 1.1; }
+.sadak-brand-hud > div small { display: block; margin-top: 3px; color: #625f52; font-size: 8px; font-weight: 700; }
+.sadak-brand-hud > button {
+  border: 1.5px solid var(--sadak-ink);
+  border-radius: 4px;
+  padding: 8px 9px;
+  color: var(--sadak-ink);
+  background: var(--sadak-main);
+  box-shadow: 2px 2px 0 var(--sadak-ink);
+  font-size: 7px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.sadak-replace .game-mission,
+.sadak-replace .focus-mode .game-mission {
+  top: 148px;
+  left: 18px;
+  width: 252px;
+  border-left: 2px solid var(--sadak-ink);
+  padding: 11px;
+}
+.sadak-replace .game-mission .mission-icon {
+  border: 2px solid var(--sadak-ink);
+  border-radius: 4px;
+  color: var(--sadak-ink);
+  background: var(--sadak-main);
+}
+.sadak-replace .game-mission small { color: #6b6552; font-size: 7px; letter-spacing: .12em; }
+.sadak-replace .game-mission strong { color: var(--sadak-ink); font-size: 11px; }
+.sadak-replace .mission-steps i {
+  border: 1.5px solid var(--sadak-ink);
+  border-radius: 4px;
+  color: #777163;
+  background: #fff;
+}
+.sadak-replace .mission-steps i.done { color: var(--sadak-ink); background: var(--sadak-green); }
+
+.sadak-replace .game-status,
+.sadak-replace .focus-mode .game-status {
+  top: 18px;
+  right: 18px;
+  gap: 5px;
+  border: 2px solid var(--sadak-ink);
+  padding: 6px;
+}
+.sadak-replace .game-status .model-chip,
+.sadak-replace .game-status > button,
+.sadak-replace .game-status > a {
+  min-height: 32px;
+  border: 1.5px solid var(--sadak-ink);
+  border-radius: 4px;
+  padding: 8px 10px;
+  color: var(--sadak-ink);
+  background: #fff;
+  font-size: 7px;
+  font-weight: 850;
+}
+.sadak-replace .game-status .model-chip { display: inline-flex; align-items: center; background: var(--sadak-main); }
+.sadak-replace .game-status > button:hover,
+.sadak-replace .game-status > a:hover { translate: 1px 1px; background: var(--sadak-cream); }
+.sadak-replace .game-status kbd { color: inherit; opacity: .65; }
+.sadak-replace .osm-world-status { top: 220px; left: 18px; border: 2px solid var(--sadak-ink); color: var(--sadak-ink); background: var(--sadak-blue); box-shadow: 3px 3px 0 var(--sadak-ink); }
+
+.sadak-replace .world-dialogue {
+  top: auto;
+  bottom: 180px;
+  width: min(630px,calc(100% - 430px));
+  border-left: 2px solid var(--sadak-ink);
+  padding: 10px 13px;
+}
+.sadak-replace .world-dialogue > span { border: 2px solid var(--sadak-ink); border-radius: 4px; background: var(--sadak-main); }
+.sadak-replace .world-dialogue small { color: #706956; font-weight: 900; }
+.sadak-replace .world-dialogue p { color: var(--sadak-ink); font-weight: 650; }
+.sadak-replace .approach-hint { bottom: 182px; border: 2px solid var(--sadak-ink); color: var(--sadak-ink); background: var(--sadak-main); box-shadow: 3px 3px 0 var(--sadak-ink); }
+
+.sadak-replace .voice-hud,
+.sadak-replace .voice-hud.roaming,
+.sadak-replace .focus-mode .voice-hud {
+  left: 50%;
+  right: auto;
+  bottom: 18px;
+  translate: -50% 0;
+  width: min(720px,calc(100% - 420px));
+  border: 2px solid var(--sadak-ink);
+  border-radius: 6px;
+  padding: 9px;
+  color: var(--sadak-ink);
+  background: var(--sadak-paper);
+  box-shadow: 5px 5px 0 var(--sadak-ink);
+}
+.sadak-replace .voice-context > span { border: 2px solid var(--sadak-ink); border-radius: 4px; background: var(--sadak-main); }
+.sadak-replace .voice-context small { color: #6b6552; }
+.sadak-replace .voice-context strong { color: var(--sadak-ink); }
+.sadak-replace .world-mic {
+  border: 2px solid var(--sadak-ink);
+  border-radius: 4px;
+  color: var(--sadak-ink);
+  background: var(--sadak-main);
+  box-shadow: 2px 2px 0 var(--sadak-ink);
+}
+.sadak-replace .world-mic.listening { color: #fff; background: var(--sadak-red); }
+.sadak-replace .world-text-entry { border: 2px solid var(--sadak-ink); border-radius: 4px; background: #fff; }
+.sadak-replace .world-text-entry input { color: var(--sadak-ink); }
+.sadak-replace .world-text-entry button { border: 1px solid var(--sadak-ink); border-radius: 3px; color: var(--sadak-ink); background: var(--sadak-green); }
+.sadak-replace .voice-actions button,
+.sadak-replace .suggestion-strip button {
+  border: 1.5px solid var(--sadak-ink);
+  border-radius: 4px;
+  color: var(--sadak-ink);
+  background: #fff;
+}
+.sadak-replace .voice-actions button:last-child { background: var(--sadak-green); }
+.sadak-replace .suggestion-strip button:hover { color: var(--sadak-ink); background: var(--sadak-cream); }
+
+.sadak-replace .movement-pad,
+.sadak-replace .focus-mode .movement-pad {
+  left: 18px;
+  bottom: 18px;
+  border: 2px solid var(--sadak-ink);
+  padding: 6px;
+}
+.sadak-replace .movement-pad button { border: 1.5px solid var(--sadak-ink); border-radius: 3px; color: var(--sadak-ink); background: #fff; }
+.sadak-replace .movement-pad small { color: #5d584d; }
+.sadak-replace .game-minimap,
+.sadak-replace .focus-mode .game-minimap {
+  right: 18px;
+  bottom: 18px;
+  width: 144px;
+  height: 144px;
+  border: 3px solid var(--sadak-ink);
+  border-radius: 50%;
+  padding: 0;
+  overflow: hidden;
+  background: #202831;
+  box-shadow: 4px 4px 0 var(--sadak-ink);
+}
+.sadak-replace .game-minimap::after { inset: 15%; border-radius: 50%; border-color: rgba(255,255,255,.2); }
+.sadak-replace .game-minimap small { color: #fff; background: #111; }
+
+.sadak-replace .phrasebook-panel,
+.sadak-replace .pause-panel > section {
+  border: 2px solid var(--sadak-ink);
+  border-radius: 7px;
+  color: var(--sadak-ink);
+  background: var(--sadak-paper);
+  box-shadow: 6px 6px 0 var(--sadak-ink);
+}
+.sadak-replace .pause-panel { background: rgba(17,17,14,.68); backdrop-filter: blur(8px); }
+.sadak-replace .overlay-head small,
+.sadak-replace .pause-panel small { color: #6a624c; }
+.sadak-replace .overlay-head h3,
+.sadak-replace .pause-panel h3 { color: var(--sadak-ink); font-family: var(--font-sans),system-ui,sans-serif; font-weight: 950; letter-spacing: -.05em; }
+.sadak-replace .phrasebook-panel > p,
+.sadak-replace .pause-panel p { color: #665f50; }
+.sadak-replace .overlay-head > button,
+.sadak-replace .pause-panel button,
+.sadak-replace .phrasebook-list button { border: 1.5px solid var(--sadak-ink); border-radius: 4px; color: var(--sadak-ink); background: #fff; }
+.sadak-replace .phrasebook-list article { border: 1.5px solid var(--sadak-ink); border-radius: 4px; background: #fff; }
+.sadak-replace .phrasebook-list article > span,
+.sadak-replace .phrasebook-list button:last-child,
+.sadak-replace .pause-panel button.primary { color: var(--sadak-ink); background: var(--sadak-main); box-shadow: 2px 2px 0 var(--sadak-ink); }
+
+.sadak-world-picker {
+  position: absolute;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: linear-gradient(115deg,rgba(24,25,20,.88),rgba(24,25,20,.58));
+  backdrop-filter: blur(10px) saturate(.78);
+  overflow: auto;
+}
+.sadak-world-picker > section {
+  width: min(1120px,100%);
+  max-height: calc(100dvh - 48px);
+  border: 3px solid var(--sadak-ink);
+  border-radius: 8px;
+  padding: 22px;
+  color: var(--sadak-ink);
+  background: var(--sadak-cream);
+  box-shadow: 10px 10px 0 var(--sadak-ink);
+  overflow: auto;
+}
+.sadak-world-picker header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.sadak-title-lockup { display: flex; align-items: center; gap: 12px; }
+.sadak-title-lockup > span { display: grid; place-items: center; width: 48px; height: 48px; border: 3px solid var(--sadak-ink); border-radius: 6px; background: var(--sadak-main); box-shadow: 3px 3px 0 var(--sadak-ink); font-size: 23px; font-weight: 950; }
+.sadak-title-lockup strong { display: block; font-size: 18px; letter-spacing: .13em; }
+.sadak-title-lockup small { display: block; margin-top: 2px; color: #655f50; font-size: 7px; font-weight: 800; letter-spacing: .15em; }
+.sadak-world-picker header > button { display: flex; align-items: center; gap: 7px; border: 2px solid var(--sadak-ink); border-radius: 4px; padding: 10px 12px; color: var(--sadak-ink); background: #fff; box-shadow: 3px 3px 0 var(--sadak-ink); font-size: 8px; font-weight: 900; cursor: pointer; }
+.sadak-picker-heading { margin: 32px 0 16px; }
+.sadak-picker-heading > span { color: #7a6d3b; font-size: 8px; font-weight: 950; letter-spacing: .16em; }
+.sadak-picker-heading h1 { margin: 5px 0 8px; color: var(--sadak-ink); font: 950 clamp(42px,5vw,68px)/.92 var(--font-sans),system-ui,sans-serif; letter-spacing: -.065em; }
+.sadak-picker-heading p { margin: 0; max-width: 600px; color: #5e584c; font-size: 11px; line-height: 1.5; }
+.sadak-level-row { display: flex; width: fit-content; margin-bottom: 18px; border: 2px solid var(--sadak-ink); border-radius: 5px; padding: 3px; background: #fff; box-shadow: 3px 3px 0 var(--sadak-ink); }
+.sadak-level-row button { border: 0; border-radius: 3px; padding: 9px 13px; color: #5c574c; background: transparent; font-size: 8px; font-weight: 850; cursor: pointer; }
+.sadak-level-row button.active { color: var(--sadak-ink); background: var(--sadak-main); }
+.sadak-district-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 12px; }
+.sadak-district-grid > button {
+  position: relative;
+  display: grid;
+  grid-template-columns: 72px minmax(0,1fr) 24px;
+  align-items: center;
+  gap: 11px;
+  min-height: 92px;
+  border: 2px solid var(--sadak-ink);
+  border-radius: 5px;
+  padding: 9px;
+  color: var(--sadak-ink);
+  text-align: left;
+  background: var(--sadak-paper);
+  box-shadow: 4px 4px 0 var(--sadak-ink);
+  cursor: pointer;
+  transition: translate .12s,box-shadow .12s;
+}
+.sadak-district-grid > button:hover { translate: 2px 2px; box-shadow: 2px 2px 0 var(--sadak-ink); }
+.sadak-district-grid > button.active { background: var(--sadak-main); }
+.district-cover { position: relative; display: grid; place-items: center; width: 72px; height: 72px; border: 2px solid var(--sadak-ink); border-radius: 4px; overflow: hidden; background: linear-gradient(145deg,#94b9c5,#466b73); }
+.district-cover::before { content: ""; position: absolute; inset: 38% -12% -18%; background: linear-gradient(145deg,#dfb86f,#855943); clip-path: polygon(0 34%,25% 5%,43% 31%,64% 0,100% 28%,100% 100%,0 100%); }
+.district-cover.cover-india { background: linear-gradient(145deg,#f1b45e,#b85a43); }
+.district-cover.cover-desert { background: linear-gradient(145deg,#e6bf75,#9e6745); }
+.district-cover.cover-east { background: linear-gradient(145deg,#9ec2cb,#536b75); }
+.district-cover.cover-tropical { background: linear-gradient(145deg,#81b9a9,#cd7f58); }
+.district-cover b { position: absolute; top: 4px; left: 5px; z-index: 1; color: rgba(255,255,255,.75); font-size: 7px; }
+.district-cover i { position: relative; z-index: 2; font-size: 28px; font-style: normal; filter: drop-shadow(2px 2px 0 rgba(0,0,0,.25)); }
+.district-copy { min-width: 0; }
+.district-copy small { display: block; color: #706956; font-size: 6px; font-weight: 900; letter-spacing: .12em; }
+.district-copy strong { display: block; margin: 3px 0; overflow: hidden; font-size: 13px; line-height: 1.05; text-overflow: ellipsis; white-space: nowrap; }
+.district-copy em { display: block; color: #655f52; font-size: 7px; font-style: normal; }
+.district-progress { display: grid; place-items: center; width: 23px; height: 23px; border: 1.5px solid var(--sadak-ink); border-radius: 50%; background: #fff; font-size: 9px; font-weight: 950; }
+.sadak-world-picker footer { display: grid; grid-template-columns: auto minmax(120px,1fr) auto; align-items: center; gap: 14px; min-height: 0; margin-top: 20px; border: 0; padding: 0; color: #5f594c; background: transparent; font-size: 7px; font-weight: 900; letter-spacing: .08em; }
+.sadak-world-picker footer i { display: block; height: 9px; border: 2px solid var(--sadak-ink); border-radius: 99px; background: #fff; overflow: hidden; }
+.sadak-world-picker footer i b { display: block; height: 100%; background: var(--sadak-green); }
+
+@media (max-width: 1040px) {
+  .sadak-district-grid { grid-template-columns: repeat(3,minmax(0,1fr)); }
+  .sadak-replace .game-status > a,
+  .sadak-replace .game-status > button:nth-of-type(3) { display: none; }
+  .sadak-replace .voice-hud,
+  .sadak-replace .voice-hud.roaming { width: min(620px,calc(100% - 360px)); }
+}
+
+@media (max-width: 760px) {
+  .sadak-world-picker { padding: 10px; place-items: start center; }
+  .sadak-world-picker > section { max-height: calc(100dvh - 20px); padding: 14px; box-shadow: 6px 6px 0 var(--sadak-ink); }
+  .sadak-picker-heading { margin-top: 24px; }
+  .sadak-picker-heading h1 { font-size: 44px; }
+  .sadak-district-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 9px; }
+  .sadak-district-grid > button { grid-template-columns: 58px minmax(0,1fr); min-height: 76px; }
+  .district-cover { width: 58px; height: 58px; }
+  .district-progress { display: none; }
+  .sadak-world-picker footer { grid-template-columns: 1fr; }
+  .sadak-world-picker footer small { display: none; }
+  .sadak-brand-hud { top: 10px; left: 10px; min-width: 205px; padding: 8px; }
+  .sadak-wordmark { padding-bottom: 5px; }
+  .sadak-brand-hud > div strong { font-size: 12px; }
+  .sadak-replace .game-mission,
+  .sadak-replace .focus-mode .game-mission { top: 124px; left: 10px; right: auto; width: 205px; }
+  .sadak-replace .game-status,
+  .sadak-replace .focus-mode .game-status { top: 10px; right: 10px; left: auto; max-width: calc(100% - 235px); overflow-x: auto; }
+  .sadak-replace .game-status .model-chip,
+  .sadak-replace .game-status > a { display: none; }
+  .sadak-replace .osm-world-status { top: 206px; left: 10px; }
+  .sadak-replace .game-minimap,
+  .sadak-replace .focus-mode .game-minimap { right: 10px; bottom: 182px; width: 96px; height: 96px; }
+  .sadak-replace .voice-hud,
+  .sadak-replace .voice-hud.roaming,
+  .sadak-replace .focus-mode .voice-hud { left: 10px; right: 10px; bottom: 10px; translate: 0; width: auto; }
+  .sadak-replace .world-dialogue { bottom: 182px; width: calc(100% - 130px); }
+  .sadak-replace .approach-hint { bottom: 182px; }
+}
+
+@media (max-width: 470px) {
+  .sadak-title-lockup > span { width: 39px; height: 39px; }
+  .sadak-title-lockup strong { font-size: 13px; }
+  .sadak-world-picker header > button { max-width: 128px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sadak-district-grid { grid-template-columns: 1fr; }
+  .sadak-level-row { width: 100%; }
+  .sadak-level-row button { flex: 1; padding-inline: 5px; }
+  .sadak-replace .game-status > button:not(:last-child) { display: none; }
+  .sadak-replace .game-status { max-width: 72px; }
 }

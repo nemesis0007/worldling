@@ -1,18 +1,6 @@
 import type { Metadata } from "next";
-import { Instrument_Serif, Manrope } from "next/font/google";
 import { headers } from "next/headers";
 import "./globals.css";
-
-const display = Instrument_Serif({
-  variable: "--font-display",
-  subsets: ["latin"],
-  weight: "400",
-});
-
-const sans = Manrope({
-  variable: "--font-sans",
-  subsets: ["latin"],
-});
 
 export async function generateMetadata(): Promise<Metadata> {
   const incoming = await headers();
@@ -44,7 +32,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body className={`${display.variable} ${sans.variable}`}>{children}</body>
+      <body>{children}</body>
     </html>
   );
 }

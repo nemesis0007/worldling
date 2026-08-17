@@ -22,7 +22,9 @@ test("server-renders the Worldling experience", async () => {
   assert.match(html, /Demo brain/);
   assert.match(html, /Bengaluru/);
   assert.match(html, /Phrases/);
-  assert.match(html, /Full screen/);
   assert.match(html, /MISSION/);
+  assert.match(html, /Choose a district/);
+  assert.match(html, /YOUR NEXT ERRAND/);
+  assert.doesNotMatch(html, /A living language game|Interactive spinning globe/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/i);
 });

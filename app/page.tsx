@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, PointerEvent as ReactPointerEvent, Suspense, WheelEvent as ReactWheelEvent, lazy, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import VirtualJoystick from "./VirtualJoystick";
 
 const World3D = lazy(() => import("./World3D"));
@@ -394,13 +394,9 @@ export default function Home() {
   const [questProgress, setQuestProgress] = useState([false, false, false]);
   const [reward, setReward] = useState<Reward | null>(null);
   const [rewarded, setRewarded] = useState(false);
-  const [globeLongitude, setGlobeLongitude] = useState(78);
-  const [globeScale, setGlobeScale] = useState(1);
-  const [globeDragging, setGlobeDragging] = useState(false);
-  const [globeAutoSpin, setGlobeAutoSpin] = useState(true);
   const [playerPosition, setPlayerPosition] = useState({ x: 31, y: 73 });
   const [showTranscript, setShowTranscript] = useState(false);
-  const [focusMode, setFocusMode] = useState(false);
+  const [showWorldPicker, setShowWorldPicker] = useState(true);
   const [showPhrasebook, setShowPhrasebook] = useState(false);
   const [showPause, setShowPause] = useState(false);
   const [showPronunciation, setShowPronunciation] = useState(false);
@@ -414,7 +410,6 @@ export default function Home() {
   const [hydrated, setHydrated] = useState(false);
   const recognitionRef = useRef<{ start: () => void; stop: () => void } | null>(null);
   const messageId = useRef(1);
-  const globeDragRef = useRef<{ x: number; longitude: number } | null>(null);
   const pronunciationCaptureRef = useRef<WavCapture | null>(null);
   const pronunciationTimerRef = useRef<number | null>(null);
   const worldInputRef = useRef<HTMLInputElement | null>(null);
@@ -422,8 +417,6 @@ export default function Home() {
   const city = useMemo(() => CITIES.find((item) => item.id === cityId) ?? CITIES[0], [cityId]);
   const scene = useMemo(() => city.scenes.find((item) => item.id === sceneId) ?? city.scenes[0], [city, sceneId]);
   const userTurns = messages.filter((message) => message.role === "user").length;
-  const playerLevel = Math.floor(xp / 100) + 1;
-  const levelProgress = xp % 100;
   const completedQuests = questProgress.filter(Boolean).length;
   const cityCenter = CITY_CENTERS[city.name] ?? [90 - city.mapY * 1.8, city.mapX * 3.6 - 180];
   const streetViewUrl = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${encodeURIComponent(`${cityCenter[0].toFixed(4)},${cityCenter[1].toFixed(4)}`)}`;
@@ -489,58 +482,41 @@ export default function Home() {
   }, [hydrated, pronunciationProvider, localPronunciationEndpoint]);
 
   useEffect(() => {
-    if (!globeAutoSpin || globeDragging || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const timer = window.setInterval(() => {
-      setGlobeLongitude((current) => ((current + .32 + 180) % 360) - 180);
-    }, 40);
-    return () => window.clearInterval(timer);
-  }, [globeAutoSpin, globeDragging]);
-
-  useEffect(() => {
-    if (!focusMode) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = previousOverflow;
     };
-  }, [focusMode]);
+  }, []);
 
   useEffect(() => {
     function handleGameShortcuts(event: KeyboardEvent) {
       if ((event.target as HTMLElement).closest("input, textarea")) return;
       if (event.key === "p" || event.key === "P") {
-        if (!focusMode) return;
         event.preventDefault();
         setShowPhrasebook((current) => !current);
         setShowPause(false);
         return;
       }
-      if (event.key === "f" || event.key === "F") {
-        event.preventDefault();
-        setFocusMode((current) => !current);
-        setShowPause(false);
-        setShowPhrasebook(false);
-        return;
-      }
-      if (event.key === "Escape" && focusMode) {
+      if (event.key === "Escape") {
         event.preventDefault();
         if (showPhrasebook) setShowPhrasebook(false);
         else setShowPause((current) => !current);
         return;
       }
-      if ((event.key === "e" || event.key === "E") && focusMode && nearCharacter) {
+      if ((event.key === "e" || event.key === "E") && nearCharacter) {
         event.preventDefault();
         worldInputRef.current?.focus();
       }
     }
     window.addEventListener("keydown", handleGameShortcuts);
     return () => window.removeEventListener("keydown", handleGameShortcuts);
-  }, [focusMode, nearCharacter, showPhrasebook]);
+  }, [nearCharacter, showPhrasebook]);
 
   useEffect(() => {
     function handleMovement(event: KeyboardEvent) {
       if ((event.target as HTMLElement).closest("input, textarea, button")) return;
-      if (showPause || showPhrasebook || showEngine || showPronunciation) return;
+      if (showPause || showPhrasebook || showWorldPicker || showEngine || showPronunciation) return;
       const speed = event.shiftKey ? 6 : 3;
       const movement: Record<string, [number, number]> = {
         ArrowUp: [0, -speed], w: [0, -speed], W: [0, -speed],
@@ -560,7 +536,7 @@ export default function Home() {
     }
     window.addEventListener("keydown", handleMovement);
     return () => window.removeEventListener("keydown", handleMovement);
-  }, [city.id, showEngine, showPause, showPhrasebook, showPronunciation]);
+  }, [city.id, showEngine, showPause, showPhrasebook, showPronunciation, showWorldPicker]);
 
   function speak(text: string) {
     if (!autoSpeak || !("speechSynthesis" in window)) return;
@@ -841,23 +817,14 @@ export default function Home() {
   function chooseCity(nextCity: City) {
     setCityId(nextCity.id);
     setSceneId(nextCity.scenes[0].id);
-    setGlobeAutoSpin(false);
-    setGlobeLongitude(nextCity.mapX * 3.6 - 180);
     setPlayerPosition(nextCity.id === "new-york" ? { x: 50, y: 82 } : { x: 31, y: 73 });
-  }
-
-  function enterStreet() {
-    setFocusMode(true);
-    setShowPause(false);
-    setShowPhrasebook(false);
-    document.getElementById("journey")?.scrollIntoView({ behavior: "smooth" });
+    setShowWorldPicker(false);
   }
 
   function leaveStreet() {
-    setFocusMode(false);
     setShowPause(false);
     setShowPhrasebook(false);
-    document.getElementById("world")?.scrollIntoView({ behavior: "smooth" });
+    setShowWorldPicker(true);
   }
 
   function movePlayer(dx: number, dy: number) {
@@ -875,181 +842,10 @@ export default function Home() {
     setPlayerPosition({ x: Math.min(maxX, Math.max(minX, point.x)), y: Math.min(88, Math.max(54, point.y)) });
   }
 
-  function globePoint(item: City) {
-    const longitude = item.mapX * 3.6 - 180;
-    const latitude = 90 - item.mapY * 1.8;
-    const delta = (longitude - globeLongitude) * Math.PI / 180;
-    const latitudeRadians = latitude * Math.PI / 180;
-    const depth = Math.cos(latitudeRadians) * Math.cos(delta);
-    return {
-      x: 50 + 46 * Math.cos(latitudeRadians) * Math.sin(delta),
-      y: 50 - 46 * Math.sin(latitudeRadians),
-      depth,
-      visible: depth > .04,
-    };
-  }
-
-  function changeGlobeScale(delta: number) {
-    setGlobeScale((current) => Math.min(1.3, Math.max(.84, Number((current + delta).toFixed(2)))));
-  }
-
-  function handleGlobeWheel(event: ReactWheelEvent<HTMLDivElement>) {
-    event.preventDefault();
-    changeGlobeScale(event.deltaY < 0 ? .08 : -.08);
-  }
-
-  function handleGlobePointerDown(event: ReactPointerEvent<HTMLDivElement>) {
-    if ((event.target as HTMLElement).closest("button")) return;
-    event.currentTarget.setPointerCapture(event.pointerId);
-    globeDragRef.current = { x: event.clientX, longitude: globeLongitude };
-    setGlobeDragging(true);
-    setGlobeAutoSpin(false);
-  }
-
-  function handleGlobePointerMove(event: ReactPointerEvent<HTMLDivElement>) {
-    const origin = globeDragRef.current;
-    if (!origin) return;
-    const next = origin.longitude - (event.clientX - origin.x) * .75;
-    setGlobeLongitude(((next + 180) % 360 + 360) % 360 - 180);
-  }
-
-  function stopGlobeDrag() {
-    globeDragRef.current = null;
-    setGlobeDragging(false);
-  }
-
   return (
-    <main className="app-shell">
-      <header className="topbar">
-        <a className="brand" href="#world" aria-label="Worldling home">
-          <span className="brand-mark">W</span>
-          <span>WORLDLING</span>
-          <small>WALK · MEET · SPEAK</small>
-        </a>
-        <div className="top-actions">
-          <div className="player-hud" aria-label={`Player level ${playerLevel}, ${levelProgress} percent to next level, ${coins} travel coins`}>
-            <span className="level-medal">{playerLevel}</span>
-            <div><small>TRAVELLER LEVEL {playerLevel}</small><i><b style={{ width: `${levelProgress}%` }} /></i></div>
-            <strong>◈ {coins}</strong>
-          </div>
-          <div className="level-control" aria-label="Difficulty level">
-            {(["Beginner", "Intermediate", "Advanced"] as Level[]).map((option) => (
-              <button key={option} className={level === option ? "active" : ""} onClick={() => setLevel(option)}>{option}</button>
-            ))}
-          </div>
-          <button className="engine-button" onClick={() => setShowEngine(true)}>
-            <span className={`status-dot ${provider} ${provider === "local" ? localStatus : ""}`} />
-            {providerLabels[provider]}
-            <span aria-hidden="true">⌄</span>
-          </button>
-        </div>
-      </header>
-
-      <section className="world-panel" id="world">
-        <div className="hero-copy">
-          <div className="section-kicker"><span>01</span> A living language game</div>
-          <h1>The world is waiting to talk.</h1>
-          <p className="intro">Drop into a real place, walk up to someone local and learn the language inside the moment.</p>
-          <div className="hero-loop" aria-label="How Worldling works">
-            <span><b>01</b> Pick a street</span>
-            <span><b>02</b> Meet a local</span>
-            <span><b>03</b> Speak to progress</span>
-          </div>
-        </div>
-
-        <div className="hero-globe-wrap">
-          <div
-            className={`world-map globe-viewport ${globeDragging ? "dragging" : ""}`}
-            aria-label="Interactive spinning globe with available destinations"
-            onWheel={handleGlobeWheel}
-            onPointerDown={handleGlobePointerDown}
-            onPointerMove={handleGlobePointerMove}
-            onPointerUp={stopGlobeDrag}
-            onPointerCancel={stopGlobeDrag}
-          >
-            <div className="globe-orbit globe-orbit-one" />
-            <div className="globe-orbit globe-orbit-two" />
-            <div className="globe-shell" style={{ transform: `scale(${globeScale})` }}>
-              <div className="globe-surface" style={{ backgroundPosition: `${50 + globeLongitude / 1.8}% center` }} />
-              <div className="globe-grid" />
-              <div className="globe-shade" />
-              {CITIES.map((item) => {
-                const point = globePoint(item);
-                return (
-                  <button
-                    key={item.id}
-                    className={`map-pin globe-pin ${item.id === city.id ? "selected" : ""} ${point.visible ? "" : "backside"}`}
-                    style={{ left: `${point.x}%`, top: `${point.y}%`, opacity: point.visible ? Math.max(.38, point.depth) : 0 }}
-                    onClick={() => chooseCity(item)}
-                    tabIndex={point.visible ? 0 : -1}
-                    aria-label={`Visit ${item.name} to practise ${item.language}`}
-                  >
-                    <span>{item.flag}</span>
-                    <strong>{item.name}</strong>
-                  </button>
-                );
-              })}
-            </div>
-            <div className="map-controls globe-controls" aria-label="Globe controls">
-              <button onClick={() => changeGlobeScale(-.08)} disabled={globeScale <= .84} aria-label="Zoom globe out">−</button>
-              <button className="spin-control" onClick={() => setGlobeAutoSpin((current) => !current)}>{globeAutoSpin ? "PAUSE" : "SPIN"}</button>
-              <button onClick={() => changeGlobeScale(.08)} disabled={globeScale >= 1.3} aria-label="Zoom globe in">+</button>
-            </div>
-            <div className="globe-coordinate"><span>◉</span>{city.coordinates}</div>
-            <div className="map-caption">Drag to spin · scroll to zoom · choose a live signal</div>
-          </div>
-          <div className="hero-city-card">
-            <span>{city.flag}</span>
-            <div><small>NOW EXPLORING</small><strong>{city.name}</strong><p>{city.language} · {level}</p></div>
-            <button onClick={enterStreet}>Drop into {city.name} ↓</button>
-          </div>
-        </div>
-
-        <div className="destination-dock">
-          <div className="language-heading"><strong>PICK YOUR NEXT CITY</strong><span>{CITIES.length} destinations · every language unlocked</span></div>
-          <div className="city-list">
-            {CITIES.map((item) => (
-              <button key={item.id} className={item.id === city.id ? "city-card active" : "city-card"} onClick={() => chooseCity(item)}>
-                <span className="city-flag">{item.flag}</span>
-                <span><strong>{item.language}</strong><small>{item.name} · {item.nativeLanguage}</small></span>
-                <span className="language-rank">{item.rank ? `#${item.rank}${item.india ? " · IN" : ""}` : "INDIA"}</span>
-              </button>
-            ))}
-          </div>
-          <div className="passport-strip">
-            <div><span>◆</span><p><strong>YOUR PASSPORT</strong><small>{stamps.length}/{CITIES.length} city stamps earned</small></p></div>
-            <div className="stamp-row">
-              {CITIES.map((item) => <span key={item.id} className={stamps.includes(item.id) ? "earned" : ""} title={`${item.name} stamp`}>{stamps.includes(item.id) ? item.flag : "·"}</span>)}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className={`journey-section scene-${city.sceneClass} ${focusMode ? "focus-mode" : ""}`} id="journey">
+    <main className="app-shell sadak-replace">
+      <section className={`journey-section scene-${city.sceneClass}`} id="journey">
         <div className="journey-shell">
-          <div className="scene-heading">
-            <div>
-              <div className="section-kicker light"><span>02</span> Live street · {city.name}</div>
-              <h2>{city.name}</h2>
-              <p>{city.coordinates} · A conversation in {city.language}</p>
-            </div>
-            <div className="weather"><span>LIVE</span><small>FREE ROAM<br />VOICE READY</small></div>
-          </div>
-
-          <div className="scene-tabs" role="tablist" aria-label={`${city.name} locations`}>
-            {city.scenes.map((item) => (
-              <button
-                key={item.id}
-                role="tab"
-                aria-selected={scene.id === item.id}
-                className={scene.id === item.id ? "active" : ""}
-                onClick={() => setSceneId(item.id)}
-              >
-                <span>{item.icon}</span>{item.label}
-              </button>
-            ))}
-          </div>
-
           <div className="play-world" aria-label={`Walkable scene in ${city.name}`}>
             <Suspense fallback={<div className="world3d-fallback">Building the city…</div>}>
               <World3D
@@ -1067,7 +863,42 @@ export default function Home() {
               />
             </Suspense>
 
-            {focusMode && (
+            <div className="sadak-brand-hud" aria-label="Current district">
+              <span className="sadak-wordmark"><b>W</b> WORLDLING</span>
+              <div><strong>{city.name}</strong><small>{city.flag} {city.nativeLanguage} · {level}</small></div>
+              <button onClick={() => setShowWorldPicker(true)}>Change district</button>
+            </div>
+
+            {showWorldPicker && (
+              <div className="sadak-world-picker" role="dialog" aria-modal="true" aria-labelledby="district-title">
+                <section>
+                  <header>
+                    <div className="sadak-title-lockup"><span>W</span><div><strong>WORLDLING</strong><small>WALK · MEET · SPEAK</small></div></div>
+                    <button onClick={() => setShowEngine(true)}><i className={`status-dot ${provider} ${provider === "local" ? localStatus : ""}`} />{provider === "local" ? ollamaModel : providerLabels[provider]}</button>
+                  </header>
+                  <div className="sadak-picker-heading">
+                    <span>YOUR NEXT ERRAND</span>
+                    <h1 id="district-title">Choose a district.</h1>
+                    <p>Drop straight into the street, find a local and finish one useful conversation.</p>
+                  </div>
+                  <div className="sadak-level-row" aria-label="Difficulty level">
+                    {(["Beginner", "Intermediate", "Advanced"] as Level[]).map((option) => <button key={option} className={level === option ? "active" : ""} onClick={() => setLevel(option)}>{option}</button>)}
+                  </div>
+                  <div className="sadak-district-grid">
+                    {CITIES.map((item, index) => (
+                      <button key={item.id} className={item.id === city.id ? "active" : ""} onClick={() => chooseCity(item)}>
+                        <span className={`district-cover cover-${item.sceneClass}`}><b>{String(index + 1).padStart(2, "0")}</b><i>{item.flag}</i></span>
+                        <span className="district-copy"><small>{item.country.toUpperCase()}</small><strong>{item.name}</strong><em>{item.language} · {item.scenes.length} errands</em></span>
+                        <span className="district-progress">{stamps.includes(item.id) ? "✓" : "→"}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <footer><span>{stamps.length}/{CITIES.length} DISTRICTS COMPLETE</span><i><b style={{ width: `${stamps.length / CITIES.length * 100}%` }} /></i><small>WASD to walk · E to talk · P for phrases</small></footer>
+                </section>
+              </div>
+            )}
+
+            {!showWorldPicker && (
               <div key={city.id} className="street-intro" aria-live="polite">
                 <span>{city.flag} {city.country}</span>
                 <h3>{city.name}</h3>
@@ -1093,7 +924,6 @@ export default function Home() {
               <button onClick={() => setShowPhrasebook(true)} aria-label="Open phrasebook">Phrases <kbd>P</kbd></button>
               <button onClick={() => setShowTranscript((current) => !current)}>{showTranscript ? "Close log" : "Log"}</button>
               <button onClick={() => setAutoSpeak((current) => !current)} aria-label={autoSpeak ? "Mute character voice" : "Enable character voice"}>{autoSpeak ? "Sound on" : "Muted"}</button>
-              <button onClick={() => setFocusMode((current) => !current)} aria-label={focusMode ? "Exit focus mode" : "Enter focus mode"}>{focusMode ? "Exit full" : "Full screen"}</button>
               <button onClick={() => setShowPause(true)} aria-label="Open game menu">Menu</button>
             </div>
 
@@ -1124,7 +954,7 @@ export default function Home() {
                   <button onClick={() => { setShowPause(false); setShowPhrasebook(true); }}>Open phrasebook</button>
                   <button onClick={() => setAutoSpeak((current) => !current)}>{autoSpeak ? "Mute character voice" : "Enable character voice"}</button>
                   <button onClick={() => { setShowPause(false); setShowEngine(true); }}>AI & voice settings</button>
-                  <button className="danger" onClick={leaveStreet}>Return to world map</button>
+                  <button className="danger" onClick={leaveStreet}>Choose another district</button>
                   <span><kbd>ESC</kbd> resume</span>
                 </section>
               </div>
@@ -1148,7 +978,7 @@ export default function Home() {
             </div>
 
             <VirtualJoystick
-              disabled={showPause || showPhrasebook || showEngine || showPronunciation}
+              disabled={showPause || showPhrasebook || showWorldPicker || showEngine || showPronunciation}
               onMove={(x, y) => movePlayer(x * 1.15, y * 1.15)}
             />
 
@@ -1204,11 +1034,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
-      <footer>
-        <p><strong>WORLDLING / STREET BUILD 07</strong> · Walk. Meet. Speak. Get understood.</p>
-        <p>3D city assets by <a href="https://kenney.nl/assets/city-kit-suburban" target="_blank" rel="noreferrer">Kenney, CC0</a> · Map by <a href="https://commons.wikimedia.org/wiki/File:Blank_Map_of_The_World_Equirectangular_Projection.png" target="_blank" rel="noreferrer">FelixCountryBalls163, CC BY 4.0</a></p>
-      </footer>
 
       {evaluation && (
         <div className="modal-backdrop" role="presentation" onClick={() => setEvaluation(null)}>

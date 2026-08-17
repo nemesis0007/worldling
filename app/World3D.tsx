@@ -5,6 +5,7 @@ import { Canvas, ThreeElements, ThreeEvent, useFrame, useThree } from "@react-th
 import { Environment, Html, Sparkles, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils.js";
+import SadakStreetBuilding from "./SadakStreetBuilding";
 
 type Point = { x: number; y: number };
 
@@ -275,7 +276,6 @@ function NewYorkNeighborhood({ data }: { data: Neighborhood }) {
       const center = buildingCenter(building);
       const footprintScale = .78;
       return <group key={building.id}>
-        <mesh castShadow receiveShadow position={[side * 5.75, 1.35, target.z]}><boxGeometry args={[3.35, 2.7, 4.55]} /><meshStandardMaterial color={index % 3 === 0 ? "#77736d" : index % 3 === 1 ? "#918a80" : "#686c6c"} roughness={.8} metalness={.08} /></mesh>
         <group position={[target.x - center.x * footprintScale, 0, target.z - center.z * footprintScale]} scale={[footprintScale, 1, footprintScale]}><OsmBuilding building={building} sceneClass="atlantic" detailed /></group>
       </group>;
     })}
@@ -397,13 +397,32 @@ function FallbackStreet() {
         <planeGeometry args={[8.2, 42]} /><meshStandardMaterial color="#292d2d" roughness={.88} />
       </mesh>
       {[-8, -2, 4, 10].map((z) => <mesh key={z} rotation={[-Math.PI / 2, 0, 0]} position={[0, .025, z]}><planeGeometry args={[.15, 2.6]} /><meshBasicMaterial color="#e9dba7" /></mesh>)}
-      <Model url={`${MODEL_ROOT}/building-type-a.glb`} position={[-9.1, 0, -7]} rotation={[0, Math.PI / 2, 0]} scale={2.25} />
-      <Model url={`${MODEL_ROOT}/building-type-f.glb`} position={[-9.3, 0, 2.5]} rotation={[0, Math.PI / 2, 0]} scale={2.15} />
-      <Model url={`${MODEL_ROOT}/building-type-k.glb`} position={[-9.2, 0, 12]} rotation={[0, Math.PI / 2, 0]} scale={2.2} />
-      <Model url={`${MODEL_ROOT}/building-type-c.glb`} position={[9.2, 0, -8]} rotation={[0, -Math.PI / 2, 0]} scale={2.25} />
-      <Model url={`${MODEL_ROOT}/building-type-t.glb`} position={[9.2, 0, 2]} rotation={[0, -Math.PI / 2, 0]} scale={2.05} />
-      <Model url={`${MODEL_ROOT}/building-type-h.glb`} position={[9.2, 0, 11]} rotation={[0, -Math.PI / 2, 0]} scale={2.35} />
     </>
+  );
+}
+
+function SadakStreetRibbon({ cityName, sceneClass }: { cityName: string; sceneClass: string }) {
+  const citySeed = [...cityName].reduce((total, character) => total + character.charCodeAt(0), 0);
+  const slots = [-11.5, -4.8, 1.9, 8.6, 15.3];
+  return (
+    <group>
+      {([-1, 1] as const).flatMap((side) => slots.map((z, index) => {
+        const seed = citySeed + index * 17 + (side > 0 ? 101 : 0);
+        const floors = cityName === "New York" ? 4 + seed % 3 : 2 + seed % 3;
+        return (
+          <SadakStreetBuilding
+            key={`${side}-${z}`}
+            position={[side * 8.35, 0, z]}
+            rotation={Math.PI / 2}
+            width={6.15}
+            depth={cityName === "New York" ? 4.1 : 4.5}
+            floors={floors}
+            seed={seed}
+            sceneClass={sceneClass}
+          />
+        );
+      }))}
+    </group>
   );
 }
 
@@ -497,6 +516,7 @@ function CityScene({ activeNpcIndex, cityName, neighborhood, npcNames, npcPositi
         <meshStandardMaterial color="#70756e" roughness={.96} />
       </mesh>
       <group onClick={moveOnGround}>{neighborhood ? <DetailedNeighborhood data={neighborhood} sceneClass={sceneClass} /> : <FallbackStreet />}</group>
+      <SadakStreetRibbon cityName={cityName} sceneClass={sceneClass} />
       {cityName !== "New York" && <>
         {[-11, -3, 6, 13].map((z, index) => <Model key={`tree-left-${z}`} url={`${MODEL_ROOT}/${index % 2 ? "tree-small" : "tree-large"}.glb`} position={[-5.5, 0, z]} scale={1.7} />)}
         {[-8, 1, 9].map((z, index) => <Model key={`tree-right-${z}`} url={`${MODEL_ROOT}/${index % 2 ? "tree-large" : "tree-small"}.glb`} position={[5.5, 0, z]} scale={1.6} />)}

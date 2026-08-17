@@ -6,7 +6,7 @@ Worldling contains or depends on material from the following sources.
 
 - Project: [mittal-parth/sadak](https://github.com/mittal-parth/sadak)
 - Author: Parth Mittal and contributors
-- Use: interaction and product-design reference; the touch joystick is adapted with attribution in its source file
+- Use: adapted district selector, street HUD and dialogue framing; adapted touch joystick and street-building geometry are attributed in their source files
 - Permission: on 17 August 2026, Parth Mittal stated in the Worldling development session, “i parthmittal give u full perssion to use it signed parth mittal.”
 
 This permission concerns Sadak's original material. It does not replace licenses attached to third-party dependencies or assets included in Sadak.
@@ -33,9 +33,3 @@ This permission concerns Sadak's original material. It does not replace licenses
 
 - Source: NYC Open Data building-footprint dataset
 - Use: New York building footprints and roof-height metadata
-
-## World map
-
-- Source: FelixCountryBalls163, “Blank Map of The World Equirectangular Projection,” Wikimedia Commons
-- License: CC BY 4.0
-

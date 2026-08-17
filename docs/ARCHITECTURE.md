@@ -12,7 +12,7 @@ Worldling is a browser-first game with optional local and hosted AI services. De
 - transcript and conversation lifecycle
 - player position and NPC proximity
 - mission steps, affinity, XP, coins, and stamps
-- focus mode, phrasebook, pause, transcript, engine, and pronunciation overlays
+- district selector, phrasebook, pause, transcript, engine, and pronunciation overlays
 - device-local preferences and progression
 
 `app/World3D.tsx` renders the current district with React Three Fiber. It owns:
@@ -20,6 +20,7 @@ Worldling is a browser-first game with optional local and hosted AI services. De
 - loading cached city geometry
 - optional OpenStreetMap refresh status
 - roads and extruded building footprints
+- Sadak-derived merged street facades with recessed windows, shops, ledges, balconies, awnings, and rooftop clutter
 - characters, landmark approximations, props, lighting, fog, and camera follow
 - pointer-to-ground movement targets
 
@@ -68,4 +69,3 @@ The current prototype stores provider preference, Ollama endpoint/model, pronunc
 - City data is cached as static JSON.
 - OSM2World meshes are capped and disposed when the district changes.
 - GLB models are preloaded and cloned for reuse.
-
