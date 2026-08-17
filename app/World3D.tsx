@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, type ComponentRef, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, type ComponentRef, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, ThreeElements, ThreeEvent, useFrame, useThree } from "@react-three/fiber";
 import { Environment, Html, OrbitControls, Sparkles, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
@@ -8,6 +8,7 @@ import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils.j
 import SadakStreetBuilding from "./SadakStreetBuilding";
 
 type Point = { x: number; y: number };
+type CameraDirection = { x: number; z: number };
 
 type World3DProps = {
   activeNpcIndex: number;
@@ -15,6 +16,7 @@ type World3DProps = {
   cityName: string;
   npcNames: string[];
   npcPositions: Point[];
+  onCameraDirectionChange: (direction: CameraDirection) => void;
   onMoveTo: (point: Point) => void;
   onSelectNpc: (index: number) => void;
   playerPosition: Point;
@@ -476,13 +478,22 @@ function CityLandmark({ cityName }: { cityName: string }) {
   );
 }
 
-function PlayerOrbitCamera({ playerPosition, resetSignal }: { playerPosition: Point; resetSignal: number }) {
+function PlayerOrbitCamera({ onDirectionChange, playerPosition, resetSignal }: { onDirectionChange: (direction: CameraDirection) => void; playerPosition: Point; resetSignal: number }) {
   const { camera } = useThree();
   const controlsRef = useRef<ComponentRef<typeof OrbitControls>>(null);
   const lastPlayerPosition = useRef(new THREE.Vector3());
   const playerTarget = useMemo(() => new THREE.Vector3(), []);
   const movementDelta = useMemo(() => new THREE.Vector3(), []);
   const initialized = useRef(false);
+
+  const publishDirection = useCallback(() => {
+    const controls = controlsRef.current;
+    if (!controls) return;
+    const x = controls.target.x - camera.position.x;
+    const z = controls.target.z - camera.position.z;
+    const length = Math.hypot(x, z);
+    if (length > .001) onDirectionChange({ x: x / length, z: z / length });
+  }, [camera, onDirectionChange]);
 
   useFrame(() => {
     const [x, , z] = toWorld(playerPosition);
@@ -537,11 +548,12 @@ function PlayerOrbitCamera({ playerPosition, resetSignal }: { playerPosition: Po
         ONE: THREE.TOUCH.ROTATE,
         TWO: THREE.TOUCH.DOLLY_PAN,
       }}
+      onChange={publishDirection}
     />
   );
 }
 
-function CityScene({ activeNpcIndex, cameraResetSignal, cityName, neighborhood, npcNames, npcPositions, onMoveTo, onSelectNpc, playerPosition, sceneClass }: World3DProps & { cameraResetSignal: number; neighborhood: Neighborhood | null }) {
+function CityScene({ activeNpcIndex, cameraResetSignal, cityName, neighborhood, npcNames, npcPositions, onCameraDirectionChange, onMoveTo, onSelectNpc, playerPosition, sceneClass }: World3DProps & { cameraResetSignal: number; neighborhood: Neighborhood | null }) {
   const playerWorld = toWorld(playerPosition);
   const sky = sceneClass === "desert" ? "#c9966f" : sceneClass === "india" ? "#d79a72" : sceneClass === "east" ? "#7894a4" : sceneClass === "tropical" ? "#5f9b9a" : "#86abc0";
 
@@ -580,7 +592,7 @@ function CityScene({ activeNpcIndex, cameraResetSignal, cityName, neighborhood, 
         <Person key={npcNames[index]} active={index === activeNpcIndex} model={["animated-woman.glb", "business.glb", "punk-woman.glb"][index]} name={npcNames[index]} onClick={() => onSelectNpc(index)} position={toWorld(point)} />
       ))}
       <Person key={`player-${cityName}`} player model="casual.glb" position={playerWorld} />
-      <PlayerOrbitCamera key={cityName} playerPosition={playerPosition} resetSignal={cameraResetSignal} />
+      <PlayerOrbitCamera key={cityName} onDirectionChange={onCameraDirectionChange} playerPosition={playerPosition} resetSignal={cameraResetSignal} />
     </>
   );
 }

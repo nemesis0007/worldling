@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import VirtualJoystick from "./VirtualJoystick";
 
 const World3D = lazy(() => import("./World3D"));
@@ -413,6 +413,11 @@ export default function Home() {
   const pronunciationCaptureRef = useRef<WavCapture | null>(null);
   const pronunciationTimerRef = useRef<number | null>(null);
   const worldInputRef = useRef<HTMLInputElement | null>(null);
+  const cameraDirectionRef = useRef({ x: 0, z: -1 });
+
+  const updateCameraDirection = useCallback((direction: { x: number; z: number }) => {
+    cameraDirectionRef.current = direction;
+  }, []);
 
   const city = useMemo(() => CITIES.find((item) => item.id === cityId) ?? CITIES[0], [cityId]);
   const scene = useMemo(() => city.scenes.find((item) => item.id === sceneId) ?? city.scenes[0], [city, sceneId]);
@@ -514,28 +519,67 @@ export default function Home() {
   }, [nearCharacter, showPhrasebook]);
 
   useEffect(() => {
-    function handleMovement(event: KeyboardEvent) {
-      if ((event.target as HTMLElement).closest("input, textarea, button")) return;
-      if (showPause || showPhrasebook || showWorldPicker || showEngine || showPronunciation) return;
-      const speed = event.shiftKey ? 6 : 3;
-      const movement: Record<string, [number, number]> = {
-        ArrowUp: [0, -speed], w: [0, -speed], W: [0, -speed],
-        ArrowDown: [0, speed], s: [0, speed], S: [0, speed],
-        ArrowLeft: [-speed, 0], a: [-speed, 0], A: [-speed, 0],
-        ArrowRight: [speed, 0], d: [speed, 0], D: [speed, 0],
-      };
-      const direction = movement[event.key];
-      if (!direction) return;
+    const pressed = new Set<string>();
+    const movementKeys = new Set(["w", "a", "s", "d", "arrowup", "arrowleft", "arrowdown", "arrowright"]);
+    const movementBlocked = showPause || showPhrasebook || showWorldPicker || showEngine || showPronunciation;
+    let animationFrame = 0;
+    let previousTime = performance.now();
+
+    function handleKeyDown(event: KeyboardEvent) {
+      const key = event.key.toLowerCase();
+      if (key === "shift") {
+        if (movementBlocked) return;
+        pressed.add(key);
+        return;
+      }
+      if (movementBlocked || !movementKeys.has(key) || (event.target as HTMLElement).closest("input, textarea, button")) return;
       event.preventDefault();
-      const minX = city.id === "new-york" ? 38 : 10;
-      const maxX = city.id === "new-york" ? 62 : 90;
-      setPlayerPosition((current) => ({
-        x: Math.min(maxX, Math.max(minX, current.x + direction[0])),
-        y: Math.min(88, Math.max(54, current.y + direction[1])),
-      }));
+      pressed.add(key);
     }
-    window.addEventListener("keydown", handleMovement);
-    return () => window.removeEventListener("keydown", handleMovement);
+
+    function handleKeyUp(event: KeyboardEvent) {
+      pressed.delete(event.key.toLowerCase());
+    }
+
+    function clearPressed() {
+      pressed.clear();
+    }
+
+    function moveFromHeldKeys(time: number) {
+      const elapsed = Math.min((time - previousTime) / 1000, .05);
+      previousTime = time;
+      const forwardInput = Number(pressed.has("w") || pressed.has("arrowup")) - Number(pressed.has("s") || pressed.has("arrowdown"));
+      const rightInput = Number(pressed.has("d") || pressed.has("arrowright")) - Number(pressed.has("a") || pressed.has("arrowleft"));
+
+      if (forwardInput || rightInput) {
+        const inputLength = Math.hypot(forwardInput, rightInput);
+        const forward = cameraDirectionRef.current;
+        const right = { x: -forward.z, z: forward.x };
+        const speed = (pressed.has("shift") ? 42 : 24) * elapsed / inputLength;
+        const xDelta = (forward.x * forwardInput + right.x * rightInput) * speed;
+        const yDelta = (forward.z * forwardInput + right.z * rightInput) * speed;
+        const minX = city.id === "new-york" ? 38 : 10;
+        const maxX = city.id === "new-york" ? 62 : 90;
+        setPlayerPosition((current) => ({
+          x: Math.min(maxX, Math.max(minX, current.x + xDelta)),
+          y: Math.min(88, Math.max(54, current.y + yDelta)),
+        }));
+      }
+
+      animationFrame = window.requestAnimationFrame(moveFromHeldKeys);
+    }
+
+    animationFrame = window.requestAnimationFrame(moveFromHeldKeys);
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    window.addEventListener("blur", clearPressed);
+    return () => {
+      window.cancelAnimationFrame(animationFrame);
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+      window.removeEventListener("blur", clearPressed);
+      pressed.clear();
+    };
   }, [city.id, showEngine, showPause, showPhrasebook, showPronunciation, showWorldPicker]);
 
   function speak(text: string) {
@@ -854,6 +898,7 @@ export default function Home() {
                 cityName={city.name}
                 npcNames={city.scenes.map((person) => person.character)}
                 npcPositions={npcPositions}
+                onCameraDirectionChange={updateCameraDirection}
                 onMoveTo={movePlayerTo}
                 onSelectNpc={(index) => setSceneId(city.scenes[index].id)}
                 playerPosition={playerPosition}
