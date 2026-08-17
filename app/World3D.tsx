@@ -1,8 +1,8 @@
 "use client";
 
-import { Suspense, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, type ComponentRef, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, ThreeElements, ThreeEvent, useFrame, useThree } from "@react-three/fiber";
-import { Environment, Html, Sparkles, useGLTF } from "@react-three/drei";
+import { Environment, Html, OrbitControls, Sparkles, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils.js";
 import SadakStreetBuilding from "./SadakStreetBuilding";
@@ -476,23 +476,72 @@ function CityLandmark({ cityName }: { cityName: string }) {
   );
 }
 
-function FollowCamera({ playerPosition }: { playerPosition: Point }) {
+function PlayerOrbitCamera({ playerPosition, resetSignal }: { playerPosition: Point; resetSignal: number }) {
   const { camera } = useThree();
-  const target = useMemo(() => new THREE.Vector3(), []);
-  const look = useMemo(() => new THREE.Vector3(), []);
+  const controlsRef = useRef<ComponentRef<typeof OrbitControls>>(null);
+  const lastPlayerPosition = useRef(new THREE.Vector3());
+  const playerTarget = useMemo(() => new THREE.Vector3(), []);
+  const movementDelta = useMemo(() => new THREE.Vector3(), []);
+  const initialized = useRef(false);
 
   useFrame(() => {
     const [x, , z] = toWorld(playerPosition);
-    target.set(x, 5.1, z + 7.2);
-    camera.position.lerp(target, .085);
-    look.set(x, 1.05, z - 2.3);
-    camera.lookAt(look);
+    playerTarget.set(x, 1.15, z);
+    const controls = controlsRef.current;
+    if (!controls) return;
+
+    if (!initialized.current) {
+      camera.position.set(x, 5.1, z + 7.2);
+      controls.target.copy(playerTarget);
+      lastPlayerPosition.current.copy(playerTarget);
+      controls.update();
+      initialized.current = true;
+      return;
+    }
+
+    movementDelta.subVectors(playerTarget, lastPlayerPosition.current);
+    if (movementDelta.lengthSq() > 0) {
+      camera.position.add(movementDelta);
+      controls.target.add(movementDelta);
+      lastPlayerPosition.current.copy(playerTarget);
+    }
+    controls.update();
   });
 
-  return null;
+  useEffect(() => {
+    const controls = controlsRef.current;
+    if (!controls || resetSignal === 0) return;
+    const currentTarget = lastPlayerPosition.current;
+    camera.position.set(currentTarget.x, 5.1, currentTarget.z + 7.2);
+    controls.target.copy(currentTarget);
+    controls.update();
+  }, [camera, resetSignal]);
+
+  return (
+    <OrbitControls
+      ref={controlsRef}
+      makeDefault
+      enableDamping
+      dampingFactor={.08}
+      enablePan={false}
+      minDistance={3.8}
+      maxDistance={16}
+      minPolarAngle={.28}
+      maxPolarAngle={Math.PI / 2.08}
+      mouseButtons={{
+        LEFT: THREE.MOUSE.ROTATE,
+        MIDDLE: THREE.MOUSE.DOLLY,
+        RIGHT: THREE.MOUSE.ROTATE,
+      }}
+      touches={{
+        ONE: THREE.TOUCH.ROTATE,
+        TWO: THREE.TOUCH.DOLLY_PAN,
+      }}
+    />
+  );
 }
 
-function CityScene({ activeNpcIndex, cityName, neighborhood, npcNames, npcPositions, onMoveTo, onSelectNpc, playerPosition, sceneClass }: World3DProps & { neighborhood: Neighborhood | null }) {
+function CityScene({ activeNpcIndex, cameraResetSignal, cityName, neighborhood, npcNames, npcPositions, onMoveTo, onSelectNpc, playerPosition, sceneClass }: World3DProps & { cameraResetSignal: number; neighborhood: Neighborhood | null }) {
   const playerWorld = toWorld(playerPosition);
   const sky = sceneClass === "desert" ? "#c9966f" : sceneClass === "india" ? "#d79a72" : sceneClass === "east" ? "#7894a4" : sceneClass === "tropical" ? "#5f9b9a" : "#86abc0";
 
@@ -531,7 +580,7 @@ function CityScene({ activeNpcIndex, cityName, neighborhood, npcNames, npcPositi
         <Person key={npcNames[index]} active={index === activeNpcIndex} model={["animated-woman.glb", "business.glb", "punk-woman.glb"][index]} name={npcNames[index]} onClick={() => onSelectNpc(index)} position={toWorld(point)} />
       ))}
       <Person key={`player-${cityName}`} player model="casual.glb" position={playerWorld} />
-      <FollowCamera playerPosition={playerPosition} />
+      <PlayerOrbitCamera key={cityName} playerPosition={playerPosition} resetSignal={cameraResetSignal} />
     </>
   );
 }
@@ -539,6 +588,7 @@ function CityScene({ activeNpcIndex, cityName, neighborhood, npcNames, npcPositi
 export default function World3D(props: World3DProps) {
   const [neighborhood, setNeighborhood] = useState<Neighborhood | null>(null);
   const [mapStatus, setMapStatus] = useState<"loading" | "bundled" | "refreshing" | "live" | "fallback">("loading");
+  const [cameraResetSignal, setCameraResetSignal] = useState(0);
 
   function refreshMap() {
     setMapStatus("refreshing");
@@ -578,9 +628,14 @@ export default function World3D(props: World3DProps) {
 
   return (
     <div className="world3d-canvas" aria-label={`Interactive 3D street in ${props.cityName}`}>
-      <Canvas shadows camera={{ fov: 52, near: .1, far: 90, position: [0, 5, 12] }} dpr={[1, 1.5]} gl={{ antialias: true, powerPreference: "high-performance" }}>
-        <Suspense fallback={null}><CityScene {...props} neighborhood={neighborhood} /></Suspense>
+      <Canvas shadows camera={{ fov: 52, near: .1, far: 90, position: [0, 5, 12] }} dpr={[1, 1.5]} gl={{ antialias: true, powerPreference: "high-performance" }} onContextMenu={(event) => event.preventDefault()}>
+        <Suspense fallback={null}><CityScene {...props} cameraResetSignal={cameraResetSignal} neighborhood={neighborhood} /></Suspense>
       </Canvas>
+      <div className="camera-orbit-hud" role="group" aria-label="360 degree camera controls">
+        <span aria-hidden="true">360°</span>
+        <div><strong>ORBIT CAMERA</strong><small>DRAG TO TURN · WHEEL OR PINCH TO ZOOM</small></div>
+        <button type="button" onClick={() => setCameraResetSignal((current) => current + 1)}>RESET</button>
+      </div>
       <button className={`osm-world-status ${mapStatus}`} onClick={props.cityId === "new-york" ? undefined : refreshMap} disabled={props.cityId === "new-york" || mapStatus === "loading" || mapStatus === "refreshing"} title={props.cityId === "new-york" ? "Official NYC building footprints and roof heights" : "Load the newest map data from OpenStreetMap"}>
         <span />{props.cityId === "new-york" && mapStatus === "bundled" ? "NYC official digital street" : mapStatus === "live" ? "Live OSM district" : mapStatus === "bundled" ? "Downloaded OSM district · refresh" : mapStatus === "loading" ? "Loading city area…" : mapStatus === "refreshing" ? "Refreshing map…" : "Designed fallback district"}
       </button>

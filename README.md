@@ -21,7 +21,7 @@ Most people do not need to master an entire language before a trip. They need en
 - Local Whisper/phoneme or Azure pronunciation assessment
 - Persistent XP, coins, passport stamps, mission progress, and character affinity
 - Sadak-style district selector and full-screen street HUD
-- Sprinting, pause menu, phrasebook, transcript, radar, keyboard controls, and touch joystick
+- Sprinting, pause menu, phrasebook, transcript, radar, keyboard controls, touch joystick, and a 360° orbit camera
 
 ## Quick start
 
@@ -49,6 +49,8 @@ npm run lint
 | `W` `A` `S` `D` or arrow keys | Walk |
 | `Shift` + movement | Run |
 | Click/tap the ground | Move to a point |
+| Drag the 3D street | Orbit 360° around the player |
+| Mouse wheel or pinch | Zoom the camera |
 | `E` near a character | Focus the conversation input |
 | `P` | Open or close pocket phrases |
 | `Esc` | Pause, resume, or close the current overlay |

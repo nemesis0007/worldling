@@ -21,7 +21,7 @@ Worldling is a browser-first game with optional local and hosted AI services. De
 - optional OpenStreetMap refresh status
 - roads and extruded building footprints
 - Sadak-derived merged street facades with recessed windows, shops, ledges, balconies, awnings, and rooftop clutter
-- characters, landmark approximations, props, lighting, fog, and camera follow
+- characters, landmark approximations, props, lighting, fog, and a player-following 360° orbit camera
 - pointer-to-ground movement targets
 
 ## Conversation flow

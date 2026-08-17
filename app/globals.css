@@ -1054,6 +1054,53 @@ footer { min-height: 64px; padding-inline: max(24px,calc((100vw - 1320px)/2)); b
 .world3d-canvas { position: absolute; inset: 0; z-index: 1; background: #86abc0; }
 .world3d-fallback { position: absolute; inset: 0; z-index: 3; display: grid; place-items: center; color: rgba(255,255,255,.7); background: #0b100e; font-size: 8px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
 .world3d-canvas canvas { display: block; width: 100% !important; height: 100% !important; outline: 0; cursor: crosshair; }
+.world3d-canvas canvas:active { cursor: grabbing; }
+.camera-orbit-hud {
+  position: absolute;
+  z-index: 12;
+  top: 18px;
+  left: 50%;
+  display: grid;
+  grid-template-columns: auto auto auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  border: 2px solid #1e211c;
+  border-radius: 5px;
+  padding: 5px 6px;
+  color: #1e211c;
+  background: #fffdf1;
+  box-shadow: 4px 4px 0 #1e211c;
+  translate: -50% 0;
+  user-select: none;
+}
+.camera-orbit-hud > span {
+  display: grid;
+  place-items: center;
+  min-width: 37px;
+  height: 28px;
+  border: 1.5px solid #1e211c;
+  border-radius: 3px;
+  background: #91d5e8;
+  font-size: 9px;
+  font-weight: 950;
+}
+.camera-orbit-hud strong,
+.camera-orbit-hud small { display: block; white-space: nowrap; }
+.camera-orbit-hud strong { font-size: 8px; line-height: 1; letter-spacing: .08em; }
+.camera-orbit-hud small { margin-top: 4px; color: #6b6552; font-size: 5px; font-weight: 850; letter-spacing: .06em; }
+.camera-orbit-hud button {
+  min-height: 28px;
+  border: 1.5px solid #1e211c;
+  border-radius: 3px;
+  padding: 0 8px;
+  color: #1e211c;
+  background: #f4c430;
+  font-size: 6px;
+  font-weight: 950;
+  cursor: pointer;
+}
+.camera-orbit-hud button:hover { translate: 1px 1px; background: #9bd48d; }
 .world3d-loading { position: absolute; inset: 0; z-index: 3; display: grid; place-items: center; pointer-events: none; color: rgba(255,255,255,.65); background: #0b100e; font-size: 8px; font-weight: 800; letter-spacing: .15em; text-transform: uppercase; animation: world3dReveal 2.2s .35s forwards; }
 @keyframes world3dReveal { 0%,45% { opacity: 1; } 100% { opacity: 0; visibility: hidden; } }
 .world3d-name { pointer-events: none; white-space: nowrap; }
