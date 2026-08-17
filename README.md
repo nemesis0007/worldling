@@ -2,7 +2,7 @@
 
 Worldling is a voice-first language travel game. Choose a city, walk through a small 3D district, meet a local character, complete an everyday conversation mission, and receive practical feedback on how clearly you communicated.
 
-**Live build:** [worldling-voice-lab.niraj-khumkar24.chatgpt.site](https://worldling-voice-lab.niraj-khumkar24.chatgpt.site/)
+**Live build:** [worldling-sadak-game.vercel.app](https://worldling-sadak-game.vercel.app/)
 
 ## Why Worldling
 
