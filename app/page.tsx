@@ -403,7 +403,6 @@ export default function Home() {
   const [focusMode, setFocusMode] = useState(false);
   const [showPhrasebook, setShowPhrasebook] = useState(false);
   const [showPause, setShowPause] = useState(false);
-  const [showStreetIntro, setShowStreetIntro] = useState(false);
   const [showPronunciation, setShowPronunciation] = useState(false);
   const [pronunciationProvider, setPronunciationProvider] = useState<PronunciationProvider>("local");
   const [pronunciationPrompt, setPronunciationPrompt] = useState(0);
@@ -501,13 +500,10 @@ export default function Home() {
     if (!focusMode) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    setShowStreetIntro(true);
-    const timer = window.setTimeout(() => setShowStreetIntro(false), 2600);
     return () => {
       document.body.style.overflow = previousOverflow;
-      window.clearTimeout(timer);
     };
-  }, [focusMode, city.id]);
+  }, [focusMode]);
 
   useEffect(() => {
     function handleGameShortcuts(event: KeyboardEvent) {
@@ -1071,8 +1067,8 @@ export default function Home() {
               />
             </Suspense>
 
-            {focusMode && showStreetIntro && (
-              <div className="street-intro" aria-live="polite">
+            {focusMode && (
+              <div key={city.id} className="street-intro" aria-live="polite">
                 <span>{city.flag} {city.country}</span>
                 <h3>{city.name}</h3>
                 <p>Walk the street. Meet a local. Complete the conversation.</p>
