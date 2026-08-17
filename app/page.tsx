@@ -108,6 +108,20 @@ type PronunciationResult = {
 
 type WavCapture = { stop: () => Promise<Blob> };
 
+const PLAYABLE_STREET_BOUNDS = { minX: 39, maxX: 61, minY: 54, maxY: 88 } as const;
+const STREET_NPC_POSITIONS = [
+  { x: 40, y: 72 },
+  { x: 60, y: 62 },
+  { x: 40, y: 54 },
+];
+
+function clampToPlayableStreet(point: { x: number; y: number }) {
+  return {
+    x: Math.min(PLAYABLE_STREET_BOUNDS.maxX, Math.max(PLAYABLE_STREET_BOUNDS.minX, point.x)),
+    y: Math.min(PLAYABLE_STREET_BOUNDS.maxY, Math.max(PLAYABLE_STREET_BOUNDS.minY, point.y)),
+  };
+}
+
 type BrowserSpeechRecognition = {
   lang: string;
   interimResults: boolean;
@@ -394,7 +408,7 @@ export default function Home() {
   const [questProgress, setQuestProgress] = useState([false, false, false]);
   const [reward, setReward] = useState<Reward | null>(null);
   const [rewarded, setRewarded] = useState(false);
-  const [playerPosition, setPlayerPosition] = useState({ x: 31, y: 73 });
+  const [playerPosition, setPlayerPosition] = useState({ x: 50, y: 82 });
   const [showTranscript, setShowTranscript] = useState(false);
   const [showWorldPicker, setShowWorldPicker] = useState(true);
   const [showPhrasebook, setShowPhrasebook] = useState(false);
@@ -426,9 +440,7 @@ export default function Home() {
   const cityCenter = CITY_CENTERS[city.name] ?? [90 - city.mapY * 1.8, city.mapX * 3.6 - 180];
   const streetViewUrl = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${encodeURIComponent(`${cityCenter[0].toFixed(4)},${cityCenter[1].toFixed(4)}`)}`;
   const activeNpcIndex = Math.max(0, city.scenes.findIndex((item) => item.id === scene.id));
-  const npcPositions = city.id === "new-york"
-    ? [{ x: 62, y: 66 }, { x: 38, y: 59 }, { x: 62, y: 54 }]
-    : [{ x: 24, y: 67 }, { x: 61, y: 60 }, { x: 79, y: 73 }];
+  const npcPositions = STREET_NPC_POSITIONS;
   const activeNpcPosition = npcPositions[activeNpcIndex];
   const nearCharacter = Math.hypot((playerPosition.x - activeNpcPosition.x) / 3.1, (playerPosition.y - activeNpcPosition.y) / 2.2) < 3.4;
   const lastNpcMessage = [...messages].reverse().find((message) => message.role === "npc");
@@ -558,12 +570,7 @@ export default function Home() {
         const speed = (pressed.has("shift") ? 42 : 24) * elapsed / inputLength;
         const xDelta = (forward.x * forwardInput + right.x * rightInput) * speed;
         const yDelta = (forward.z * forwardInput + right.z * rightInput) * speed;
-        const minX = city.id === "new-york" ? 38 : 10;
-        const maxX = city.id === "new-york" ? 62 : 90;
-        setPlayerPosition((current) => ({
-          x: Math.min(maxX, Math.max(minX, current.x + xDelta)),
-          y: Math.min(88, Math.max(54, current.y + yDelta)),
-        }));
+        setPlayerPosition((current) => clampToPlayableStreet({ x: current.x + xDelta, y: current.y + yDelta }));
       }
 
       animationFrame = window.requestAnimationFrame(moveFromHeldKeys);
@@ -861,7 +868,7 @@ export default function Home() {
   function chooseCity(nextCity: City) {
     setCityId(nextCity.id);
     setSceneId(nextCity.scenes[0].id);
-    setPlayerPosition(nextCity.id === "new-york" ? { x: 50, y: 82 } : { x: 31, y: 73 });
+    setPlayerPosition({ x: 50, y: 82 });
     setShowWorldPicker(false);
   }
 
@@ -872,18 +879,11 @@ export default function Home() {
   }
 
   function movePlayer(dx: number, dy: number) {
-    const minX = city.id === "new-york" ? 38 : 10;
-    const maxX = city.id === "new-york" ? 62 : 90;
-    setPlayerPosition((current) => ({
-      x: Math.min(maxX, Math.max(minX, current.x + dx)),
-      y: Math.min(88, Math.max(54, current.y + dy)),
-    }));
+    setPlayerPosition((current) => clampToPlayableStreet({ x: current.x + dx, y: current.y + dy }));
   }
 
   function movePlayerTo(point: { x: number; y: number }) {
-    const minX = city.id === "new-york" ? 38 : 10;
-    const maxX = city.id === "new-york" ? 62 : 90;
-    setPlayerPosition({ x: Math.min(maxX, Math.max(minX, point.x)), y: Math.min(88, Math.max(54, point.y)) });
+    setPlayerPosition(clampToPlayableStreet(point));
   }
 
   return (
