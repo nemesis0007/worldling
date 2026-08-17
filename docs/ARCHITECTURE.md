@@ -19,7 +19,7 @@ Worldling is a browser-first game with optional local and hosted AI services. De
 
 - loading cached city geometry
 - optional OpenStreetMap refresh status
-- roads and extruded building footprints
+- a normalized playable avenue and extruded OpenStreetMap building footprints
 - Sadak-derived merged street facades with recessed windows, shops, ledges, balconies, awnings, and rooftop clutter
 - characters, landmark approximations, props, lighting, fog, and a player-following 360° orbit camera
 - pointer-to-ground movement targets
@@ -67,5 +67,5 @@ The current prototype stores provider preference, Ollama endpoint/model, pronunc
 - `World3D` is lazy-loaded so the title experience can render first.
 - Canvas pixel density is capped.
 - City data is cached as static JSON.
-- OSM2World meshes are capped and disposed when the district changes.
+- District building counts and footprint scales are capped before rendering.
 - GLB models are preloaded and cloned for reuse.

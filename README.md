@@ -96,7 +96,7 @@ See [local-pronunciation/README.md](local-pronunciation/README.md) for installat
 
 ## How the world is built
 
-The browser loads a cached district from `public/city-data/`. Road paths and building footprints come from OpenStreetMap. Building outlines are projected into local coordinates and extruded in Three.js; explicit height or level metadata is used when available. A richer OSM2World conversion is attempted when its runtime and textures are available, with a lightweight local renderer as the fallback.
+The browser loads a cached district from `public/city-data/`. Building footprints come from OpenStreetMap and are projected, scaled, and extruded in Three.js; explicit height or level metadata is used when available. Every district places those local building forms around a normalized playable avenue so road alignment and movement remain reliable across differently scaled city datasets.
 
 The playable street then adds a Sadak-derived human-scale facade layer: recessed windows, shop bays, floor ledges, balconies, awnings, signboards, and rooftop tanks. Those details are merged into four geometries per building to keep the scene efficient while the OSM shapes provide the surrounding city mass.
 

@@ -11,8 +11,8 @@ Worldling needs recognisable, walkable districts that load quickly in a browser.
 At runtime:
 
 1. `World3D` loads the cached JSON.
-2. Raw OSM data is offered to OSM2World for richer mesh generation.
-3. If that conversion is unavailable, Worldling draws roads from line segments and extrudes building footprints with Three.js.
+2. Building footprints are ranked and normalized around a consistent playable street corridor.
+3. Three.js draws the avenue, sidewalks, crossings, and extruded local building forms.
 4. City-themed props, atmosphere, NPCs, and a stylised landmark are added.
 5. If the JSON is missing or invalid, a small licensed fallback street loads instead.
 
@@ -60,4 +60,3 @@ Review generated file sizes and feature counts before committing. An area with v
 ## Licensing boundaries
 
 OpenStreetMap data is licensed under ODbL and requires attribution. Google Maps and Street View tiles are not downloaded or repackaged. External 3D assets must include a licence that permits redistribution; a publicly viewable repository without a license is not sufficient by itself.
-

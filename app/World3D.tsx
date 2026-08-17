@@ -33,23 +33,6 @@ type Neighborhood = {
   detailLevel?: string;
 };
 
-type O2WMesh = {
-  positions: () => number[];
-  indices: () => number[];
-  normals: () => number[];
-  uvs: () => number[];
-  color: () => number[];
-  baseColorTexture: () => string | null;
-  normalTexture: () => string | null;
-  clampTextures: () => boolean;
-  transparency: () => boolean;
-};
-
-type O2WModule = {
-  O2WConverter: new () => { setConfig: (config: unknown) => void; convertJson: (json: string, success: (meshes: O2WMesh[]) => void, failure: (error: unknown) => void) => void };
-  loadO2WConfig: (url: string, options: { lod: string }, success: (config: unknown) => void, failure: (error: unknown) => void) => void;
-};
-
 const MODEL_ROOT = "/models/kenney-city";
 const CHARACTER_ROOT = "/models/quaternius";
 
@@ -96,6 +79,7 @@ function Person({ active = false, model, name, onClick, player = false, position
   const [initialPosition] = useState(() => new THREE.Vector3(...position));
   const activeAction = useRef<THREE.AnimationAction | null>(null);
   const activeClipName = useRef("");
+  const targetHeading = useRef(0);
   const idleClip = useMemo(() => source.animations.find((animation) => /idle/i.test(animation.name)) ?? source.animations[0], [source.animations]);
   const walkClip = useMemo(() => source.animations.find((animation) => /walk|run/i.test(animation.name)) ?? idleClip, [source.animations, idleClip]);
 
@@ -128,7 +112,14 @@ function Person({ active = false, model, name, onClick, player = false, position
     if (player && distance > .025) {
       const dx = destination.x - group.current.position.x;
       const dz = destination.z - group.current.position.z;
-      group.current.rotation.y = THREE.MathUtils.lerp(group.current.rotation.y, Math.atan2(dx, dz), .18);
+      targetHeading.current = Math.atan2(dx, dz);
+    }
+    if (player) {
+      const headingDelta = Math.atan2(
+        Math.sin(targetHeading.current - group.current.rotation.y),
+        Math.cos(targetHeading.current - group.current.rotation.y),
+      );
+      group.current.rotation.y += headingDelta * (1 - Math.exp(-18 * delta));
     }
     group.current.position.lerp(destination, player ? .16 : .08);
   });
@@ -264,21 +255,34 @@ function buildingCenter(building: Neighborhood["buildings"][number]) {
   return building.points.reduce((total, point) => ({ x: total.x + point.x / building.points.length, z: total.z + point.z / building.points.length }), { x: 0, z: 0 });
 }
 
-function NewYorkNeighborhood({ data }: { data: Neighborhood }) {
-  const towers = useMemo(() => [...data.buildings].sort((a, b) => b.height - a.height).slice(0, 18), [data.buildings]);
+function footprintScale(building: Neighborhood["buildings"][number], maximum = .78) {
+  const xs = building.points.map((point) => point.x);
+  const zs = building.points.map((point) => point.z);
+  const span = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...zs) - Math.min(...zs), 1);
+  return Math.min(maximum, 4.4 / span);
+}
+
+function PlayableRoad() {
   return <group>
     <mesh receiveShadow position={[0, .01, 0]}><boxGeometry args={[5.4, .09, 48]} /><meshStandardMaterial color="#202427" roughness={.94} /></mesh>
     {[-3.35, 3.35].map((x) => <mesh key={x} receiveShadow position={[x, .055, 0]}><boxGeometry args={[1.25, .16, 48]} /><meshStandardMaterial color="#a9a49b" roughness={.96} /></mesh>)}
     {[-.92, .92].map((x) => <group key={x}>{Array.from({ length: 16 }, (_, index) => <mesh key={index} position={[x, .075, -22.5 + index * 3]}><boxGeometry args={[.055, .018, 1.35]} /><meshBasicMaterial color="#e7d477" /></mesh>)}</group>)}
     {[-17, -5, 7, 19].map((z) => <group key={z}>{Array.from({ length: 7 }, (_, index) => <mesh key={index} position={[-2.15 + index * .72, .082, z]}><boxGeometry args={[.46, .018, .16]} /><meshBasicMaterial color="#eeeadd" /></mesh>)}</group>)}
+  </group>;
+}
+
+function NewYorkNeighborhood({ data }: { data: Neighborhood }) {
+  const towers = useMemo(() => [...data.buildings].sort((a, b) => b.height - a.height).slice(0, 18), [data.buildings]);
+  return <group>
+    <PlayableRoad />
     {towers.map((building, index) => {
       const side = index % 2 === 0 ? -1 : 1;
       const slot = Math.floor(index / 2);
       const target = { x: side * (6.15 + (index % 3) * .18), z: -19.2 + slot * 4.8 };
       const center = buildingCenter(building);
-      const footprintScale = .78;
+      const scale = footprintScale(building);
       return <group key={building.id}>
-        <group position={[target.x - center.x * footprintScale, 0, target.z - center.z * footprintScale]} scale={[footprintScale, 1, footprintScale]}><OsmBuilding building={building} sceneClass="atlantic" detailed /></group>
+        <group position={[target.x - center.x * scale, 0, target.z - center.z * scale]} scale={[scale, 1, scale]}><OsmBuilding building={building} sceneClass="atlantic" detailed /></group>
       </group>;
     })}
   </group>;
@@ -287,109 +291,24 @@ function NewYorkNeighborhood({ data }: { data: Neighborhood }) {
 function OsmNeighborhood({ data, sceneClass }: { data: Neighborhood; sceneClass: string }) {
   const detailed = data.detailLevel === "nyc-official";
   if (detailed) return <NewYorkNeighborhood data={data} />;
-  return (
-    <group>
-      {data.roads.map((road) => {
-        const major = ["primary", "secondary", "tertiary"].includes(road.kind ?? "");
-        return (
-          <group key={road.id}>
-            {road.points.slice(1).map((point, index) => {
-              const start = road.points[index];
-              const dx = point.x - start.x;
-              const dz = point.z - start.z;
-              const length = Math.hypot(dx, dz);
-              const angle = Math.atan2(dx, dz);
-              const width = major ? 1.5 : road.kind === "pedestrian" ? .8 : 1.05;
-              return <group key={`${road.id}-${index}`} position={[(start.x + point.x) / 2, 0, (start.z + point.z) / 2]} rotation={[0, angle, 0]}>
-                {detailed && <mesh receiveShadow position={[0, .005, 0]}><boxGeometry args={[width + .48, .08, length + .18]} /><meshStandardMaterial color="#aaa79f" roughness={.98} /></mesh>}
-                <mesh receiveShadow position={[0, .055, 0]}><boxGeometry args={[width, .075, length + .1]} /><meshStandardMaterial color={detailed ? "#222628" : "#303534"} roughness={.93} /></mesh>
-                {road.kind !== "pedestrian" && <mesh position={[0, .096, 0]}><boxGeometry args={[.035, .012, Math.max(.1, length - .18)]} /><meshBasicMaterial color={major ? "#e3c956" : "#c9c8be"} /></mesh>}
-              </group>;
-            })}
-          </group>
-        );
-      })}
-      {data.buildings.map((building) => <OsmBuilding key={building.id} building={building} sceneClass={sceneClass} detailed={detailed} />)}
-    </group>
-  );
+  const buildings = [...data.buildings].sort((a, b) => b.height - a.height).slice(0, 16);
+  return <group>
+    <PlayableRoad />
+    {buildings.map((building, index) => {
+      const side = index % 2 === 0 ? -1 : 1;
+      const slot = Math.floor(index / 2);
+      const target = { x: side * (6.25 + (index % 3) * .15), z: -18 + slot * 5.1 };
+      const center = buildingCenter(building);
+      const scale = footprintScale(building, .7);
+      return <group key={building.id} position={[target.x - center.x * scale, 0, target.z - center.z * scale]} scale={[scale, 1, scale]}>
+        <OsmBuilding building={building} sceneClass={sceneClass} />
+      </group>;
+    })}
+  </group>;
 }
 
 function DetailedNeighborhood({ data, sceneClass }: { data: Neighborhood; sceneClass: string }) {
-  const [cityModel, setCityModel] = useState<THREE.Group | null>(null);
-
-  useEffect(() => {
-    if (!data.osm) return;
-    let cancelled = false;
-    let generatedModel: THREE.Group | null = null;
-    const textureLoader = new THREE.TextureLoader();
-    const moduleUrl = "https://osm2world.org/build/web/0.5.0-SNAPSHOT_2026-02-18/osm2world-core-web.mjs";
-
-    import(/* @vite-ignore */ moduleUrl).then((module: O2WModule) => {
-      module.loadO2WConfig("https://tiles.osm2world.org/styles/default/standard.properties", { lod: "3" }, (config) => {
-        if (cancelled) return;
-        const converter = new module.O2WConverter();
-        converter.setConfig(config);
-        converter.convertJson(data.osm!, (meshes) => {
-          if (cancelled) return;
-          const group = new THREE.Group();
-          meshes.slice(0, 420).forEach((source, index) => {
-            const positions = source.positions();
-            if (!positions?.length) return;
-            const geometry = new THREE.BufferGeometry();
-            geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-            if (source.normals()?.length === positions.length) geometry.setAttribute("normal", new THREE.Float32BufferAttribute(source.normals(), 3));
-            else geometry.computeVertexNormals();
-            if (source.uvs()?.length) geometry.setAttribute("uv", new THREE.Float32BufferAttribute(source.uvs(), 2));
-            if (source.indices()?.length) geometry.setIndex(source.indices());
-            const color = source.color?.() ?? [.55, .57, .55];
-            const material = new THREE.MeshStandardMaterial({
-              color: new THREE.Color(color[0] ?? .55, color[1] ?? .57, color[2] ?? .55),
-              roughness: .82,
-              metalness: .04,
-              transparent: source.transparency?.() ?? false,
-              alphaTest: source.transparency?.() ? .25 : 0,
-            });
-            const baseTexture = source.baseColorTexture?.();
-            if (baseTexture) {
-              material.map = textureLoader.load(`https://tiles.osm2world.org/${baseTexture}`);
-              material.map.colorSpace = THREE.SRGBColorSpace;
-              material.map.wrapS = material.map.wrapT = source.clampTextures?.() ? THREE.ClampToEdgeWrapping : THREE.RepeatWrapping;
-            }
-            const normalTexture = source.normalTexture?.();
-            if (normalTexture) material.normalMap = textureLoader.load(`https://tiles.osm2world.org/${normalTexture}`);
-            const mesh = new THREE.Mesh(geometry, material);
-            mesh.name = `osm2world-${index}`;
-            mesh.castShadow = index < 180;
-            mesh.receiveShadow = true;
-            group.add(mesh);
-          });
-          const bounds = new THREE.Box3().setFromObject(group);
-          const center = bounds.getCenter(new THREE.Vector3());
-          const scale = .052;
-          group.scale.setScalar(scale);
-          group.position.set(-center.x * scale, -bounds.min.y * scale, -center.z * scale);
-          generatedModel = group;
-          setCityModel(group);
-        }, () => undefined);
-      }, () => undefined);
-    }).catch(() => undefined);
-
-    return () => {
-      cancelled = true;
-      if (generatedModel) {
-        generatedModel.traverse((object) => {
-          if (!(object instanceof THREE.Mesh)) return;
-          object.geometry.dispose();
-          const material = object.material as THREE.MeshStandardMaterial;
-          material.map?.dispose();
-          material.normalMap?.dispose();
-          material.dispose();
-        });
-      }
-    };
-  }, [data.osm]);
-
-  return cityModel ? <primitive object={cityModel} /> : <OsmNeighborhood data={data} sceneClass={sceneClass} />;
+  return <OsmNeighborhood data={data} sceneClass={sceneClass} />;
 }
 
 function FallbackStreet() {
