@@ -617,6 +617,11 @@ export default function World3D(props: World3DProps) {
       .catch(() => setMapStatus("bundled"));
   }
 
+  function releaseConversationFocus() {
+    const activeElement = document.activeElement;
+    if (activeElement instanceof HTMLInputElement || activeElement instanceof HTMLTextAreaElement) activeElement.blur();
+  }
+
   useEffect(() => {
     const controller = new AbortController();
     setNeighborhood(null);
@@ -640,7 +645,7 @@ export default function World3D(props: World3DProps) {
 
   return (
     <div className="world3d-canvas" aria-label={`Interactive 3D street in ${props.cityName}`}>
-      <Canvas shadows camera={{ fov: 52, near: .1, far: 90, position: [0, 5, 12] }} dpr={[1, 1.5]} gl={{ antialias: true, powerPreference: "high-performance" }} onContextMenu={(event) => event.preventDefault()}>
+      <Canvas shadows camera={{ fov: 52, near: .1, far: 90, position: [0, 5, 12] }} dpr={[1, 1.5]} gl={{ antialias: true, powerPreference: "high-performance" }} onContextMenu={(event) => event.preventDefault()} onPointerDown={releaseConversationFocus}>
         <Suspense fallback={null}><CityScene {...props} cameraResetSignal={cameraResetSignal} neighborhood={neighborhood} /></Suspense>
       </Canvas>
       <div className="camera-orbit-hud" role="group" aria-label="360 degree camera controls">
