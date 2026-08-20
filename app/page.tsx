@@ -108,11 +108,11 @@ type PronunciationResult = {
 
 type WavCapture = { stop: () => Promise<Blob> };
 
-const PLAYABLE_STREET_BOUNDS = { minX: 39, maxX: 61, minY: 54, maxY: 88 } as const;
+const PLAYABLE_STREET_BOUNDS = { minX: 33, maxX: 67, minY: 22, maxY: 96 } as const;
 const STREET_NPC_POSITIONS = [
-  { x: 40, y: 72 },
-  { x: 60, y: 62 },
-  { x: 40, y: 54 },
+  { x: 35, y: 72 },
+  { x: 65, y: 55 },
+  { x: 35, y: 32 },
 ];
 
 function clampToPlayableStreet(point: { x: number; y: number }) {
