@@ -39,6 +39,46 @@ type AgentReply = {
   source?: string;
 };
 
+const OLLAMA_TURN_FORMAT = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    text: { type: "string" },
+    translation: { type: "string" },
+    actions: {
+      type: "array",
+      maxItems: 2,
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          tool: { type: "string", enum: ["remember_fact", "give_item", "complete_step", "set_waypoint"] },
+          value: { type: "string" },
+          reason: { type: "string" },
+        },
+        required: ["tool", "value", "reason"],
+      },
+    },
+  },
+  required: ["text", "translation", "actions"],
+} as const;
+
+const OLLAMA_EVALUATION_FORMAT = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    overall: { type: "number" },
+    communication: { type: "number" },
+    vocabulary: { type: "number" },
+    grammar: { type: "number" },
+    confidence: { type: "number" },
+    strength: { type: "string" },
+    improvement: { type: "string" },
+    phrase: { type: "string" },
+  },
+  required: ["overall", "communication", "vocabulary", "grammar", "confidence", "strength", "improvement", "phrase"],
+} as const;
+
 type Scene = {
   id: string;
   label: string;
@@ -430,14 +470,28 @@ function extractModelJson(text: string) {
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1];
   const start = text.indexOf("{");
   const end = text.lastIndexOf("}");
-  return JSON.parse(fenced ?? (start >= 0 && end >= start ? text.slice(start, end + 1) : text));
+  const candidate = fenced ?? (start >= 0 && end >= start ? text.slice(start, end + 1) : text);
+  try {
+    return JSON.parse(candidate);
+  } catch (error) {
+    const readString = (field: string) => {
+      const match = text.match(new RegExp(`"${field}"\\s*:\\s*"((?:\\\\.|[^"\\\\])*)"`));
+      if (!match) return undefined;
+      try { return JSON.parse(`"${match[1]}"`) as string; } catch { return undefined; }
+    };
+    const replyText = readString("text");
+    if (replyText) {
+      return { text: replyText, translation: readString("translation") ?? "", actions: [] } satisfies AgentReply;
+    }
+    throw error;
+  }
 }
 
 function ollamaSystemPrompt(city: City, scene: Scene, level: Level, action: "turn" | "evaluate", missionContext = "") {
   if (action === "evaluate") {
     return `You are a fair language-game evaluator. Judge whether the player communicated successfully in ${city.language} at ${level} level in ${city.name}. The objective was: ${scene.goal}. ${missionContext} Reward communicative success and recovery. Do not punish a regional accent. Use only transcript evidence. Return only valid JSON with numeric fields overall, communication, vocabulary, grammar, confidence from 0 to 100, plus string fields strength, improvement, and phrase.`;
   }
-  return `You are ${scene.character}, a ${scene.role} at ${scene.label} in ${city.name}, ${city.country}. Speak naturally in ${city.language}. The player is at ${level} level. Stay warmly in character, respond to anything appropriate, remember the recent transcript, and end with no more than one natural follow-up question. Keep beginner language simple. ${missionContext} Return only valid JSON with fields text for the ${city.language} reply, translation for concise English, and actions as an array of zero or more objects shaped {"tool":"remember_fact|give_item|complete_step|set_waypoint","value":"short value","reason":"short reason"}. Only use complete_step when the player's latest message meaningfully addresses the current objective.`;
+  return `You are ${scene.character}, a ${scene.role} at ${scene.label} in ${city.name}, ${city.country}. Speak naturally in ${city.language}. The player is at ${level} level. Stay warmly in character, respond to anything appropriate, remember the recent transcript, and end with no more than one natural follow-up question. Keep the spoken reply under 45 words and beginner language simple. ${missionContext} Return only valid JSON with fields text for the ${city.language} reply, translation for concise English, and actions as an array of zero or more objects shaped {"tool":"remember_fact|give_item|complete_step|set_waypoint","value":"short value","reason":"short reason"}. Only use complete_step when the player's latest message meaningfully addresses the current objective.`;
 }
 
 export default function Home() {
@@ -713,7 +767,7 @@ export default function Home() {
       body: JSON.stringify({
         model: ollamaModel.trim(),
         stream: false,
-        format: "json",
+        format: action === "turn" ? OLLAMA_TURN_FORMAT : OLLAMA_EVALUATION_FORMAT,
         think: false,
         keep_alive: "30m",
         messages: [
@@ -721,9 +775,9 @@ export default function Home() {
           ...transcript,
         ],
         options: {
-          temperature: action === "turn" ? 0.65 : 0.15,
+          temperature: action === "turn" ? 0.4 : 0.1,
           num_ctx: 4096,
-          num_predict: action === "turn" ? 96 : 180,
+          num_predict: action === "turn" ? 160 : 220,
         },
       }),
     });
