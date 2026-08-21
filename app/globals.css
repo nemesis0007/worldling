@@ -1734,6 +1734,29 @@ footer strong { color: #b9b6a9; }
   background: #fff;
 }
 .sadak-replace .mission-steps i.done { color: var(--sadak-ink); background: var(--sadak-green); }
+.sadak-replace .mission-steps i.current { color: #fff; background: var(--sadak-red); animation: micPulse 1.5s infinite; }
+
+.agent-trace {
+  position: absolute;
+  z-index: 18;
+  top: 70px;
+  right: 18px;
+  width: 270px;
+  border: 2px solid var(--sadak-ink);
+  border-radius: 6px;
+  padding: 9px;
+  color: var(--sadak-ink);
+  background: rgba(247,242,224,.94);
+  box-shadow: 4px 4px 0 var(--sadak-ink);
+  backdrop-filter: blur(12px);
+}
+.agent-trace header,.agent-trace footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.agent-trace header { border-bottom: 1px solid rgba(18,18,15,.24); padding-bottom: 7px; font-size: 6px; font-weight: 950; letter-spacing: .12em; }
+.agent-trace header span { color: #fff; background: var(--sadak-red); padding: 4px 6px; }
+.agent-trace-events { display: grid; gap: 5px; padding: 7px 0; }
+.agent-trace-events p { display: grid; grid-template-columns: 72px 1fr; gap: 7px; margin: 0; font-size: 7px; line-height: 1.25; }
+.agent-trace-events i { color: #625c4d; font-size: 5px; font-style: normal; font-weight: 950; letter-spacing: .06em; text-transform: uppercase; }
+.agent-trace footer { border-top: 1px solid rgba(18,18,15,.18); padding-top: 6px; color: #6a6454; font-size: 5px; font-weight: 800; text-transform: uppercase; }
 
 .sadak-replace .game-status,
 .sadak-replace .focus-mode .game-status {
@@ -1791,6 +1814,9 @@ footer strong { color: #b9b6a9; }
 .sadak-replace .voice-context > span { border: 2px solid var(--sadak-ink); border-radius: 4px; background: var(--sadak-main); }
 .sadak-replace .voice-context small { color: #6b6552; }
 .sadak-replace .voice-context strong { color: var(--sadak-ink); }
+.voice-heard { display: flex; align-items: center; gap: 7px; margin: -2px 0 7px 43px; overflow: hidden; color: #5f594c; }
+.voice-heard span { flex: 0 0 auto; border: 1px solid var(--sadak-ink); padding: 2px 4px; background: var(--sadak-blue); font-size: 5px; font-weight: 950; letter-spacing: .08em; }
+.voice-heard p { overflow: hidden; margin: 0; font-size: 7px; text-overflow: ellipsis; white-space: nowrap; }
 .sadak-replace .world-mic {
   border: 2px solid var(--sadak-ink);
   border-radius: 4px;
@@ -1836,6 +1862,14 @@ footer strong { color: #b9b6a9; }
 }
 .sadak-replace .game-minimap::after { inset: 15%; border-radius: 50%; border-color: rgba(255,255,255,.2); }
 .sadak-replace .game-minimap small { color: #fff; background: #111; }
+.street-prop-label { pointer-events: none; white-space: nowrap; }
+.street-prop-label span { display: block; border: 1px solid #151512; padding: 4px 6px; color: #141412; background: #f8df68; box-shadow: 2px 2px 0 #151512; font: 950 7px/1 var(--font-sans),sans-serif; letter-spacing: .06em; }
+.street-prop-label.metro span { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; color: #fff; background: #27745c; font-size: 14px; }
+
+.attempt-review { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(170px,1fr) auto auto; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 12px; padding: 8px; background: rgba(255,255,255,.025); }
+.attempt-review audio { width: 100%; height: 32px; }
+.attempt-review span { color: var(--yellow); font-size: 7px; font-weight: 900; letter-spacing: .08em; white-space: nowrap; }
+.attempt-review button { border: 1px solid rgba(216,255,95,.32); border-radius: 8px; padding: 8px; color: var(--yellow); background: rgba(216,255,95,.08); font-size: 7px; cursor: pointer; }
 
 .sadak-replace .phrasebook-panel,
 .sadak-replace .pause-panel > section {
@@ -1938,6 +1972,7 @@ footer strong { color: #b9b6a9; }
   .sadak-replace .game-status > button:nth-of-type(3) { display: none; }
   .sadak-replace .voice-hud,
   .sadak-replace .voice-hud.roaming { width: min(620px,calc(100% - 360px)); }
+  .agent-trace { width: 230px; }
 }
 
 @media (max-width: 760px) {
@@ -1961,6 +1996,7 @@ footer strong { color: #b9b6a9; }
   .sadak-replace .game-status .model-chip,
   .sadak-replace .game-status > a { display: none; }
   .sadak-replace .osm-world-status { top: 206px; left: 10px; }
+  .agent-trace { display: none; }
   .sadak-replace .game-minimap,
   .sadak-replace .focus-mode .game-minimap { right: 10px; bottom: 182px; width: 96px; height: 96px; }
   .sadak-replace .voice-hud,
@@ -1968,6 +2004,10 @@ footer strong { color: #b9b6a9; }
   .sadak-replace .focus-mode .voice-hud { left: 10px; right: 10px; bottom: 10px; translate: 0; width: auto; }
   .sadak-replace .world-dialogue { bottom: 182px; width: calc(100% - 130px); }
   .sadak-replace .approach-hint { bottom: 182px; }
+}
+
+@media (max-width: 620px) {
+  .attempt-review { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 470px) {

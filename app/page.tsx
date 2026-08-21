@@ -2,6 +2,7 @@
 
 import { FormEvent, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import VirtualJoystick from "./VirtualJoystick";
+import { AgentAction, FLAGSHIP_MISSIONS, genericMission } from "./mission-data";
 
 const World3D = lazy(() => import("./World3D"));
 
@@ -15,6 +16,27 @@ type Message = {
   text: string;
   translation?: string;
   viaVoice?: boolean;
+  speaker?: string;
+};
+
+type AgentEvent = {
+  id: number;
+  tool: AgentAction["tool"] | "model";
+  label: string;
+};
+
+type LearnerMemory = {
+  attempts: number;
+  knownPhrases: string[];
+  focusWords: string[];
+  completedMissions: string[];
+};
+
+type AgentReply = {
+  text: string;
+  translation?: string;
+  actions?: AgentAction[];
+  source?: string;
 };
 
 type Scene = {
@@ -340,10 +362,28 @@ function cityWelcome(city: City, level: Level): Message {
   };
 }
 
+const FLAGSHIP_DEMO_REPLIES: Record<string, Array<{ text: string; translation: string }>> = {
+  "new-york": [
+    { text: "Good call. Get the pastrami on rye, then walk over to Bryant Park—tell Theo at the subway entrance that Maya sent you. Do you want mustard on that?", translation: "Maya completed your order and passed a local recommendation to the next character." },
+    { text: "Maya sent you? Bryant Park is one block east, so walking is faster from here. If you take the train later, use the downtown platform. Want me to point you toward Jordan?", translation: "Theo used Maya's handoff and confirmed the route." },
+    { text: "You made it! After work, locals grab a chair by the lawn or catch the free events. The useful phrase here is: ‘Is there anything happening tonight?’", translation: "Jordan completed your connected Midtown plan." },
+  ],
+  paris: [
+    { text: "Bien sûr. Je vous conseille un café crème et un croissant. Pour un petit cadeau, demandez à Luc près des bouquinistes. Vous désirez autre chose ?", translation: "Of course. I recommend a cafe creme and a croissant. For a small gift, ask Luc by the booksellers." },
+    { text: "Camille vous envoie ? Suivez la Seine, puis tournez à gauche au panneau du métro. Le marché est juste après. Vous voulez que je répète plus lentement ?", translation: "Camille sent you? Follow the Seine, then turn left at the Metro sign. The market is just after it." },
+    { text: "Cette petite affiche coûte huit euros. Vous pouvez payer par carte ou en espèces. C’est un joli souvenir de Paris, n’est-ce pas ?", translation: "This small print costs eight euros. You can pay by card or cash. It is a lovely Paris souvenir." },
+  ],
+  mumbai: [
+    { text: "छान! आधी बन-मस्का आणि चहा घ्या. दादरला जायचं असेल तर रोहनला विचारा. अजून काही हवं आहे का?", translation: "Great! Start with bun maska and tea. If you are going to Dadar, ask Rohan. Would you like anything else?" },
+    { text: "दादरसाठी प्लॅटफॉर्म दोनवरची फास्ट लोकल घ्या. पुढच्या थांब्यानंतर घोषणा नीट ऐका. मी पुन्हा सांगू का?", translation: "For Dadar, take the fast local from platform two. Listen for the announcement after the next stop. Shall I repeat it?" },
+    { text: "हा हार दोनशे रुपयांचा आहे. थोडा कमी करतो—एकशे ऐंशी चालेल. रोख की यूपीआय?", translation: "This garland is 200 rupees. I can make it 180. Cash or UPI?" },
+  ],
+};
+
 function demoReply(city: City, scene: Scene, input: string, level: Level): { text: string; translation: string } {
-  void scene;
   void input;
-  const reply = { text: city.demoText, translation: city.demoTranslation };
+  const sceneIndex = Math.max(0, city.scenes.findIndex((item) => item.id === scene.id));
+  const reply = FLAGSHIP_DEMO_REPLIES[city.id]?.[sceneIndex] ?? { text: city.demoText, translation: city.demoTranslation };
   return level === "Beginner" ? reply : { ...reply, translation: level === "Advanced" ? "" : reply.translation };
 }
 
@@ -377,11 +417,11 @@ function extractModelJson(text: string) {
   return JSON.parse(fenced ?? (start >= 0 && end >= start ? text.slice(start, end + 1) : text));
 }
 
-function ollamaSystemPrompt(city: City, scene: Scene, level: Level, action: "turn" | "evaluate") {
+function ollamaSystemPrompt(city: City, scene: Scene, level: Level, action: "turn" | "evaluate", missionContext = "") {
   if (action === "evaluate") {
-    return `You are a fair language-game evaluator. Judge whether the player communicated successfully in ${city.language} at ${level} level in ${city.name}. The optional quest was: ${scene.goal}. Reward communicative success and recovery. Do not punish a regional accent. Use only transcript evidence. Return only valid JSON with numeric fields overall, communication, vocabulary, grammar, confidence from 0 to 100, plus string fields strength, improvement, and phrase.`;
+    return `You are a fair language-game evaluator. Judge whether the player communicated successfully in ${city.language} at ${level} level in ${city.name}. The objective was: ${scene.goal}. ${missionContext} Reward communicative success and recovery. Do not punish a regional accent. Use only transcript evidence. Return only valid JSON with numeric fields overall, communication, vocabulary, grammar, confidence from 0 to 100, plus string fields strength, improvement, and phrase.`;
   }
-  return `You are ${scene.character}, a ${scene.role} at ${scene.label} in ${city.name}, ${city.country}. Speak naturally in ${city.language}. The player is at ${level} level. Stay warmly in character, respond to anything appropriate, remember the recent transcript, and end with no more than one natural follow-up question. Keep beginner language simple. Return only valid JSON with fields text for the ${city.language} reply and translation for concise English.`;
+  return `You are ${scene.character}, a ${scene.role} at ${scene.label} in ${city.name}, ${city.country}. Speak naturally in ${city.language}. The player is at ${level} level. Stay warmly in character, respond to anything appropriate, remember the recent transcript, and end with no more than one natural follow-up question. Keep beginner language simple. ${missionContext} Return only valid JSON with fields text for the ${city.language} reply, translation for concise English, and actions as an array of zero or more objects shaped {"tool":"remember_fact|give_item|complete_step|set_waypoint","value":"short value","reason":"short reason"}. Only use complete_step when the player's latest message meaningfully addresses the current objective.`;
 }
 
 export default function Home() {
@@ -420,7 +460,15 @@ export default function Home() {
   const [pronunciationBusy, setPronunciationBusy] = useState(false);
   const [pronunciationNote, setPronunciationNote] = useState("Choose a phrase and record one clear attempt.");
   const [pronunciationResult, setPronunciationResult] = useState<PronunciationResult | null>(null);
+  const [pronunciationBest, setPronunciationBest] = useState<Record<string, number>>({});
+  const [lastAttemptUrl, setLastAttemptUrl] = useState("");
   const [localPronunciationEndpoint, setLocalPronunciationEndpoint] = useState("http://127.0.0.1:8787");
+  const [missionStepIndex, setMissionStepIndex] = useState(0);
+  const [missionStepTurns, setMissionStepTurns] = useState(0);
+  const [missionInventory, setMissionInventory] = useState<string[]>([]);
+  const [agentEvents, setAgentEvents] = useState<AgentEvent[]>([]);
+  const [lastHeard, setLastHeard] = useState("");
+  const [learnerMemory, setLearnerMemory] = useState<LearnerMemory>({ attempts: 0, knownPhrases: [], focusWords: [], completedMissions: [] });
   const [hydrated, setHydrated] = useState(false);
   const recognitionRef = useRef<{ start: () => void; stop: () => void } | null>(null);
   const messageId = useRef(1);
@@ -434,16 +482,26 @@ export default function Home() {
   }, []);
 
   const city = useMemo(() => CITIES.find((item) => item.id === cityId) ?? CITIES[0], [cityId]);
+  const mission = useMemo(() => FLAGSHIP_MISSIONS[city.id] ?? genericMission(city.id, city.name, city.scenes.map((item) => item.goal)), [city]);
+  const missionStep = mission.steps[Math.min(missionStepIndex, mission.steps.length - 1)];
   const scene = useMemo(() => city.scenes.find((item) => item.id === sceneId) ?? city.scenes[0], [city, sceneId]);
   const userTurns = messages.filter((message) => message.role === "user").length;
   const completedQuests = questProgress.filter(Boolean).length;
   const cityCenter = CITY_CENTERS[city.name] ?? [90 - city.mapY * 1.8, city.mapX * 3.6 - 180];
   const streetViewUrl = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${encodeURIComponent(`${cityCenter[0].toFixed(4)},${cityCenter[1].toFixed(4)}`)}`;
-  const activeNpcIndex = Math.max(0, city.scenes.findIndex((item) => item.id === scene.id));
+  const activeNpcIndex = missionStep.npcIndex;
   const npcPositions = STREET_NPC_POSITIONS;
   const activeNpcPosition = npcPositions[activeNpcIndex];
   const nearCharacter = Math.hypot((playerPosition.x - activeNpcPosition.x) / 3.1, (playerPosition.y - activeNpcPosition.y) / 2.2) < 3.4;
   const lastNpcMessage = [...messages].reverse().find((message) => message.role === "npc");
+  const waypointDistance = Math.round(Math.hypot(playerPosition.x - activeNpcPosition.x, playerPosition.y - activeNpcPosition.y));
+  const weakestWord = pronunciationResult?.words.length
+    ? [...pronunciationResult.words].sort((a, b) => a.accuracy - b.accuracy)[0]
+    : null;
+
+  const addAgentEvent = useCallback((tool: AgentEvent["tool"], label: string) => {
+    setAgentEvents((current) => [{ id: Date.now() + Math.random(), tool, label }, ...current].slice(0, 4));
+  }, []);
 
   useEffect(() => {
     const saved = window.localStorage.getItem("worldling-provider") as Provider | null;
@@ -459,6 +517,15 @@ export default function Home() {
       const pronunciation = JSON.parse(window.localStorage.getItem("worldling-pronunciation") ?? "null") as { provider?: PronunciationProvider; endpoint?: string } | null;
       if (pronunciation?.provider === "local" || pronunciation?.provider === "azure") setPronunciationProvider(pronunciation.provider);
       if (pronunciation?.endpoint) setLocalPronunciationEndpoint(pronunciation.endpoint);
+      const memory = JSON.parse(window.localStorage.getItem("worldling-learner-memory") ?? "null") as Partial<LearnerMemory> | null;
+      if (memory) setLearnerMemory({
+        attempts: typeof memory.attempts === "number" ? memory.attempts : 0,
+        knownPhrases: Array.isArray(memory.knownPhrases) ? memory.knownPhrases.slice(0, 8) : [],
+        focusWords: Array.isArray(memory.focusWords) ? memory.focusWords.slice(0, 8) : [],
+        completedMissions: Array.isArray(memory.completedMissions) ? memory.completedMissions : [],
+      });
+      const best = JSON.parse(window.localStorage.getItem("worldling-pronunciation-best") ?? "null") as Record<string, number> | null;
+      if (best) setPronunciationBest(best);
     } catch {
       // Ignore malformed device-local prototype state.
     }
@@ -470,6 +537,10 @@ export default function Home() {
     setEvaluation(null);
     setInput("");
     setQuestProgress([false, false, false]);
+    setMissionStepIndex(0);
+    setMissionStepTurns(0);
+    setMissionInventory([]);
+    setAgentEvents([{ id: Date.now(), tool: "set_waypoint", label: `Director marked ${city.scenes[0].character}` }]);
     setAffinity(12);
     setReward(null);
     setRewarded(false);
@@ -477,7 +548,7 @@ export default function Home() {
     setPronunciationResult(null);
     setPronunciationNote("Choose a phrase and record one clear attempt.");
     setEngineNote(provider === "demo" ? "Ready · no account or key required" : provider === "local" ? "Ollama selected · test the connection in Engine" : "API model selected · server connection checked on first message");
-  }, [city, scene, level, provider]);
+  }, [city, level, provider]);
 
   useEffect(() => {
     window.localStorage.setItem("worldling-provider", provider);
@@ -497,6 +568,20 @@ export default function Home() {
     if (!hydrated) return;
     window.localStorage.setItem("worldling-pronunciation", JSON.stringify({ provider: pronunciationProvider, endpoint: localPronunciationEndpoint }));
   }, [hydrated, pronunciationProvider, localPronunciationEndpoint]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    window.localStorage.setItem("worldling-learner-memory", JSON.stringify(learnerMemory));
+  }, [hydrated, learnerMemory]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    window.localStorage.setItem("worldling-pronunciation-best", JSON.stringify(pronunciationBest));
+  }, [hydrated, pronunciationBest]);
+
+  useEffect(() => () => {
+    if (lastAttemptUrl) URL.revokeObjectURL(lastAttemptUrl);
+  }, [lastAttemptUrl]);
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -589,8 +674,8 @@ export default function Home() {
     };
   }, [city.id, showEngine, showPause, showPhrasebook, showPronunciation, showWorldPicker]);
 
-  function speak(text: string) {
-    if (!autoSpeak || !("speechSynthesis" in window)) return;
+  function speak(text: string, force = false) {
+    if ((!autoSpeak && !force) || !("speechSynthesis" in window)) return;
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = city.locale;
@@ -613,7 +698,7 @@ export default function Home() {
         stream: false,
         format: "json",
         messages: [
-          { role: "system", content: ollamaSystemPrompt(city, scene, level, action) },
+          { role: "system", content: ollamaSystemPrompt(city, scene, level, action, `Current connected mission: ${mission.title}. Objective: ${missionStep.instruction}. Items and facts already carried: ${missionInventory.join(", ") || "none"}. Learner focus words: ${learnerMemory.focusWords.join(", ") || "none"}.`) },
           ...transcript,
         ],
         options: { temperature: action === "turn" ? 0.75 : 0.15 },
@@ -649,9 +734,9 @@ export default function Home() {
     }
   }
 
-  async function askProvider(text: string, nextMessages: Message[]) {
+  async function askProvider(text: string, nextMessages: Message[]): Promise<AgentReply> {
     if (provider === "local") {
-      return await callOllama("turn", nextMessages) as { text: string; translation?: string };
+      return await callOllama("turn", nextMessages) as AgentReply;
     }
     const response = await fetch("/api/agent", {
       method: "POST",
@@ -667,39 +752,43 @@ export default function Home() {
         role: scene.role,
         location: scene.label,
         goal: scene.goal,
+        mission: mission.title,
+        objective: missionStep.instruction,
+        inventory: missionInventory,
+        learnerMemory: { focusWords: learnerMemory.focusWords, knownPhrases: learnerMemory.knownPhrases.slice(0, 4) },
         input: text,
         messages: nextMessages.slice(-8).map(({ role, text: content }) => ({ role, content })),
       }),
     });
     if (!response.ok) throw new Error(await response.text());
-    return (await response.json()) as { text: string; translation?: string; source?: string };
+    return (await response.json()) as AgentReply;
   }
 
   async function submitText(text: string, viaVoice = false) {
     const clean = text.trim();
     if (!clean || thinking) return;
-    const userMessage: Message = { id: messageId.current++, role: "user", text: clean, viaVoice };
+    const startedAt = performance.now();
+    const userMessage: Message = { id: messageId.current++, role: "user", text: clean, viaVoice, speaker: "You" };
     const nextMessages = [...messages, userMessage];
     setMessages(nextMessages);
     setInput("");
     setThinking(true);
     const asksQuestion = /[?？]|what|where|how|why|who|which|ಎಲ್ಲಿ|ಏನು|ಹೇಗೆ|どこ|何|どう|où|comment|pourquoi/i.test(clean);
-    setQuestProgress((current) => [true, current[1] || asksQuestion, current[2] || userTurns + 1 >= 3]);
     setEngineNote(provider === "demo" ? "NPC considered intent · selected a follow-up" : `Contacting ${providerLabels[provider]}…`);
 
-    let reply: { text: string; translation?: string };
+    let reply: AgentReply;
     try {
       if (provider === "demo") {
         await new Promise((resolve) => window.setTimeout(resolve, 520));
         reply = demoReply(city, scene, clean, level);
-        setEngineNote("Intent read · conversation memory updated · follow-up chosen");
+        setEngineNote("Demo director · intent read · world state updated");
       } else {
         reply = await askProvider(clean, nextMessages);
         if (provider === "local") {
           setLocalStatus("connected");
           setLocalMessage(`Connected · ${ollamaModel} generated this reply`);
         }
-        setEngineNote(`${providerLabels[provider]} responded · memory updated`);
+        setEngineNote(`${providerLabels[provider]} responded in ${((performance.now() - startedAt) / 1000).toFixed(1)}s · actions validated`);
       }
     } catch {
       reply = demoReply(city, scene, clean, level);
@@ -715,9 +804,48 @@ export default function Home() {
       role: "npc",
       text: reply.text,
       translation: level === "Advanced" ? undefined : reply.translation,
+      speaker: scene.character,
     };
     setMessages((current) => [...current, npcMessage]);
     setAffinity((current) => Math.min(100, current + (asksQuestion ? 14 : 9)));
+    setLearnerMemory((current) => ({
+      ...current,
+      attempts: current.attempts + 1,
+      knownPhrases: [clean, ...current.knownPhrases.filter((phrase) => phrase !== clean)].slice(0, 8),
+    }));
+
+    const validTools = new Set(["set_waypoint", "remember_fact", "give_item", "complete_step"]);
+    (reply.actions ?? []).filter((action) => validTools.has(action.tool)).slice(0, 2).forEach((action) => {
+      addAgentEvent(action.tool, `${scene.character}: ${action.value}`);
+    });
+
+    const nextTurnCount = missionStepTurns + 1;
+    const completesObjective = clean.length >= 8 && (asksQuestion || nextTurnCount >= 2);
+    if (completesObjective && !questProgress[missionStepIndex]) {
+      const completedStep = missionStep;
+      const nextIndex = missionStepIndex + 1;
+      setQuestProgress((current) => current.map((done, index) => index === missionStepIndex ? true : done));
+      setMissionInventory((current) => Array.from(new Set([...current, completedStep.handoff, completedStep.reward])));
+      addAgentEvent("complete_step", `Objective complete: ${completedStep.title}`);
+      addAgentEvent("give_item", `Added ${completedStep.reward}`);
+      if (nextIndex < mission.steps.length) {
+        const nextStep = mission.steps[nextIndex];
+        setMissionStepIndex(nextIndex);
+        setMissionStepTurns(0);
+        setSceneId(city.scenes[nextStep.npcIndex].id);
+        addAgentEvent("set_waypoint", `Waypoint set: ${city.scenes[nextStep.npcIndex].character}`);
+      } else {
+        setMissionStepTurns(nextTurnCount);
+        setLearnerMemory((current) => ({
+          ...current,
+          completedMissions: Array.from(new Set([...current.completedMissions, mission.id])),
+        }));
+        addAgentEvent("remember_fact", mission.finale);
+      }
+    } else {
+      setMissionStepTurns(nextTurnCount);
+      addAgentEvent("remember_fact", `Learner said: ${clean.slice(0, 52)}`);
+    }
     setThinking(false);
     speak(reply.text);
   }
@@ -728,6 +856,7 @@ export default function Home() {
   }
 
   function startListening() {
+    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
     const speechWindow = window as SpeechRecognitionWindow;
     const SpeechRecognition = speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition;
     if (!SpeechRecognition) {
@@ -747,6 +876,7 @@ export default function Home() {
     };
     recognition.onresult = (event) => {
       const transcript = event.results?.[0]?.[0]?.transcript ?? "";
+      setLastHeard(transcript);
       setInput(transcript);
       void submitText(transcript, true);
     };
@@ -778,7 +908,7 @@ export default function Home() {
               city: city.name,
               language: city.language,
               level,
-              goal: scene.goal,
+              goal: `${mission.title}: ${mission.summary}. Completed ${completedQuests}/3 connected encounters.`,
               messages: messages.map(({ role, text: content }) => ({ role, content })),
             }),
           });
@@ -824,6 +954,13 @@ export default function Home() {
     const payload = await response.json() as PronunciationResult & { error?: string; detail?: string };
     if (!response.ok) throw new Error(payload.error || payload.detail || "Pronunciation assessment failed.");
     setPronunciationResult(payload);
+    setPronunciationBest((current) => ({ ...current, [phrase]: Math.max(current[phrase] ?? 0, payload.overall) }));
+    const retryWords = payload.words.filter((word) => word.accuracy < 65).map((word) => word.word);
+    setLearnerMemory((current) => ({
+      ...current,
+      focusWords: Array.from(new Set([...retryWords, ...current.focusWords])).slice(0, 8),
+    }));
+    addAgentEvent("remember_fact", retryWords.length ? `Coach saved focus: ${retryWords.slice(0, 3).join(", ")}` : "Coach marked this phrase secure");
     setPronunciationNote(payload.phonemeScoring
       ? `${pronunciationProvider === "local" ? "Local phoneme model" : "Azure Speech"} scored this attempt.`
       : "Intelligibility and timing were scored; phoneme scoring was unavailable for this attempt.");
@@ -841,6 +978,8 @@ export default function Home() {
     try {
       const audio = await capture.stop();
       if (audio.size < 1000) throw new Error("The recording was too short. Try speaking for at least one second.");
+      if (lastAttemptUrl) URL.revokeObjectURL(lastAttemptUrl);
+      setLastAttemptUrl(URL.createObjectURL(audio));
       await assessPronunciation(audio);
     } catch (error) {
       setPronunciationNote(error instanceof Error ? error.message : "Pronunciation assessment failed.");
@@ -900,17 +1039,21 @@ export default function Home() {
                 npcPositions={npcPositions}
                 onCameraDirectionChange={updateCameraDirection}
                 onMoveTo={movePlayerTo}
-                onSelectNpc={(index) => setSceneId(city.scenes[index].id)}
+                onSelectNpc={(index) => {
+                  if (index === activeNpcIndex) setSceneId(city.scenes[index].id);
+                  else addAgentEvent("set_waypoint", `${city.scenes[index].character} points you toward ${city.scenes[activeNpcIndex].character}`);
+                }}
                 playerPosition={playerPosition}
                 sceneClass={city.sceneClass}
                 latitude={cityCenter[0]}
                 longitude={cityCenter[1]}
+                waypointLabel={missionStep.title}
               />
             </Suspense>
 
             <div className="sadak-brand-hud" aria-label="Current district">
               <span className="sadak-wordmark"><b>W</b> WORLDLING</span>
-              <div><strong>{city.name}</strong><small>{city.flag} {city.nativeLanguage} · {level}</small></div>
+              <div><strong>{city.name}</strong><small>{city.flag} {city.nativeLanguage} · {level}{FLAGSHIP_MISSIONS[city.id] ? " · FLAGSHIP STORY" : ""}</small></div>
               <button onClick={() => setShowWorldPicker(true)}>Change district</button>
             </div>
 
@@ -933,7 +1076,7 @@ export default function Home() {
                     {CITIES.map((item, index) => (
                       <button key={item.id} className={item.id === city.id ? "active" : ""} onClick={() => chooseCity(item)}>
                         <span className={`district-cover cover-${item.sceneClass}`}><b>{String(index + 1).padStart(2, "0")}</b><i>{item.flag}</i></span>
-                        <span className="district-copy"><small>{item.country.toUpperCase()}</small><strong>{item.name}</strong><em>{item.language} · {item.scenes.length} errands</em></span>
+                        <span className="district-copy"><small>{item.country.toUpperCase()}{FLAGSHIP_MISSIONS[item.id] ? " · FLAGSHIP" : ""}</small><strong>{item.name}</strong><em>{item.language} · {item.scenes.length} connected encounters</em></span>
                         <span className="district-progress">{stamps.includes(item.id) ? "✓" : "→"}</span>
                       </button>
                     ))}
@@ -947,7 +1090,7 @@ export default function Home() {
               <div key={city.id} className="street-intro" aria-live="polite">
                 <span>{city.flag} {city.country}</span>
                 <h3>{city.name}</h3>
-                <p>Walk the street. Meet a local. Complete the conversation.</p>
+                <p>{mission.summary}</p>
                 <div><kbd>WASD</kbd> move <kbd>SHIFT</kbd> run <kbd>P</kbd> phrases <kbd>ESC</kbd> pause</div>
               </div>
             )}
@@ -955,13 +1098,21 @@ export default function Home() {
             <div className="game-mission glass-card">
               <span className="mission-icon">{completedQuests === 3 ? "✓" : "◎"}</span>
               <div>
-                <small>MISSION · {completedQuests}/3</small>
-                <strong>{scene.goal}</strong>
+                <small>MISSION · {mission.title.toUpperCase()} · {completedQuests}/3</small>
+                <strong>{completedQuests === 3 ? mission.finale : missionStep.instruction}</strong>
                 <span className="mission-steps" aria-label={`${completedQuests} of 3 mission steps complete`}>
-                  {questProgress.map((done, index) => <i key={index} className={done ? "done" : ""}>{done ? "✓" : index + 1}</i>)}
+                  {questProgress.map((done, index) => <i key={index} className={done ? "done" : index === missionStepIndex ? "current" : ""}>{done ? "✓" : index + 1}</i>)}
                 </span>
               </div>
             </div>
+
+            <aside className="agent-trace glass-card" aria-label="Agent activity">
+              <header><span>LIVE AGENT</span><strong>{thinking ? "REASONING" : "WORLD STATE"}</strong></header>
+              <div className="agent-trace-events">
+                {agentEvents.map((event) => <p key={event.id}><i>{event.tool.replace("_", " ")}</i><span>{event.label}</span></p>)}
+              </div>
+              <footer><span>{missionInventory.length} items remembered</span><span>{learnerMemory.focusWords.length} focus sounds</span></footer>
+            </aside>
 
             <div className="game-status glass-card">
               <span className={`model-chip ${provider}`} title={engineNote}>{provider === "local" ? `${ollamaModel} · local` : providerLabels[provider]}</span>
@@ -981,7 +1132,7 @@ export default function Home() {
                     <article key={prompt}>
                       <span>0{index + 1}</span>
                       <strong>{prompt}</strong>
-                      <div><button onClick={() => speak(prompt)}>Listen</button><button onClick={() => { setInput(prompt); setShowPhrasebook(false); window.setTimeout(() => worldInputRef.current?.focus(), 0); }}>Use phrase</button></div>
+                      <div><button onClick={() => speak(prompt, true)}>Listen</button><button onClick={() => { setInput(prompt); setShowPhrasebook(false); window.setTimeout(() => worldInputRef.current?.focus(), 0); }}>Use phrase</button></div>
                     </article>
                   ))}
                 </div>
@@ -1008,11 +1159,11 @@ export default function Home() {
             {(nearCharacter || thinking) && (
               <div className="world-dialogue glass-card" aria-live="polite">
                 <span>{scene.avatar}</span>
-                <div><small>{thinking ? `${scene.character} is thinking…` : scene.character}</small><p>{thinking ? "•••" : lastNpcMessage?.text}</p></div>
+                <div><small>{thinking ? `${scene.character} is thinking…` : lastNpcMessage?.speaker ?? scene.character}</small><p>{thinking ? "•••" : lastNpcMessage?.text}</p></div>
               </div>
             )}
 
-            {!nearCharacter && <div className="approach-hint glass-card">Move closer to {scene.character} to talk</div>}
+            {!nearCharacter && <div className="approach-hint glass-card"><b>WAYPOINT</b> Move closer to {city.scenes[activeNpcIndex].character} · {waypointDistance}m</div>}
 
             <div className="movement-pad glass-card" aria-label="Movement controls">
               <button onClick={() => movePlayer(0, -5)} aria-label="Move up">↑</button>
@@ -1040,7 +1191,7 @@ export default function Home() {
                 <div className="messages">
                   {messages.map((message) => (
                     <article key={message.id} className={`message ${message.role}`}>
-                      <span className="speaker">{message.role === "npc" ? scene.avatar : "You"}</span>
+                      <span className="speaker">{message.role === "npc" ? message.speaker ?? scene.character : "You"}</span>
                       <div><p>{message.text}</p>{message.translation && city.locale !== "en-US" && <small>{message.translation}</small>}</div>
                     </article>
                   ))}
@@ -1053,6 +1204,7 @@ export default function Home() {
                 <span>{scene.avatar}</span>
                 <div><small>{nearCharacter ? `TALKING TO ${scene.character.toUpperCase()} · BOND ${affinity}%` : "EXPLORE THE SCENE"}</small><strong>{nearCharacter ? `Speak naturally in ${city.language}` : "Use WASD or the arrows to move"}</strong></div>
               </div>
+              {lastHeard && <div className="voice-heard"><span>MIC HEARD</span><p>{lastHeard}</p></div>}
               <form onSubmit={handleSubmit}>
                 <button
                   type="button"
@@ -1105,7 +1257,7 @@ export default function Home() {
               <article><span>↗ TRY NEXT</span><p>{evaluation.improvement}</p></article>
             </div>
             <div className="takeaway"><span>Phrase to keep</span><strong>{evaluation.phrase}</strong></div>
-            <button className="replay-button" onClick={() => { setMessages([cityWelcome(city, level)]); setEvaluation(null); setReward(null); setRewarded(false); setQuestProgress([false, false, false]); setAffinity(12); }}>Play this scene again</button>
+            <button className="replay-button" onClick={() => { setMessages([cityWelcome(city, level)]); setEvaluation(null); setReward(null); setRewarded(false); setQuestProgress([false, false, false]); setMissionStepIndex(0); setMissionStepTurns(0); setMissionInventory([]); setSceneId(city.scenes[0].id); setAffinity(12); addAgentEvent("set_waypoint", `Mission restarted at ${city.scenes[0].character}`); }}>Replay the mission</button>
           </section>
         </div>
       )}
@@ -1138,7 +1290,7 @@ export default function Home() {
             <div className="target-phrase">
               <span>TARGET · {city.language.toUpperCase()}</span>
               <strong>{city.prompts[pronunciationPrompt]}</strong>
-              <button onClick={() => speak(city.prompts[pronunciationPrompt])}>Listen ↗</button>
+              <button onClick={() => speak(city.prompts[pronunciationPrompt], true)}>Listen ↗</button>
             </div>
 
             <button className={`record-pronunciation ${pronunciationRecording ? "recording" : ""}`} disabled={pronunciationBusy} onClick={() => void togglePronunciationRecording()}>
@@ -1159,6 +1311,11 @@ export default function Home() {
                   {typeof pronunciationResult.prosody === "number" && <div><span>prosody</span><i><b style={{ width: `${pronunciationResult.prosody}%` }} /></i><strong>{pronunciationResult.prosody}</strong></div>}
                 </div>
                 <div className="recognized-line"><span>MODEL HEARD</span><p>{pronunciationResult.recognizedText || "No clear words detected."}</p></div>
+                <div className="attempt-review">
+                  {lastAttemptUrl && <audio controls src={lastAttemptUrl} preload="metadata" aria-label="Replay your pronunciation attempt" />}
+                  <span>BEST {pronunciationBest[city.prompts[pronunciationPrompt]] ?? pronunciationResult.overall}/100</span>
+                  {weakestWord && <button onClick={() => speak(weakestWord.word, true)}>Hear “{weakestWord.word}” again</button>}
+                </div>
                 <div className="word-heatmap" aria-label="Word accuracy scores">
                   {pronunciationResult.words.map((word, index) => <span key={`${word.word}-${index}`} className={word.accuracy >= 80 ? "good" : word.accuracy >= 55 ? "close" : "retry"} title={`${word.accuracy}/100 · ${word.errorType}`}>{word.word}<small>{word.accuracy}</small></span>)}
                 </div>

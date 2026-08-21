@@ -23,6 +23,7 @@ type World3DProps = {
   sceneClass: string;
   latitude: number;
   longitude: number;
+  waypointLabel: string;
 };
 
 type MapPoint = { x: number; z: number };
@@ -63,13 +64,14 @@ function Model({ url, ...props }: { url: string } & ThreeElements["group"]) {
   return <primitive object={clone} {...props} />;
 }
 
-function Person({ active = false, model, name, onClick, player = false, position }: {
+function Person({ active = false, model, name, onClick, player = false, position, waypointLabel }: {
   active?: boolean;
   model: string;
   name?: string;
   onClick?: () => void;
   player?: boolean;
   position: [number, number, number];
+  waypointLabel?: string;
 }) {
   const group = useRef<THREE.Group>(null);
   const source = useGLTF(`${CHARACTER_ROOT}/${model}`);
@@ -128,14 +130,20 @@ function Person({ active = false, model, name, onClick, player = false, position
     <group ref={group} position={initialPosition} onClick={(event) => { event.stopPropagation(); onClick?.(); }}>
       <primitive object={character} scale={.92} rotation={[0, Math.PI, 0]} />
       {active && (
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, .035, 0]}>
-          <ringGeometry args={[.7, .86, 40]} />
-          <meshBasicMaterial color="#d8ff5f" transparent opacity={.9} side={THREE.DoubleSide} />
-        </mesh>
+        <>
+          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, .035, 0]}>
+            <ringGeometry args={[.7, .86, 40]} />
+            <meshBasicMaterial color="#d8ff5f" transparent opacity={.9} side={THREE.DoubleSide} />
+          </mesh>
+          <mesh position={[0, 2.7, 0]}>
+            <cylinderGeometry args={[.08, .7, 5.4, 24, 1, true]} />
+            <meshBasicMaterial color="#d8ff5f" transparent opacity={.08} side={THREE.DoubleSide} depthWrite={false} />
+          </mesh>
+        </>
       )}
       {name && (
         <Html position={[0, 2.58, 0]} center distanceFactor={10} className="world3d-name">
-          <span className={active ? "active" : ""}>{active ? "TALK · " : ""}{name}</span>
+          <span className={active ? "active" : ""}>{active ? `${waypointLabel ? `${waypointLabel.toUpperCase()} · ` : "TALK · "}` : ""}{name}</span>
         </Html>
       )}
     </group>
@@ -177,6 +185,16 @@ function NewYorkStreetLife() {
     <Taxi position={[-1.15, .08, 13]} rotation={.08} />
     <TrafficSignal position={[-6.15, 0, -2.8]} />
     <TrafficSignal position={[6.15, 0, 5.5]} />
+    {[-2.4, -1.2, 0, 1.2, 2.4].map((x) => <mesh key={`crosswalk-${x}`} position={[x, .025, 1.4]} rotation={[-Math.PI / 2, 0, 0]}><planeGeometry args={[.64, 4.9]} /><meshBasicMaterial color="#e7e4da" transparent opacity={.82} /></mesh>)}
+    <group position={[5.55, 0, -8.7]}>
+      <mesh castShadow position={[0, .72, 0]}><boxGeometry args={[1.35, 1.1, .75]} /><meshStandardMaterial color="#2f81ce" /></mesh>
+      <mesh position={[0, 1.42, 0]}><boxGeometry args={[1.55, .25, .9]} /><meshStandardMaterial color="#f1c52a" /></mesh>
+      <Html position={[0, 1.42, .48]} center distanceFactor={9} className="street-prop-label"><span>HOT DOGS</span></Html>
+    </group>
+    <group position={[-5.9, 0, 8.2]}>
+      <mesh castShadow position={[0, .2, 0]}><cylinderGeometry args={[.34, .38, .4, 14]} /><meshStandardMaterial color="#3a4143" metalness={.65} /></mesh>
+      <Sparkles count={14} scale={[1.4, 3.2, 1.4]} size={2} speed={.55} opacity={.3} color="#d9f2ee" />
+    </group>
     {[-10.5, -3.3, 4.5, 11.8].map((z, index) => <group key={z} position={[index % 2 ? 6.15 : -6.15, 0, z]}>
       <mesh castShadow position={[0, .32, 0]}><cylinderGeometry args={[.1, .14, .64, 10]} /><meshStandardMaterial color="#b83227" roughness={.72} /></mesh>
       <mesh position={[0, .68, 0]}><sphereGeometry args={[.15, 12, 8]} /><meshStandardMaterial color="#bd3a2c" /></mesh>
@@ -188,6 +206,69 @@ function NewYorkStreetLife() {
       <mesh position={[3.4, 4.35, -.18]}><planeGeometry args={[2.7, 2.35]} /><meshStandardMaterial color="#3cc5e8" emissive="#1678d4" emissiveIntensity={1.8} /></mesh>
       <Html position={[0, 7.15, 0]} center distanceFactor={13} className="landmark-label"><span>Times Square · Broadway</span></Html>
     </group>
+  </group>;
+}
+
+function CafeTable({ position }: { position: [number, number, number] }) {
+  return <group position={position}>
+    <mesh castShadow position={[0, .55, 0]}><cylinderGeometry args={[.58, .58, .08, 20]} /><meshStandardMaterial color="#6c3f2d" roughness={.72} /></mesh>
+    <mesh castShadow position={[0, .27, 0]}><cylinderGeometry args={[.07, .09, .55, 10]} /><meshStandardMaterial color="#252523" metalness={.55} /></mesh>
+    {[-.8, .8].map((x) => <group key={x} position={[x, 0, 0]}><mesh position={[0, .32, 0]}><boxGeometry args={[.42, .08, .42]} /><meshStandardMaterial color="#b23c34" /></mesh><mesh position={[0, .28, .18]} rotation={[.2, 0, 0]}><boxGeometry args={[.42, .65, .08]} /><meshStandardMaterial color="#b23c34" /></mesh></group>)}
+  </group>;
+}
+
+function ParisStreetLife() {
+  return <group>
+    {[-9, -2, 6.5].map((z) => <CafeTable key={z} position={[-5.5, 0, z]} />)}
+    <group position={[5.7, 0, -6]}>
+      <mesh castShadow position={[0, 1.35, 0]}><cylinderGeometry args={[.07, .09, 2.7, 12]} /><meshStandardMaterial color="#315b4a" metalness={.55} /></mesh>
+      <mesh position={[0, 2.72, 0]} rotation={[0, 0, -.08]}><circleGeometry args={[.5, 24]} /><meshStandardMaterial color="#3a7f68" /></mesh>
+      <Html position={[0, 2.72, .03]} center distanceFactor={8} className="street-prop-label metro"><span>M</span></Html>
+    </group>
+    {[-10, 1, 11].map((z, index) => <group key={z} position={[5.6, 0, z]}>
+      <mesh castShadow position={[0, .72, 0]} rotation={[0, index % 2 ? .08 : -.08, 0]}><boxGeometry args={[1.45, 1.4, .6]} /><meshStandardMaterial color="#315c4a" roughness={.8} /></mesh>
+      <mesh position={[0, .82, -.32]}><planeGeometry args={[1.15, .85]} /><meshStandardMaterial color={index % 2 ? "#d7c7a4" : "#d9b870"} /></mesh>
+      <Html position={[0, 1.58, 0]} center distanceFactor={9} className="street-prop-label"><span>BOUQUINISTE</span></Html>
+    </group>)}
+    {[-12, -4, 5, 13].map((z, index) => <StreetLamp key={z} position={[index % 2 ? 6.25 : -6.25, 0, z]} />)}
+    <CityLandmark cityName="Paris" />
+    <group position={[0, 0, -22]}>
+      <mesh position={[0, .35, 0]}><boxGeometry args={[13, .7, .25]} /><meshStandardMaterial color="#767973" metalness={.45} /></mesh>
+      {[-5, -3, -1, 1, 3, 5].map((x) => <mesh key={x} position={[x, 1.05, 0]}><cylinderGeometry args={[.035, .035, 1.4, 8]} /><meshStandardMaterial color="#555955" /></mesh>)}
+    </group>
+  </group>;
+}
+
+function AutoRickshaw({ position, rotation = 0 }: { position: [number, number, number]; rotation?: number }) {
+  return <group position={position} rotation={[0, rotation, 0]}>
+    <mesh castShadow position={[0, .42, 0]}><boxGeometry args={[1.05, .62, 1.55]} /><meshStandardMaterial color="#e4ba22" roughness={.62} /></mesh>
+    <mesh castShadow position={[0, .88, .1]}><boxGeometry args={[1.02, .58, 1.2]} /><meshStandardMaterial color="#171b19" roughness={.72} /></mesh>
+    <mesh position={[0, .92, -.52]}><planeGeometry args={[.78, .42]} /><meshStandardMaterial color="#8ec0c7" transparent opacity={.72} /></mesh>
+    {[-.43, .43].map((x) => <mesh key={x} position={[x, .18, .45]} rotation={[0, 0, Math.PI / 2]}><cylinderGeometry args={[.18, .18, .13, 14]} /><meshStandardMaterial color="#111" /></mesh>)}
+    <mesh position={[0, .18, -.6]} rotation={[0, 0, Math.PI / 2]}><cylinderGeometry args={[.18, .18, .13, 14]} /><meshStandardMaterial color="#111" /></mesh>
+  </group>;
+}
+
+function MumbaiStreetLife() {
+  return <group>
+    <AutoRickshaw position={[-1.3, .02, -8]} rotation={.05} />
+    <AutoRickshaw position={[1.25, .02, 8]} rotation={Math.PI + .04} />
+    <group position={[-5.7, 0, -3]}>
+      <mesh castShadow position={[0, .7, 0]}><boxGeometry args={[1.7, 1.35, .8]} /><meshStandardMaterial color="#317c65" /></mesh>
+      <mesh position={[0, 1.52, 0]}><coneGeometry args={[1.2, .75, 4]} /><meshStandardMaterial color="#e86c42" /></mesh>
+      <Html position={[0, 1.5, .48]} center distanceFactor={9} className="street-prop-label"><span>CHAI · चहा</span></Html>
+    </group>
+    <group position={[5.75, 0, 6]}>
+      <mesh castShadow position={[0, 1.15, 0]}><boxGeometry args={[1.8, 2.3, .8]} /><meshStandardMaterial color="#c94435" /></mesh>
+      {[.35, .8, 1.25, 1.7].map((y) => <mesh key={y} position={[0, y, -.42]}><planeGeometry args={[1.4, .12]} /><meshBasicMaterial color="#f1d36c" /></mesh>)}
+      <Html position={[0, 2.55, 0]} center distanceFactor={10} className="street-prop-label"><span>BEST</span></Html>
+    </group>
+    {[-12, -4, 5, 13].map((z, index) => <StreetLamp key={z} position={[index % 2 ? 6.25 : -6.25, 0, z]} />)}
+    <CityLandmark cityName="Mumbai" />
+    {[-8, 2, 11].map((z, index) => <group key={z} position={[index % 2 ? -5.8 : 5.8, 0, z]}>
+      <mesh castShadow position={[0, .75, 0]}><boxGeometry args={[1.65, 1.4, .65]} /><meshStandardMaterial color={["#e46b43", "#4c8d79", "#d3a12f"][index]} /></mesh>
+      <mesh position={[0, 1.55, 0]}><boxGeometry args={[1.9, .18, .85]} /><meshStandardMaterial color="#f0d6a2" /></mesh>
+    </group>)}
   </group>;
 }
 
@@ -465,7 +546,7 @@ function PlayerOrbitCamera({ onDirectionChange, playerPosition, resetSignal }: {
   );
 }
 
-function CityScene({ activeNpcIndex, cameraResetSignal, cityName, neighborhood, npcNames, npcPositions, onCameraDirectionChange, onMoveTo, onSelectNpc, playerPosition, sceneClass }: World3DProps & { cameraResetSignal: number; neighborhood: Neighborhood | null }) {
+function CityScene({ activeNpcIndex, cameraResetSignal, cityName, neighborhood, npcNames, npcPositions, onCameraDirectionChange, onMoveTo, onSelectNpc, playerPosition, sceneClass, waypointLabel }: World3DProps & { cameraResetSignal: number; neighborhood: Neighborhood | null }) {
   const playerWorld = toWorld(playerPosition);
   const sky = sceneClass === "desert" ? "#c9966f" : sceneClass === "india" ? "#d79a72" : sceneClass === "east" ? "#7894a4" : sceneClass === "tropical" ? "#5f9b9a" : "#86abc0";
 
@@ -490,7 +571,7 @@ function CityScene({ activeNpcIndex, cameraResetSignal, cityName, neighborhood, 
       </mesh>
       <group onClick={moveOnGround}>{neighborhood ? <DetailedNeighborhood data={neighborhood} sceneClass={sceneClass} /> : <FallbackStreet />}</group>
       <SadakStreetRibbon cityName={cityName} sceneClass={sceneClass} />
-      {cityName !== "New York" && <>
+      {!['New York', 'Paris', 'Mumbai'].includes(cityName) && <>
         {[-11, -3, 6, 13].map((z, index) => <Model key={`tree-left-${z}`} url={`${MODEL_ROOT}/${index % 2 ? "tree-small" : "tree-large"}.glb`} position={[-6.8, 0, z]} scale={1.7} />)}
         {[-8, 1, 9].map((z, index) => <Model key={`tree-right-${z}`} url={`${MODEL_ROOT}/${index % 2 ? "tree-large" : "tree-small"}.glb`} position={[6.8, 0, z]} scale={1.6} />)}
         <StreetLamp position={[-6.2, 0, -4]} />
@@ -499,9 +580,11 @@ function CityScene({ activeNpcIndex, cameraResetSignal, cityName, neighborhood, 
         <CityLandmark cityName={cityName} />
       </>}
       {cityName === "New York" && <NewYorkStreetLife />}
+      {cityName === "Paris" && <ParisStreetLife />}
+      {cityName === "Mumbai" && <MumbaiStreetLife />}
 
       {npcPositions.map((point, index) => (
-        <Person key={npcNames[index]} active={index === activeNpcIndex} model={["animated-woman.glb", "business.glb", "punk-woman.glb"][index]} name={npcNames[index]} onClick={() => onSelectNpc(index)} position={toWorld(point)} />
+        <Person key={npcNames[index]} active={index === activeNpcIndex} model={["animated-woman.glb", "business.glb", "punk-woman.glb"][index]} name={npcNames[index]} onClick={() => onSelectNpc(index)} position={toWorld(point)} waypointLabel={index === activeNpcIndex ? waypointLabel : undefined} />
       ))}
       <Person key={`player-${cityName}`} player model="casual.glb" position={playerWorld} />
       <PlayerOrbitCamera key={cityName} onDirectionChange={onCameraDirectionChange} playerPosition={playerPosition} resetSignal={cameraResetSignal} />

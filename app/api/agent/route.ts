@@ -11,6 +11,10 @@ type AgentRequest = {
   role?: string;
   location?: string;
   goal?: string;
+  mission?: string;
+  objective?: string;
+  inventory?: string[];
+  learnerMemory?: { focusWords?: string[]; knownPhrases?: string[] };
   input?: string;
   messages?: Array<{ role: string; content: string }>;
 };
@@ -30,7 +34,12 @@ function systemPrompt(body: AgentRequest) {
   if (body.action === "evaluate") {
     return `You are a fair language-game evaluator. Evaluate whether the player communicated successfully in ${body.language} at ${body.level} level during a conversation in ${body.city}. The optional goal was: ${body.goal}. Reward communicative success and recovery. Do not punish a regional accent. Judge only evidence in the transcript. Return only valid JSON matching: ${evaluationShape}`;
   }
-  return `You are ${body.character}, a ${body.role} at ${body.location} in ${body.city}, ${body.country}. Speak naturally in ${body.language}. The player is at ${body.level} level. Stay warmly in character, respond to anything appropriate they say, and end with at most one natural follow-up question. For beginners, keep language simple. Return only valid JSON: {"text":"reply in ${body.language}","translation":"concise English translation"}. Do not grade or explain during the conversation.`;
+  return `You are ${body.character}, a ${body.role} at ${body.location} in ${body.city}, ${body.country}. Speak naturally in ${body.language}. The player is at ${body.level} level. Stay warmly in character, respond to anything appropriate they say, and end with at most one natural follow-up question. For beginners, keep language simple.
+Connected mission: ${body.mission ?? "Street conversation"}.
+Current objective: ${body.objective ?? body.goal ?? "Have a useful exchange"}.
+World memory and inventory: ${(body.inventory ?? []).join(", ") || "none"}.
+Learner focus words: ${(body.learnerMemory?.focusWords ?? []).join(", ") || "none"}.
+Return only valid JSON: {"text":"reply in ${body.language}","translation":"concise English translation","actions":[{"tool":"remember_fact|give_item|complete_step|set_waypoint","value":"short value","reason":"short reason"}]}. Only use complete_step when the player's latest message meaningfully addresses the current objective. Do not grade or explain during the conversation.`;
 }
 
 function extractJson(text: string) {
