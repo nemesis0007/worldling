@@ -388,6 +388,8 @@ function demoReply(city: City, scene: Scene, input: string, level: Level): { tex
   if (city.id === "new-york") {
     if (sceneIndex === 0 && /^(hi|hey|hello)\b/.test(normalized)) {
       reply = { text: "Hey! I’m Maya. If you’re hungry, I can help you order like a regular or point you toward a good deli. What are you in the mood for?", translation: "Maya introduced herself and offered help with a deli order." };
+    } else if (sceneIndex === 0 && /chill|relax|hang|walk|explor|nothing much|vacation|tour/.test(normalized)) {
+      reply = { text: "Nice—then don’t over-plan it. Bryant Park is good for people-watching, and you can grab something from a deli on the way. Do you want a food recommendation or a quiet spot?", translation: "Maya matched your relaxed mood and offered two relevant local options." };
     } else if (sceneIndex === 0 && /deli|place|recommend|food/.test(normalized)) {
       reply = { text: "For the classic New York experience, try the pastrami on rye with mustard. Afterward, Bryant Park is an easy walk east. Want the walking directions?", translation: "Maya recommended a deli order and offered directions to Bryant Park." };
     } else if (sceneIndex === 1 && /^(yes|yeah|sure|okay|ok)\b/.test(normalized)) {
@@ -805,12 +807,18 @@ export default function Home() {
         setEngineNote(`${providerLabels[provider]} responded in ${((performance.now() - startedAt) / 1000).toFixed(1)}s · actions validated`);
       }
     } catch {
-      reply = demoReply(city, scene, clean, level);
       if (provider === "local") {
         setLocalStatus("error");
-        setLocalMessage("Ollama did not respond. Demo fallback was used for this turn.");
+        setLocalMessage("Ollama did not respond. No scripted NPC reply was substituted.");
       }
-      setEngineNote(`${providerLabels[provider]} unavailable · demo fallback kept the conversation alive`);
+      const connectionMessage = provider === "local"
+        ? `${ollamaModel} did not respond. Open AI settings, confirm Ollama is running, and test the connection.`
+        : "The hosted API model did not respond. Check the server model configuration and try again.";
+      setMessages((current) => [...current, { id: messageId.current++, role: "system", text: connectionMessage, speaker: "System" }]);
+      setEngineNote(`${providerLabels[provider]} unavailable · no scripted reply used`);
+      addAgentEvent("model", `${providerLabels[provider]} connection failed`);
+      setThinking(false);
+      return;
     }
 
     const npcMessage: Message = {
@@ -1081,10 +1089,25 @@ export default function Home() {
                   <div className="sadak-picker-heading">
                     <span>YOUR NEXT ERRAND</span>
                     <h1 id="district-title">Choose a district.</h1>
-                    <p>Drop straight into the street, find a local and finish one useful conversation.</p>
+                    <p>Choose the AI that will play every local, then drop into the street.</p>
                   </div>
-                  <div className="sadak-level-row" aria-label="Difficulty level">
-                    {(["Beginner", "Intermediate", "Advanced"] as Level[]).map((option) => <button key={option} className={level === option ? "active" : ""} onClick={() => setLevel(option)}>{option}</button>)}
+                  <div className="sadak-start-setup">
+                    <div className="sadak-brain-picker" aria-label="Conversation AI">
+                      {(["demo", "local", "api"] as Provider[]).map((option) => (
+                        <button
+                          key={option}
+                          className={provider === option ? "active" : ""}
+                          onClick={() => { setProvider(option); if (option === "local") setShowEngine(true); }}
+                        >
+                          <i>{option === "demo" ? "◎" : option === "local" ? "⌂" : "✦"}</i>
+                          <span><strong>{option === "demo" ? "Demo" : option === "local" ? "Ollama / Qwen" : "Hosted API"}</strong><small>{option === "demo" ? "Scripted · offline" : option === "local" ? localStatus === "connected" ? `${ollamaModel} · connected` : "Local LLM · configure" : "Server LLM · live"}</small></span>
+                          <b>{provider === option ? "SELECTED" : "USE"}</b>
+                        </button>
+                      ))}
+                    </div>
+                    <div className="sadak-level-row" aria-label="Difficulty level">
+                      {(["Beginner", "Intermediate", "Advanced"] as Level[]).map((option) => <button key={option} className={level === option ? "active" : ""} onClick={() => setLevel(option)}>{option}</button>)}
+                    </div>
                   </div>
                   <div className="sadak-district-grid">
                     {CITIES.map((item, index) => (
@@ -1205,7 +1228,7 @@ export default function Home() {
                 <div className="messages">
                   {messages.map((message) => (
                     <article key={message.id} className={`message ${message.role}`}>
-                      <span className="speaker">{message.role === "npc" ? message.speaker ?? "Local" : "You"}</span>
+                      <span className="speaker">{message.role === "npc" ? message.speaker ?? "Local" : message.role === "system" ? "System" : "You"}</span>
                       <div><p>{message.text}</p>{message.translation && city.locale !== "en-US" && <small>{message.translation}</small>}</div>
                     </article>
                   ))}
