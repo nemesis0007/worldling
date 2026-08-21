@@ -359,6 +359,7 @@ function cityWelcome(city: City, level: Level): Message {
     role: "npc",
     text: city.greeting,
     translation: level === "Advanced" ? undefined : city.translation,
+    speaker: city.scenes[0].character,
   };
 }
 
@@ -381,9 +382,22 @@ const FLAGSHIP_DEMO_REPLIES: Record<string, Array<{ text: string; translation: s
 };
 
 function demoReply(city: City, scene: Scene, input: string, level: Level): { text: string; translation: string } {
-  void input;
   const sceneIndex = Math.max(0, city.scenes.findIndex((item) => item.id === scene.id));
-  const reply = FLAGSHIP_DEMO_REPLIES[city.id]?.[sceneIndex] ?? { text: city.demoText, translation: city.demoTranslation };
+  const normalized = input.toLocaleLowerCase();
+  let reply = FLAGSHIP_DEMO_REPLIES[city.id]?.[sceneIndex] ?? { text: city.demoText, translation: city.demoTranslation };
+  if (city.id === "new-york") {
+    if (sceneIndex === 0 && /^(hi|hey|hello)\b/.test(normalized)) {
+      reply = { text: "Hey! I’m Maya. If you’re hungry, I can help you order like a regular or point you toward a good deli. What are you in the mood for?", translation: "Maya introduced herself and offered help with a deli order." };
+    } else if (sceneIndex === 0 && /deli|place|recommend|food/.test(normalized)) {
+      reply = { text: "For the classic New York experience, try the pastrami on rye with mustard. Afterward, Bryant Park is an easy walk east. Want the walking directions?", translation: "Maya recommended a deli order and offered directions to Bryant Park." };
+    } else if (sceneIndex === 1 && /^(yes|yeah|sure|okay|ok)\b/.test(normalized)) {
+      reply = { text: "Sure. Leave the subway entrance, walk east toward Sixth Avenue, and Bryant Park will be beside the library. Jordan is near the park entrance.", translation: "Theo gave a clear walking route and identified the next character." };
+    } else if (sceneIndex === 1 && /where|road|route|direction|bryant|brayan/.test(normalized)) {
+      reply = { text: "Bryant Park is one block east from here, beside the New York Public Library. Walking is faster than taking the train. Do you want me to repeat the landmarks?", translation: "Theo located Bryant Park and confirmed that walking is the fastest option." };
+    } else if (sceneIndex === 2 && /after work|evening|tonight|do/.test(normalized)) {
+      reply = { text: "After work, people grab food, sit by the lawn, or catch a free event. Ask, ‘Is there anything happening tonight?’ and you’ll sound completely natural.", translation: "Jordan shared a local after-work activity and a useful phrase." };
+    }
+  }
   return level === "Beginner" ? reply : { ...reply, translation: level === "Advanced" ? "" : reply.translation };
 }
 
@@ -493,7 +507,7 @@ export default function Home() {
   const npcPositions = STREET_NPC_POSITIONS;
   const activeNpcPosition = npcPositions[activeNpcIndex];
   const nearCharacter = Math.hypot((playerPosition.x - activeNpcPosition.x) / 3.1, (playerPosition.y - activeNpcPosition.y) / 2.2) < 3.4;
-  const lastNpcMessage = [...messages].reverse().find((message) => message.role === "npc");
+  const currentNpcMessage = [...messages].reverse().find((message) => message.role === "npc" && message.speaker === scene.character);
   const waypointDistance = Math.round(Math.hypot(playerPosition.x - activeNpcPosition.x, playerPosition.y - activeNpcPosition.y));
   const weakestWord = pronunciationResult?.words.length
     ? [...pronunciationResult.words].sort((a, b) => a.accuracy - b.accuracy)[0]
@@ -1156,10 +1170,10 @@ export default function Home() {
               </div>
             )}
 
-            {(nearCharacter || thinking) && (
+            {(thinking || (nearCharacter && currentNpcMessage)) && (
               <div className="world-dialogue glass-card" aria-live="polite">
                 <span>{scene.avatar}</span>
-                <div><small>{thinking ? `${scene.character} is thinking…` : lastNpcMessage?.speaker ?? scene.character}</small><p>{thinking ? "•••" : lastNpcMessage?.text}</p></div>
+                <div><small>{thinking ? `${scene.character} is thinking…` : currentNpcMessage?.speaker ?? scene.character}</small><p>{thinking ? "•••" : currentNpcMessage?.text}</p></div>
               </div>
             )}
 
@@ -1191,7 +1205,7 @@ export default function Home() {
                 <div className="messages">
                   {messages.map((message) => (
                     <article key={message.id} className={`message ${message.role}`}>
-                      <span className="speaker">{message.role === "npc" ? message.speaker ?? scene.character : "You"}</span>
+                      <span className="speaker">{message.role === "npc" ? message.speaker ?? "Local" : "You"}</span>
                       <div><p>{message.text}</p>{message.translation && city.locale !== "en-US" && <small>{message.translation}</small>}</div>
                     </article>
                   ))}
