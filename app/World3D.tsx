@@ -36,6 +36,7 @@ type Neighborhood = {
 
 const MODEL_ROOT = "/models/kenney-city";
 const CHARACTER_ROOT = "/models/quaternius";
+const CAR_ROOT = "/models/kenney-cars";
 
 function toWorld(point: Point): [number, number, number] {
   return [(point.x - 50) / 3.1, 0, (point.y - 70) / 2.2];
@@ -160,13 +161,23 @@ function StreetLamp({ position }: { position: [number, number, number] }) {
   );
 }
 
+type VehicleKind = "delivery" | "police" | "sedan" | "suv" | "taxi";
+
+function VehicleModel({ kind, position, rotation = 0, scale = .72 }: { kind: VehicleKind; position: [number, number, number]; rotation?: number; scale?: number }) {
+  return <Model url={`${CAR_ROOT}/${kind}.glb`} position={position} rotation={[0, rotation, 0]} scale={scale} />;
+}
+
 function Taxi({ position, rotation = 0 }: { position: [number, number, number]; rotation?: number }) {
-  return <group position={position} rotation={[0, rotation, 0]}>
-    <mesh castShadow position={[0, .32, 0]}><boxGeometry args={[1.08, .38, 2.05]} /><meshStandardMaterial color="#f2bd16" roughness={.52} metalness={.18} /></mesh>
-    <mesh castShadow position={[0, .62, -.05]}><boxGeometry args={[.92, .38, 1.05]} /><meshStandardMaterial color="#e4aa0d" roughness={.5} metalness={.15} /></mesh>
-    <mesh position={[0, .67, -.58]}><boxGeometry args={[.78, .27, .018]} /><meshStandardMaterial color="#18262e" metalness={.55} roughness={.2} /></mesh>
-    {[-.45, .45].flatMap((x) => [-.68, .68].map((z) => <mesh key={`${x}-${z}`} position={[x, .21, z]} rotation={[0, 0, Math.PI / 2]}><cylinderGeometry args={[.18, .18, .14, 14]} /><meshStandardMaterial color="#121515" roughness={.8} /></mesh>))}
-    <mesh position={[0, .89, 0]}><boxGeometry args={[.44, .14, .3]} /><meshStandardMaterial color="#f4f0df" emissive="#fff3bc" emissiveIntensity={1.2} /></mesh>
+  return <VehicleModel kind="taxi" position={position} rotation={rotation} scale={.74} />;
+}
+
+function CityVehicles({ cityName }: { cityName: string }) {
+  if (cityName === "New York") return null;
+  const first: VehicleKind = cityName === "Paris" || cityName === "Madrid" ? "sedan" : cityName === "Mumbai" || cityName === "Delhi" ? "delivery" : "suv";
+  const second: VehicleKind = cityName === "Mumbai" ? "taxi" : cityName === "Paris" ? "suv" : "sedan";
+  return <group>
+    <VehicleModel kind={first} position={[-1.25, .03, -12.5]} rotation={.04} />
+    <VehicleModel kind={second} position={[1.25, .03, 11.5]} rotation={Math.PI + .04} scale={.69} />
   </group>;
 }
 
@@ -183,6 +194,7 @@ function NewYorkStreetLife() {
     <Taxi position={[-1.2, .08, -7.8]} rotation={.08} />
     <Taxi position={[1.3, .08, 7.4]} rotation={Math.PI + .08} />
     <Taxi position={[-1.15, .08, 13]} rotation={.08} />
+    <VehicleModel kind="police" position={[1.3, .03, -16.5]} rotation={Math.PI + .04} scale={.7} />
     <TrafficSignal position={[-6.15, 0, -2.8]} />
     <TrafficSignal position={[6.15, 0, 5.5]} />
     {[-2.4, -1.2, 0, 1.2, 2.4].map((x) => <mesh key={`crosswalk-${x}`} position={[x, .025, 1.4]} rotation={[-Math.PI / 2, 0, 0]}><planeGeometry args={[.64, 4.9]} /><meshBasicMaterial color="#e7e4da" transparent opacity={.82} /></mesh>)}
@@ -579,6 +591,7 @@ function CityScene({ activeNpcIndex, cameraResetSignal, cityName, neighborhood, 
         <StreetLamp position={[-6.2, 0, 11]} />
         <CityLandmark cityName={cityName} />
       </>}
+      <CityVehicles cityName={cityName} />
       {cityName === "New York" && <NewYorkStreetLife />}
       {cityName === "Paris" && <ParisStreetLife />}
       {cityName === "Mumbai" && <MumbaiStreetLife />}
@@ -660,3 +673,8 @@ export default function World3D(props: World3DProps) {
 useGLTF.preload(`${MODEL_ROOT}/building-type-a.glb`);
 useGLTF.preload(`${MODEL_ROOT}/building-type-f.glb`);
 useGLTF.preload(`${MODEL_ROOT}/building-type-t.glb`);
+useGLTF.preload(`${CAR_ROOT}/taxi.glb`);
+useGLTF.preload(`${CAR_ROOT}/sedan.glb`);
+useGLTF.preload(`${CAR_ROOT}/suv.glb`);
+useGLTF.preload(`${CAR_ROOT}/delivery.glb`);
+useGLTF.preload(`${CAR_ROOT}/police.glb`);

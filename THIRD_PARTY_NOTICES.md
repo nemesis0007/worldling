@@ -17,6 +17,12 @@ This permission concerns Sadak's original material. It does not replace licenses
 - Use: fallback buildings, trees, and city props under `public/models/kenney-city/`
 - License: CC0; preserved in `public/models/kenney-city/LICENSE.txt`
 
+## Kenney Car Kit
+
+- Source: [Kenney Car Kit](https://kenney.nl/assets/car-kit)
+- Use: low-poly taxis, sedans, SUVs, delivery vehicles, and police cars under `public/models/kenney-cars/`
+- License: Creative Commons Zero (CC0); preserved in `public/models/kenney-cars/License.txt`
+
 ## Quaternius characters
 
 - Source: [Quaternius](https://quaternius.com/)
