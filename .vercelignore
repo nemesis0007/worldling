@@ -1,0 +1,4 @@
+# Local artifacts that are not part of the Worldling web build.
+output/
+scripts/generate_equip_expo_booth.py
+scripts/validate_equip_expo_booth.py
