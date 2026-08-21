@@ -506,8 +506,15 @@ function buildConversationTurnPlan(input: string, objective: string, previousNpc
     (directionIntent && /route|subway|metro|train|platform|direction|stop|walk/.test(goal)) ||
     (activityIntent && /after work|event|tonight|local/.test(goal));
 
-  const shortAnswer = /^(yes|yeah|yep|yup|sure|it is|i am|no|nope|not really|nah|maybe|i think so|i dont think so|i don't think so)[.! ]*$/i.test(input.trim());
+  const answersPrevious = Boolean(previousNpcMessage) && /^(yes|yeah|yep|yup|sure|no|nope|nah|not really|maybe|it is|i am|i have|i did|i do|i was|i think so|i dont think so|i don't think so)\b/i.test(input.trim());
+  const correctsVisitorAssumption = /\b(lived here|used to live|been here before|not my first|from here|am a local|i'm a local)\b/i.test(input);
 
+  if (answersPrevious || (previousNpcMessage && correctsVisitorAssumption)) {
+    return {
+      objectiveRelevant: false,
+      guidance: `The latest message directly answers or corrects your previous question: "${previousNpcMessage}" Respond to the new facts in the player's latest message and move the same topic forward. New facts override earlier assumptions. If they say they lived here or have been here before, acknowledge their familiarity and do not call them a first-time visitor. Never repeat or paraphrase the previous question.`,
+    };
+  }
   if (tripIntent) {
     return {
       objectiveRelevant: false,
@@ -536,12 +543,6 @@ function buildConversationTurnPlan(input: string, objective: string, previousNpc
     return {
       objectiveRelevant: false,
       guidance: "Return the greeting briefly and ask one easy question about how their day is going. Do not introduce the venue, products, food, directions, or the mission.",
-    };
-  }
-  if (shortAnswer && previousNpcMessage) {
-    return {
-      objectiveRelevant: false,
-      guidance: `The latest message is a direct short answer to your previous question: "${previousNpcMessage}" Acknowledge the player's answer and move the same topic forward. Ask a new related question if useful. Never repeat or paraphrase the previous question.`,
     };
   }
   return {
@@ -840,7 +841,7 @@ export default function Home() {
       content: message.text,
     }));
     const systemContent = ollamaSystemPrompt(city, scene, level, action, `Hidden game state for validation only: mission "${mission.title}". ${objectiveContext} The player has taken ${nextMessages.filter((message) => message.role === "user").length} turn(s). Latest player message: "${latestPlayerMessage}". Your previous reply was: "${previousNpcMessage || "none"}". ${turnPlan.guidance} Items and facts already carried: ${missionInventory.join(", ") || "none"}. Learner focus words: ${learnerMemory.focusWords.join(", ") || "none"}.`);
-    const generate = async (correction = "") => {
+    const generate = async (correction = "", promptMessages = transcript) => {
       const response = await fetch(`${base}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -852,7 +853,7 @@ export default function Home() {
           keep_alive: "30m",
           messages: [
             { role: "system", content: `${systemContent}${correction ? ` ${correction}` : ""}` },
-            ...transcript,
+            ...promptMessages,
           ],
           options: {
             temperature: action === "turn" ? 0.4 : 0.1,
@@ -869,9 +870,29 @@ export default function Home() {
       return extractModelJson(payload.message?.content ?? "");
     };
 
-    const reply = await generate() as AgentReply;
-    if (action === "turn" && previousNpcMessage && normalizedReply(reply.text) === normalizedReply(previousNpcMessage)) {
-      return await generate("Your first draft repeated your previous reply. Produce a genuinely new response to the latest player message. Do not reuse the previous question.");
+    let reply = await generate() as AgentReply;
+    const repeatsPrevious = (candidate: AgentReply) => previousNpcMessage && normalizedReply(candidate.text) === normalizedReply(previousNpcMessage);
+    if (action === "turn" && repeatsPrevious(reply)) {
+      reply = await generate(
+        `Your draft repeated your previous reply instead of answering "${latestPlayerMessage}". The player has already answered that question. Acknowledge their new information and continue naturally with a different line.`,
+        [
+          ...transcript,
+          { role: "assistant", content: reply.text },
+          { role: "user", content: `That repeats the question I already answered. Respond instead to my newest message: "${latestPlayerMessage}"` },
+        ],
+      ) as AgentReply;
+    }
+    if (action === "turn" && repeatsPrevious(reply)) {
+      reply = await generate(
+        `This is a repair attempt. The forbidden reply is: "${previousNpcMessage}". Write a different response that directly accepts the player's latest correction or answer.`,
+        [
+          { role: "assistant", content: previousNpcMessage },
+          { role: "user", content: latestPlayerMessage },
+        ],
+      ) as AgentReply;
+    }
+    if (action === "turn" && repeatsPrevious(reply)) {
+      throw new Error("The model repeated its previous reply after two repair attempts. Please try this turn again.");
     }
     return reply;
   }
