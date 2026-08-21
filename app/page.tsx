@@ -826,7 +826,9 @@ export default function Home() {
     window.speechSynthesis.speak(utterance);
   }
 
-  async function callOllama(action: "turn" | "evaluate", nextMessages: Message[]) {
+  async function callOllama(action: "turn", nextMessages: Message[]): Promise<AgentReply>;
+  async function callOllama(action: "evaluate", nextMessages: Message[]): Promise<Evaluation>;
+  async function callOllama(action: "turn" | "evaluate", nextMessages: Message[]): Promise<AgentReply | Evaluation> {
     const base = ollamaEndpoint.trim().replace(/\/$/, "");
     if (!base || !ollamaModel.trim()) throw new Error("Enter an Ollama endpoint and model.");
     const conversationMessages = nextMessages.filter((message, index) => !(index === 0 && message.role === "npc" && message.text === city.greeting));
@@ -870,7 +872,10 @@ export default function Home() {
       return extractModelJson(payload.message?.content ?? "");
     };
 
-    let reply = await generate() as AgentReply;
+    const firstResult = await generate();
+    if (action === "evaluate") return firstResult as Evaluation;
+
+    let reply = firstResult as AgentReply;
     const repeatsPrevious = (candidate: AgentReply) => previousNpcMessage && normalizedReply(candidate.text) === normalizedReply(previousNpcMessage);
     if (action === "turn" && repeatsPrevious(reply)) {
       reply = await generate(
