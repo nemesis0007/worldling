@@ -703,7 +703,7 @@ export default function Home() {
   async function callOllama(action: "turn" | "evaluate", nextMessages: Message[]) {
     const base = ollamaEndpoint.trim().replace(/\/$/, "");
     if (!base || !ollamaModel.trim()) throw new Error("Enter an Ollama endpoint and model.");
-    const transcript = nextMessages.slice(-10).map((message) => ({
+    const transcript = nextMessages.slice(-6).map((message) => ({
       role: message.role === "npc" ? "assistant" : "user",
       content: message.text,
     }));
@@ -714,14 +714,23 @@ export default function Home() {
         model: ollamaModel.trim(),
         stream: false,
         format: "json",
+        think: false,
+        keep_alive: "30m",
         messages: [
           { role: "system", content: ollamaSystemPrompt(city, scene, level, action, `Current connected mission: ${mission.title}. Objective: ${missionStep.instruction}. Items and facts already carried: ${missionInventory.join(", ") || "none"}. Learner focus words: ${learnerMemory.focusWords.join(", ") || "none"}.`) },
           ...transcript,
         ],
-        options: { temperature: action === "turn" ? 0.75 : 0.15 },
+        options: {
+          temperature: action === "turn" ? 0.65 : 0.15,
+          num_ctx: 4096,
+          num_predict: action === "turn" ? 96 : 180,
+        },
       }),
     });
-    if (!response.ok) throw new Error(`Ollama returned ${response.status}.`);
+    if (!response.ok) {
+      const failure = await response.json().catch(() => null) as { error?: string } | null;
+      throw new Error(failure?.error ?? `Ollama returned ${response.status}.`);
+    }
     const payload = await response.json() as { message?: { content?: string } };
     return extractModelJson(payload.message?.content ?? "");
   }
@@ -746,8 +755,24 @@ export default function Home() {
         setLocalMessage(available.length ? `Ollama is online, but ${ollamaModel} is not installed. Available: ${available.slice(0, 3).join(", ")}.` : "Ollama is online, but it has no downloaded models.");
         return;
       }
+      setLocalMessage(`${ollamaModel} found · warming the model for faster replies…`);
+      const warmResponse = await fetch(`${base}/api/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: ollamaModel.trim(),
+          prompt: "",
+          stream: false,
+          keep_alive: "30m",
+          options: { num_ctx: 4096 },
+        }),
+      });
+      if (!warmResponse.ok) {
+        const failure = await warmResponse.json().catch(() => null) as { error?: string } | null;
+        throw new Error(failure?.error ?? `Model warm-up returned ${warmResponse.status}.`);
+      }
       setLocalStatus("connected");
-      setLocalMessage(`Connected · ${ollamaModel} is ready on this device`);
+      setLocalMessage(`Connected · ${ollamaModel} is warm and ready in fast mode`);
       setProvider("local");
       setEngineNote(`Ollama connected · using ${ollamaModel}`);
       const pendingCity = CITIES.find((item) => item.id === pendingCityId);
@@ -762,7 +787,7 @@ export default function Home() {
       const detail = error instanceof Error && !/Failed to fetch|Load failed|NetworkError/i.test(error.message)
         ? ` ${error.message}`
         : "";
-      setLocalMessage(`Could not reach Ollama at ${base}.${detail} Start Ollama, allow this site origin, and test again.`);
+      setLocalMessage(`Could not start ${ollamaModel} at ${base}.${detail} Confirm Ollama is running, then test again.`);
     }
   }
 
@@ -822,13 +847,14 @@ export default function Home() {
         }
         setEngineNote(`${providerLabels[provider]} responded in ${((performance.now() - startedAt) / 1000).toFixed(1)}s · actions validated`);
       }
-    } catch {
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : "Unknown Ollama error";
       if (provider === "local") {
         setLocalStatus("error");
-        setLocalMessage("Ollama did not respond. No scripted NPC reply was substituted.");
+        setLocalMessage(`Ollama generation failed · ${detail}`);
       }
       const connectionMessage = provider === "local"
-        ? `${ollamaModel} did not respond. Open AI settings, confirm Ollama is running, and test the connection.`
+        ? `${ollamaModel} could not generate this turn: ${detail}`
         : "The hosted API model did not respond. Check the server model configuration and try again.";
       setMessages((current) => [...current, { id: messageId.current++, role: "system", text: connectionMessage, speaker: "System" }]);
       setEngineNote(`${providerLabels[provider]} unavailable · no scripted reply used`);
@@ -1434,6 +1460,7 @@ export default function Home() {
                     <li>On Windows run <code>setx OLLAMA_ORIGINS &quot;https://worldling-sadak-game.vercel.app&quot;</code></li>
                     <li>Fully restart Ollama, then press Test connection.</li>
                   </ol>
+                  <p><b>Fast local mode:</b> hidden reasoning off · shorter replies · 4K context · model kept warm for 30 minutes.</p>
                 </div>
               </div>
             ) : (

@@ -2088,6 +2088,7 @@ footer strong { color: #b9b6a9; }
 .sadak-replace .origin-help strong { display: block; margin-bottom: 4px; }
 .sadak-replace .origin-help ol { margin: 0; padding-left: 18px; }
 .sadak-replace .origin-help code { color: var(--sadak-ink); background: rgba(244,196,48,.42); }
+.sadak-replace .origin-help p { margin: 9px 0 0; border-top: 1px dashed rgba(18,18,15,.24); padding-top: 8px; color: #4c473c; }
 .sadak-replace .sheet-done { border: 2px solid var(--sadak-ink); border-radius: 4px; color: var(--sadak-ink); background: var(--sadak-main); box-shadow: 3px 3px 0 var(--sadak-ink); }
 .sadak-replace .sheet-done:disabled { color: #6a6455; background: #d8d3bd; box-shadow: none; cursor: not-allowed; }
 
