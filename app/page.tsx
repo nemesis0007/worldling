@@ -427,9 +427,11 @@ function demoReply(city: City, scene: Scene, input: string, level: Level): { tex
   let reply = FLAGSHIP_DEMO_REPLIES[city.id]?.[sceneIndex] ?? { text: city.demoText, translation: city.demoTranslation };
   if (city.id === "new-york") {
     if (sceneIndex === 0 && /^(hi|hey|hello)\b/.test(normalized)) {
-      reply = { text: "Hey! I’m Maya. If you’re hungry, I can help you order like a regular or point you toward a good deli. What are you in the mood for?", translation: "Maya introduced herself and offered help with a deli order." };
+      reply = /trip|visit|vacation|tour/.test(normalized)
+        ? { text: "Nice to meet you! Is this your first time in New York, or is there something you’re especially hoping to see?", translation: "Maya welcomed you and followed up naturally about your trip." }
+        : { text: "Hey—good to meet you! How’s your day in New York going so far?", translation: "Maya greeted you and asked a natural follow-up." };
     } else if (sceneIndex === 0 && /chill|relax|hang|walk|explor|nothing much|vacation|tour/.test(normalized)) {
-      reply = { text: "Nice—then don’t over-plan it. Bryant Park is good for people-watching, and you can grab something from a deli on the way. Do you want a food recommendation or a quiet spot?", translation: "Maya matched your relaxed mood and offered two relevant local options." };
+      reply = { text: "Nice—New York is fun without a strict plan. Is this your first visit, or have you already found a neighborhood you like?", translation: "Maya responded to your travel mood before offering recommendations." };
     } else if (sceneIndex === 0 && /deli|place|recommend|food/.test(normalized)) {
       reply = { text: "For the classic New York experience, try the pastrami on rye with mustard. Afterward, Bryant Park is an easy walk east. Want the walking directions?", translation: "Maya recommended a deli order and offered directions to Bryant Park." };
     } else if (sceneIndex === 1 && /^(yes|yeah|sure|okay|ok)\b/.test(normalized)) {
@@ -487,11 +489,68 @@ function extractModelJson(text: string) {
   }
 }
 
+function buildConversationTurnPlan(input: string, objective: string) {
+  const latest = input.toLocaleLowerCase();
+  const goal = objective.toLocaleLowerCase();
+  const tripIntent = /\b(trip|travel|travelling|traveling|visit|visiting|vacation|tour|tourist|holiday)\b/.test(latest);
+  const foodIntent = /\b(food|eat|eating|hungry|restaurant|deli|sandwich|cafe|café|meal|breakfast|lunch|dinner|dish|order)\b/.test(latest);
+  const directionIntent = /\b(where|direction|directions|route|road|walk|walking|subway|metro|station|platform|get to|how do i get)\b/.test(latest);
+  const activityIntent = /\b(tonight|after work|event|events|weekend|things to do|what do locals do)\b/.test(latest);
+  const greetingOnly = /^(hi|hey|hello|hola|bonjour|namaste|नमस्ते|你好|olá|привет|سلام)[!. ]*$/i.test(input.trim());
+  const objectiveRelevant =
+    (foodIntent && /food|order|cafe|café|deli|restaurant|market|price|item/.test(goal)) ||
+    (directionIntent && /route|subway|metro|train|platform|direction|stop|walk/.test(goal)) ||
+    (activityIntent && /after work|event|tonight|local/.test(goal));
+
+  if (tripIntent) {
+    return {
+      objectiveRelevant: false,
+      guidance: "Required response plan: acknowledge that the player is visiting on a trip, then ask exactly one question about whether this is their first visit OR what they hope to see. Forbidden topics this turn: food, sandwiches, restaurants, the venue, and the mission. Do not welcome them again or ask why they came.",
+    };
+  }
+  if (foodIntent) {
+    return {
+      objectiveRelevant,
+      guidance: "The player independently opened the food or restaurant topic. Answer that request directly and naturally, then ask at most one useful food-related follow-up.",
+    };
+  }
+  if (directionIntent) {
+    return {
+      objectiveRelevant,
+      guidance: "The player independently asked about a place or route. Give a direct, practical answer first, then ask at most one clarification only if it helps the route.",
+    };
+  }
+  if (activityIntent) {
+    return {
+      objectiveRelevant,
+      guidance: "The player independently asked about local activities. Answer with one grounded local suggestion and at most one directly related follow-up.",
+    };
+  }
+  if (greetingOnly) {
+    return {
+      objectiveRelevant: false,
+      guidance: "Return the greeting briefly and ask one easy question about how their day is going. Do not introduce the venue, products, food, directions, or the mission.",
+    };
+  }
+  return {
+    objectiveRelevant,
+    guidance: "Acknowledge the exact topic or feeling in the latest message and ask at most one closely related follow-up. Do not introduce the venue, products, services, or mission unless the player opened that topic.",
+  };
+}
+
 function ollamaSystemPrompt(city: City, scene: Scene, level: Level, action: "turn" | "evaluate", missionContext = "") {
   if (action === "evaluate") {
     return `You are a fair language-game evaluator. Judge whether the player communicated successfully in ${city.language} at ${level} level in ${city.name}. The objective was: ${scene.goal}. ${missionContext} Reward communicative success and recovery. Do not punish a regional accent. Use only transcript evidence. Return only valid JSON with numeric fields overall, communication, vocabulary, grammar, confidence from 0 to 100, plus string fields strength, improvement, and phrase.`;
   }
-  return `You are ${scene.character}, a ${scene.role} at ${scene.label} in ${city.name}, ${city.country}. Speak naturally in ${city.language}. The player is at ${level} level. Stay warmly in character, respond to anything appropriate, remember the recent transcript, and end with no more than one natural follow-up question. Keep the spoken reply under 45 words and beginner language simple. ${missionContext} Return only valid JSON with fields text for the ${city.language} reply, translation for concise English, and actions as an array of zero or more objects shaped {"tool":"remember_fact|give_item|complete_step|set_waypoint","value":"short value","reason":"short reason"}. Only use complete_step when the player's latest message meaningfully addresses the current objective.`;
+  return `You are ${scene.character}, a real ${scene.role} in ${city.name}, ${city.country}. Your physical setting is ${scene.label}, but that setting is not automatically the conversation topic. Speak naturally in ${city.language}. The player is at ${level} level.
+
+Conversation policy, in priority order:
+1. Respond directly to the meaning and tone of the player's latest message. Never ignore it to push your job, venue, or a game objective.
+2. Ask at most one follow-up, and it must connect naturally to what the player just said. If they say they are on a trip, ask what they hope to see, how long they are staying, or whether it is their first visit—not what they want to buy or eat.
+3. Treat your venue and the hidden mission as background, not a script. Mention food, products, directions, or services only after the player asks about them, expresses a related need, or creates a genuinely natural bridge later in the exchange.
+4. Do not repeat a previous line, invent that the player ordered something, or claim they completed an action they did not attempt.
+
+Stay warmly in character, remember the recent transcript, keep the spoken reply under 45 words, and keep beginner language simple. ${missionContext} Return only valid JSON with fields text for the ${city.language} reply, translation for concise English, and actions as an array of zero or more objects shaped {"tool":"remember_fact|give_item|complete_step|set_waypoint","value":"short value","reason":"short reason"}. Leave actions empty during ordinary small talk. Only use complete_step when the player's latest message explicitly and meaningfully addresses the hidden objective.`;
 }
 
 export default function Home() {
@@ -757,7 +816,13 @@ export default function Home() {
   async function callOllama(action: "turn" | "evaluate", nextMessages: Message[]) {
     const base = ollamaEndpoint.trim().replace(/\/$/, "");
     if (!base || !ollamaModel.trim()) throw new Error("Enter an Ollama endpoint and model.");
-    const transcript = nextMessages.slice(-6).map((message) => ({
+    const conversationMessages = nextMessages.filter((message, index) => !(index === 0 && message.role === "npc" && message.text === city.greeting));
+    const latestPlayerMessage = [...conversationMessages].reverse().find((message) => message.role === "user")?.text ?? "";
+    const turnPlan = buildConversationTurnPlan(latestPlayerMessage, missionStep.instruction);
+    const objectiveContext = turnPlan.objectiveRelevant
+      ? `The player independently opened a topic relevant to the hidden objective "${missionStep.instruction}". Use it only to validate genuine progress.`
+      : "The hidden objective is not relevant to this turn. Do not mention it, hint at it, or steer toward it.";
+    const transcript = conversationMessages.slice(-6).map((message) => ({
       role: message.role === "npc" ? "assistant" : "user",
       content: message.text,
     }));
@@ -771,7 +836,7 @@ export default function Home() {
         think: false,
         keep_alive: "30m",
         messages: [
-          { role: "system", content: ollamaSystemPrompt(city, scene, level, action, `Current connected mission: ${mission.title}. Objective: ${missionStep.instruction}. Items and facts already carried: ${missionInventory.join(", ") || "none"}. Learner focus words: ${learnerMemory.focusWords.join(", ") || "none"}.`) },
+          { role: "system", content: ollamaSystemPrompt(city, scene, level, action, `Hidden game state for validation only: mission "${mission.title}". ${objectiveContext} The player has taken ${nextMessages.filter((message) => message.role === "user").length} turn(s). Latest player message: "${latestPlayerMessage}". ${turnPlan.guidance} Items and facts already carried: ${missionInventory.join(", ") || "none"}. Learner focus words: ${learnerMemory.focusWords.join(", ") || "none"}.`) },
           ...transcript,
         ],
         options: {
@@ -917,6 +982,8 @@ export default function Home() {
       return;
     }
 
+    const validTools = new Set(["set_waypoint", "remember_fact", "give_item", "complete_step"]);
+    const validatedActions = (reply.actions ?? []).filter((action) => action && typeof action === "object" && validTools.has(action.tool)).slice(0, 2);
     const npcMessage: Message = {
       id: messageId.current++,
       role: "npc",
@@ -932,13 +999,14 @@ export default function Home() {
       knownPhrases: [clean, ...current.knownPhrases.filter((phrase) => phrase !== clean)].slice(0, 8),
     }));
 
-    const validTools = new Set(["set_waypoint", "remember_fact", "give_item", "complete_step"]);
-    (reply.actions ?? []).filter((action) => validTools.has(action.tool)).slice(0, 2).forEach((action) => {
+    validatedActions.forEach((action) => {
       addAgentEvent(action.tool, `${scene.character}: ${action.value}`);
     });
 
     const nextTurnCount = missionStepTurns + 1;
-    const completesObjective = clean.length >= 8 && (asksQuestion || nextTurnCount >= 2);
+    const modelCompletedObjective = validatedActions.some((action) => action.tool === "complete_step");
+    const demoCompletedObjective = provider === "demo" && nextTurnCount >= 2 && clean.length >= 8 && asksQuestion;
+    const completesObjective = modelCompletedObjective || demoCompletedObjective;
     if (completesObjective && !questProgress[missionStepIndex]) {
       const completedStep = missionStep;
       const nextIndex = missionStepIndex + 1;
