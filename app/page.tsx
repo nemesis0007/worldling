@@ -731,6 +731,11 @@ export default function Home() {
     try {
       const base = ollamaEndpoint.trim().replace(/\/$/, "");
       const response = await fetch(`${base}/api/tags`);
+      if (response.status === 403) {
+        setLocalStatus("error");
+        setLocalMessage(`Ollama blocked ${window.location.origin}. Add this exact site to OLLAMA_ORIGINS, restart Ollama, then test again.`);
+        return;
+      }
       if (!response.ok) throw new Error(`Ollama returned ${response.status}.`);
       const payload = await response.json() as { models?: Array<{ name?: string; model?: string }> };
       const available = (payload.models ?? []).map((item) => item.model ?? item.name ?? "").filter(Boolean);
@@ -744,9 +749,13 @@ export default function Home() {
       setLocalMessage(`Connected · ${ollamaModel} is ready on this device`);
       setProvider("local");
       setEngineNote(`Ollama connected · using ${ollamaModel}`);
-    } catch {
+    } catch (error) {
       setLocalStatus("error");
-      setLocalMessage("Could not reach Ollama. Start Ollama, allow this site origin, or run Worldling locally.");
+      const base = ollamaEndpoint.trim().replace(/\/$/, "") || "the configured address";
+      const detail = error instanceof Error && !/Failed to fetch|Load failed|NetworkError/i.test(error.message)
+        ? ` ${error.message}`
+        : "";
+      setLocalMessage(`Could not reach Ollama at ${base}.${detail} Start Ollama, allow this site origin, and test again.`);
     }
   }
 
@@ -1027,6 +1036,12 @@ export default function Home() {
   }
 
   function chooseCity(nextCity: City) {
+    if (provider === "local" && localStatus !== "connected") {
+      setLocalMessage(localStatus === "error" ? localMessage : "Test Ollama successfully before entering a district with Qwen.");
+      setEngineNote("Local model selected · connection required before play");
+      setShowEngine(true);
+      return;
+    }
     setCityId(nextCity.id);
     setSceneId(nextCity.scenes[0].id);
     setPlayerPosition({ x: 50, y: 82 });
@@ -1100,7 +1115,7 @@ export default function Home() {
                           onClick={() => { setProvider(option); if (option === "local") setShowEngine(true); }}
                         >
                           <i>{option === "demo" ? "◎" : option === "local" ? "⌂" : "✦"}</i>
-                          <span><strong>{option === "demo" ? "Demo" : option === "local" ? "Ollama / Qwen" : "Hosted API"}</strong><small>{option === "demo" ? "Scripted · offline" : option === "local" ? localStatus === "connected" ? `${ollamaModel} · connected` : "Local LLM · configure" : "Server LLM · live"}</small></span>
+                          <span><strong>{option === "demo" ? "Demo" : option === "local" ? "Ollama / Qwen" : "Hosted API"}</strong><small>{option === "demo" ? "Scripted · offline" : option === "local" ? localStatus === "connected" ? `${ollamaModel} · connected` : localStatus === "error" ? "Connection failed · fix settings" : "Local LLM · test required" : "Server LLM · live"}</small></span>
                           <b>{provider === option ? "SELECTED" : "USE"}</b>
                         </button>
                       ))}
@@ -1394,7 +1409,14 @@ export default function Home() {
                 <label>Installed model<input value={ollamaModel} onChange={(event) => { setOllamaModel(event.target.value); setLocalStatus("idle"); }} placeholder="qwen3:8b" /></label>
                 <div className={`local-result ${localStatus}`}><span>{localStatus === "checking" ? "◌" : localStatus === "connected" ? "✓" : localStatus === "error" ? "!" : "·"}</span><p>{localMessage}</p></div>
                 <button className="test-local" onClick={() => void testOllama()} disabled={localStatus === "checking"}>{localStatus === "checking" ? "Testing…" : "Test Ollama connection"}</button>
-                <p className="origin-help">For the hosted version, Ollama must allow the Worldling site origin. Running Worldling locally is the simplest setup.</p>
+                <div className="origin-help">
+                  <strong>One-time setup for this hosted game</strong>
+                  <ol>
+                    <li>Start Ollama and run <code>ollama pull {ollamaModel || "qwen3:8b"}</code></li>
+                    <li>On Windows run <code>setx OLLAMA_ORIGINS &quot;https://worldling-sadak-game.vercel.app&quot;</code></li>
+                    <li>Fully restart Ollama, then press Test connection.</li>
+                  </ol>
+                </div>
               </div>
             ) : (
               <div className="config-note">
@@ -1402,7 +1424,11 @@ export default function Home() {
                 <p>{provider === "api" ? "Set OPENAI_API_KEY and OPENAI_MODEL on the server. Keys are never requested by or exposed to the browser." : "No setup. Responses and scores use transparent prototype rules so every interaction is testable."}</p>
               </div>
             )}
-            <button className="sheet-done" onClick={() => setShowEngine(false)}>Continue with {providerLabels[provider]}</button>
+            <button
+              className="sheet-done"
+              disabled={provider === "local" && localStatus !== "connected"}
+              onClick={() => setShowEngine(false)}
+            >{provider === "local" && localStatus !== "connected" ? "Test Ollama to continue" : `Continue with ${providerLabels[provider]}`}</button>
           </section>
         </div>
       )}

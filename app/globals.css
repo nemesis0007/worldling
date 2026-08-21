@@ -1933,9 +1933,9 @@ footer strong { color: #b9b6a9; }
 .sadak-brain-picker > button > i { display: grid; place-items: center; width: 31px; height: 31px; border: 1.5px solid var(--sadak-ink); border-radius: 4px; background: var(--sadak-blue); font-size: 14px; font-style: normal; }
 .sadak-brain-picker span { min-width: 0; }
 .sadak-brain-picker strong,.sadak-brain-picker small { display: block; }
-.sadak-brain-picker strong { font-size: 9px; }
-.sadak-brain-picker small { margin-top: 3px; overflow: hidden; color: #666050; font-size: 6px; text-overflow: ellipsis; white-space: nowrap; }
-.sadak-brain-picker b { color: #766f5e; font-size: 5px; letter-spacing: .08em; }
+.sadak-brain-picker strong { font-size: 11px; }
+.sadak-brain-picker small { margin-top: 3px; overflow: hidden; color: #595446; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.sadak-brain-picker b { color: #625c4e; font-size: 6px; letter-spacing: .08em; }
 .sadak-level-row { display: flex; width: fit-content; margin-bottom: 18px; border: 2px solid var(--sadak-ink); border-radius: 5px; padding: 3px; background: #fff; box-shadow: 3px 3px 0 var(--sadak-ink); }
 .sadak-start-setup .sadak-level-row { flex: 0 0 auto; margin-bottom: 0; }
 .sadak-level-row button { border: 0; border-radius: 3px; padding: 9px 13px; color: #5c574c; background: transparent; font-size: 8px; font-weight: 850; cursor: pointer; }
@@ -1969,13 +1969,66 @@ footer strong { color: #b9b6a9; }
 .district-cover b { position: absolute; top: 4px; left: 5px; z-index: 1; color: rgba(255,255,255,.75); font-size: 7px; }
 .district-cover i { position: relative; z-index: 2; font-size: 28px; font-style: normal; filter: drop-shadow(2px 2px 0 rgba(0,0,0,.25)); }
 .district-copy { min-width: 0; }
-.district-copy small { display: block; color: #706956; font-size: 6px; font-weight: 900; letter-spacing: .12em; }
-.district-copy strong { display: block; margin: 3px 0; overflow: hidden; font-size: 13px; line-height: 1.05; text-overflow: ellipsis; white-space: nowrap; }
-.district-copy em { display: block; color: #655f52; font-size: 7px; font-style: normal; }
+.district-copy small { display: block; color: #615b4b; font-size: 7px; font-weight: 900; letter-spacing: .12em; }
+.district-copy strong { display: block; margin: 3px 0; overflow: hidden; font-size: 14px; line-height: 1.05; text-overflow: ellipsis; white-space: nowrap; }
+.district-copy em { display: block; color: #595448; font-size: 8px; font-style: normal; }
 .district-progress { display: grid; place-items: center; width: 23px; height: 23px; border: 1.5px solid var(--sadak-ink); border-radius: 50%; background: #fff; font-size: 9px; font-weight: 950; }
-.sadak-world-picker footer { display: grid; grid-template-columns: auto minmax(120px,1fr) auto; align-items: center; gap: 14px; min-height: 0; margin-top: 20px; border: 0; padding: 0; color: #5f594c; background: transparent; font-size: 7px; font-weight: 900; letter-spacing: .08em; }
+.sadak-world-picker footer { display: grid; grid-template-columns: auto minmax(120px,1fr) auto; align-items: center; gap: 14px; min-height: 0; margin-top: 20px; border: 0; padding: 0; color: #514c41; background: transparent; font-size: 8px; font-weight: 900; letter-spacing: .08em; }
 .sadak-world-picker footer i { display: block; height: 9px; border: 2px solid var(--sadak-ink); border-radius: 99px; background: #fff; overflow: hidden; }
 .sadak-world-picker footer i b { display: block; height: 100%; background: var(--sadak-green); }
+
+/* The model drawer belongs to the street-game shell, so keep it on the same
+   high-contrast palette instead of inheriting the legacy Night Atlas theme. */
+.sadak-replace .engine-backdrop { background: rgba(17,18,14,.72); backdrop-filter: blur(8px); }
+.sadak-replace .engine-sheet {
+  border: 3px solid var(--sadak-ink);
+  border-right: 0;
+  border-radius: 8px 0 0 8px;
+  color: var(--sadak-ink);
+  background: var(--sadak-cream);
+  box-shadow: -8px 0 0 rgba(18,18,15,.7);
+}
+.sadak-replace .engine-sheet h2,
+.sadak-replace .engine-sheet strong,
+.sadak-replace .engine-sheet label { color: var(--sadak-ink); }
+.sadak-replace .engine-sheet h2 { font-family: var(--font-sans),system-ui,sans-serif; font-weight: 950; letter-spacing: -.055em; }
+.sadak-replace .engine-sheet .score-kicker { color: #665816; }
+.sadak-replace .engine-intro { color: #514d42; }
+.sadak-replace .close-button { border: 2px solid var(--sadak-ink); color: var(--sadak-ink); background: #fff; }
+.sadak-replace .provider-options > button {
+  border: 2px solid var(--sadak-ink);
+  border-radius: 5px;
+  color: var(--sadak-ink);
+  background: #fff;
+  box-shadow: 3px 3px 0 var(--sadak-ink);
+}
+.sadak-replace .provider-options > button.active { border-color: var(--sadak-ink); background: var(--sadak-main); box-shadow: 1px 1px 0 var(--sadak-ink); translate: 2px 2px; }
+.sadak-replace .provider-options small,
+.sadak-replace .provider-options i { color: #5d574b; }
+.sadak-replace .provider-icon { border: 1.5px solid var(--sadak-ink); border-radius: 4px; color: var(--sadak-ink); background: var(--sadak-main); }
+.sadak-replace .provider-icon.local { background: var(--sadak-blue); }
+.sadak-replace .provider-icon.api { background: #b9a1eb; }
+.sadak-replace .engine-flow,
+.sadak-replace .config-note,
+.sadak-replace .ollama-config { border: 2px solid var(--sadak-ink); border-radius: 5px; color: var(--sadak-ink); background: var(--sadak-paper); }
+.sadak-replace .engine-flow div > span { border: 1px solid var(--sadak-ink); color: var(--sadak-ink); background: var(--sadak-blue); }
+.sadak-replace .engine-flow p,
+.sadak-replace .ollama-title small,
+.sadak-replace .config-note p { color: #5b5548; }
+.sadak-replace .engine-flow p strong { color: var(--sadak-ink); }
+.sadak-replace .ollama-config input { border: 1.5px solid var(--sadak-ink); border-radius: 4px; color: var(--sadak-ink); background: #fff; }
+.sadak-replace .ollama-config input:focus { border-color: var(--sadak-blue); box-shadow: 0 0 0 2px rgba(69,168,245,.24); }
+.sadak-replace .local-result { border: 1px solid rgba(18,18,15,.28); border-radius: 4px; color: var(--sadak-ink); background: #ece9d8; }
+.sadak-replace .local-result p { color: var(--sadak-ink); font-size: 8px; }
+.sadak-replace .local-result.connected { background: #d9f3c7; }
+.sadak-replace .local-result.error { background: #ffd6cd; }
+.sadak-replace .test-local { border: 2px solid var(--sadak-ink); border-radius: 4px; color: var(--sadak-ink); background: var(--sadak-green); box-shadow: 2px 2px 0 var(--sadak-ink); }
+.sadak-replace .origin-help { margin-top: 12px; border-top: 1px solid rgba(18,18,15,.2); padding-top: 10px; color: #514b3f; font-size: 8px; line-height: 1.5; }
+.sadak-replace .origin-help strong { display: block; margin-bottom: 4px; }
+.sadak-replace .origin-help ol { margin: 0; padding-left: 18px; }
+.sadak-replace .origin-help code { color: var(--sadak-ink); background: rgba(244,196,48,.42); }
+.sadak-replace .sheet-done { border: 2px solid var(--sadak-ink); border-radius: 4px; color: var(--sadak-ink); background: var(--sadak-main); box-shadow: 3px 3px 0 var(--sadak-ink); }
+.sadak-replace .sheet-done:disabled { color: #6a6455; background: #d8d3bd; box-shadow: none; cursor: not-allowed; }
 
 @media (max-width: 1040px) {
   .sadak-start-setup { display: grid; }
