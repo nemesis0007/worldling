@@ -24,6 +24,8 @@ type World3DProps = {
   latitude: number;
   longitude: number;
   waypointLabel: string;
+  rideLabel?: string;
+  ridePhase?: "idle" | "call" | "pickup" | "riding" | "cafe" | "stop-complete" | "tour-complete";
 };
 
 type MapPoint = { x: number; z: number };
@@ -174,6 +176,33 @@ function Taxi({ position, rotation = 0 }: { position: [number, number, number]; 
   return <VehicleModel kind="taxi" position={position} rotation={rotation} scale={.74} />;
 }
 
+function TourRideVehicle({ label, phase }: { label: string; phase: NonNullable<World3DProps["ridePhase"]> }) {
+  const group = useRef<THREE.Group>(null);
+
+  useEffect(() => {
+    if (!group.current) return;
+    group.current.position.set(1.25, 0, phase === "riding" ? 15 : 9.5);
+  }, [phase]);
+
+  useFrame((_, delta) => {
+    if (phase !== "riding" || !group.current) return;
+    group.current.position.z = Math.max(-19, group.current.position.z - delta * 10.5);
+  });
+
+  if (phase !== "pickup" && phase !== "riding") return null;
+  return (
+    <group ref={group} position={[1.25, 0, 9.5]}>
+      <Taxi position={[0, .08, 0]} rotation={Math.PI + .04} />
+      {phase === "pickup" && (
+        <>
+          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, .025, 0]}><ringGeometry args={[1, 1.22, 36]} /><meshBasicMaterial color="#d8ff5f" transparent opacity={.9} /></mesh>
+          <Html position={[0, 2.1, 0]} center distanceFactor={9} className="world3d-name"><span className="active">YOUR {label.toUpperCase()}</span></Html>
+        </>
+      )}
+    </group>
+  );
+}
+
 function CityVehicles({ cityName }: { cityName: string }) {
   if (cityName === "New York") return null;
   const first: VehicleKind = cityName === "Paris" || cityName === "Madrid" ? "sedan" : cityName === "Mumbai" || cityName === "Delhi" ? "delivery" : "suv";
@@ -230,6 +259,24 @@ function CafeTable({ position }: { position: [number, number, number] }) {
     <mesh castShadow position={[0, .27, 0]}><cylinderGeometry args={[.07, .09, .55, 10]} /><meshStandardMaterial color="#252523" metalness={.55} /></mesh>
     {[-.8, .8].map((x) => <group key={x} position={[x, 0, 0]}><mesh position={[0, .32, 0]}><boxGeometry args={[.42, .08, .42]} /><meshStandardMaterial color="#b23c34" /></mesh><mesh position={[0, .28, .18]} rotation={[.2, 0, 0]}><boxGeometry args={[.42, .65, .08]} /><meshStandardMaterial color="#b23c34" /></mesh></group>)}
   </group>;
+}
+
+function TourCafe({ cityName }: { cityName: string }) {
+  const cafe = cityName === "New York"
+    ? { name: "MIDTOWN CAFE", wall: "#b43d2f", awning: "#f1c52a" }
+    : cityName === "Mumbai"
+      ? { name: "IRANI CAFE", wall: "#397a68", awning: "#f0d07b" }
+      : { name: "CAFE LUCIA", wall: "#8c493f", awning: "#e7c86e" };
+  return (
+    <group position={[-6.7, 0, 1]}>
+      <mesh castShadow position={[0, 1.7, 0]}><boxGeometry args={[1.15, 3.4, 5.4]} /><meshStandardMaterial color={cafe.wall} roughness={.82} /></mesh>
+      <mesh castShadow position={[.65, 2.35, 0]} rotation={[0, 0, -.16]}><boxGeometry args={[1.5, .12, 5.7]} /><meshStandardMaterial color={cafe.awning} roughness={.74} /></mesh>
+      <mesh position={[.59, 1.45, 0]} rotation={[0, Math.PI / 2, 0]}><planeGeometry args={[4.3, 1.45]} /><meshStandardMaterial color="#18211e" emissive="#16241f" emissiveIntensity={.35} /></mesh>
+      <Html position={[.78, 2.85, 0]} center distanceFactor={10} className="street-prop-label"><span>{cafe.name}</span></Html>
+      <CafeTable position={[1.35, 0, -2.1]} />
+      <CafeTable position={[1.35, 0, 2.2]} />
+    </group>
+  );
 }
 
 function ParisStreetLife() {
@@ -561,7 +608,7 @@ function PlayerOrbitCamera({ onDirectionChange, playerPosition, resetSignal }: {
   );
 }
 
-function CityScene({ activeNpcIndex, cameraResetSignal, cityName, neighborhood, npcNames, npcPositions, onCameraDirectionChange, onMoveTo, onSelectNpc, playerPosition, sceneClass, waypointLabel }: World3DProps & { cameraResetSignal: number; neighborhood: Neighborhood | null }) {
+function CityScene({ activeNpcIndex, cameraResetSignal, cityName, neighborhood, npcNames, npcPositions, onCameraDirectionChange, onMoveTo, onSelectNpc, playerPosition, rideLabel, ridePhase = "idle", sceneClass, waypointLabel }: World3DProps & { cameraResetSignal: number; neighborhood: Neighborhood | null }) {
   const playerWorld = toWorld(playerPosition);
   const sky = sceneClass === "desert" ? "#c9966f" : sceneClass === "india" ? "#d79a72" : sceneClass === "east" ? "#7894a4" : sceneClass === "tropical" ? "#5f9b9a" : "#86abc0";
 
@@ -595,14 +642,16 @@ function CityScene({ activeNpcIndex, cameraResetSignal, cityName, neighborhood, 
         <CityLandmark cityName={cityName} />
       </>}
       <CityVehicles cityName={cityName} />
+      {rideLabel && <TourRideVehicle label={rideLabel} phase={ridePhase} />}
       {cityName === "New York" && <NewYorkStreetLife />}
       {cityName === "Paris" && <ParisStreetLife />}
       {cityName === "Mumbai" && <MumbaiStreetLife />}
+      {["New York", "Mumbai", "Madrid"].includes(cityName) && <TourCafe cityName={cityName} />}
 
       {npcPositions.map((point, index) => (
         <Person key={npcNames[index]} active={index === activeNpcIndex} model={["animated-woman.glb", "business.glb", "punk-woman.glb"][index]} name={npcNames[index]} onClick={() => onSelectNpc(index)} position={toWorld(point)} waypointLabel={index === activeNpcIndex ? waypointLabel : undefined} />
       ))}
-      <Person key={`player-${cityName}`} player model="casual.glb" position={playerWorld} />
+      {ridePhase !== "riding" && <Person key={`player-${cityName}`} player model="casual.glb" position={playerWorld} />}
       <PlayerOrbitCamera key={cityName} onDirectionChange={onCameraDirectionChange} playerPosition={playerPosition} resetSignal={cameraResetSignal} />
     </>
   );

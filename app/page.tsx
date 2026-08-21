@@ -177,6 +177,14 @@ const STREET_NPC_POSITIONS = [
   { x: 35, y: 32 },
 ];
 
+type CafeTourPhase = "idle" | "call" | "pickup" | "riding" | "cafe" | "stop-complete" | "tour-complete";
+
+const CAFE_TOUR_STOPS = [
+  { cityId: "new-york", ride: "yellow cab", pickup: "Times Square", cafe: "Midtown cafe & deli", order: "coffee and a New York bite" },
+  { cityId: "mumbai", ride: "black-and-yellow cab", pickup: "Gateway of India", cafe: "Irani cafe", order: "cutting chai and bun maska" },
+  { cityId: "madrid", ride: "city taxi", pickup: "Puerta del Sol", cafe: "Cafe Lucia", order: "cafe con leche and a small plate" },
+] as const;
+
 function clampToPlayableStreet(point: { x: number; y: number }) {
   return {
     x: Math.min(PLAYABLE_STREET_BOUNDS.maxX, Math.max(PLAYABLE_STREET_BOUNDS.minX, point.x)),
@@ -226,7 +234,7 @@ const CITIES: City[] = [
     greeting: "Hey! Welcome to New York. What brings you to the city?", translation: "A friendly local welcome.",
     prompts: ["What do you recommend nearby?", "How do I get to the subway?", "What do locals do on weekends?"],
     demoText: "You’re doing great. There’s a brilliant little place around the corner—what kind of experience are you looking for?", demoTranslation: "The local understood you and asked a follow-up question.",
-    scenes: localScenes(["Times Square deli", "42 St subway", "Bryant Park"], ["Maya", "Theo", "Jordan"], ["👩🏽", "👨🏿", "🧑🏻"]),
+    scenes: localScenes(["Midtown cafe & deli", "42 St subway", "Bryant Park"], ["Maya", "Theo", "Jordan"], ["👩🏽", "👨🏿", "🧑🏻"]),
   },
   {
     id: "beijing", name: "Beijing", country: "China", language: "Mandarin Chinese", nativeLanguage: "普通话", locale: "zh-CN", flag: "🇨🇳",
@@ -247,7 +255,7 @@ const CITIES: City[] = [
     coordinates: "40.42° N · 3.70° W", verified: true, sceneClass: "europe", mapX: 49, mapY: 27.5, rank: 4,
     greeting: "¡Hola! Bienvenido a Madrid. ¿Qué te gustaría hacer hoy?", translation: "Hello! Welcome to Madrid. What would you like to do today?",
     prompts: ["¿Cómo te llamas?", "¿Qué comida recomiendas?", "¿Cómo llego al centro?"], demoText: "¡Muy bien! Hay un lugar estupendo muy cerca. ¿Prefieres algo dulce o salado?", demoTranslation: "Very good! There is a great place nearby. Do you prefer something sweet or savoury?",
-    scenes: localScenes(["Tapas bar", "Metro plaza", "El Rastro"], ["Lucía", "Mateo", "Sofía"], ["👩🏻", "👨🏻", "🧑🏻"]),
+    scenes: localScenes(["Cafe Lucia", "Taxi plaza", "El Rastro"], ["Lucía", "Mateo", "Sofía"], ["👩🏻", "👨🏻", "🧑🏻"]),
   },
   {
     id: "paris", name: "Paris", country: "France", language: "French", nativeLanguage: "Français", locale: "fr-FR", flag: "🇫🇷",
@@ -609,6 +617,10 @@ export default function Home() {
   const [missionStepIndex, setMissionStepIndex] = useState(0);
   const [missionStepTurns, setMissionStepTurns] = useState(0);
   const [missionInventory, setMissionInventory] = useState<string[]>([]);
+  const [cafeTourActive, setCafeTourActive] = useState(false);
+  const [cafeTourStopIndex, setCafeTourStopIndex] = useState(0);
+  const [cafeTourPhase, setCafeTourPhase] = useState<CafeTourPhase>("idle");
+  const [cafeTourVisited, setCafeTourVisited] = useState<string[]>([]);
   const [agentEvents, setAgentEvents] = useState<AgentEvent[]>([]);
   const [lastHeard, setLastHeard] = useState("");
   const [learnerMemory, setLearnerMemory] = useState<LearnerMemory>({ attempts: 0, knownPhrases: [], focusWords: [], completedMissions: [] });
@@ -634,6 +646,8 @@ export default function Home() {
   const streetViewUrl = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${encodeURIComponent(`${cityCenter[0].toFixed(4)},${cityCenter[1].toFixed(4)}`)}`;
   const activeNpcIndex = missionStep.npcIndex;
   const npcPositions = STREET_NPC_POSITIONS;
+  const cafeTourStop = CAFE_TOUR_STOPS[Math.min(cafeTourStopIndex, CAFE_TOUR_STOPS.length - 1)];
+  const cafeTourInCurrentCity = cafeTourActive && cafeTourStop.cityId === city.id;
   const activeNpcPosition = npcPositions[activeNpcIndex];
   const nearCharacter = Math.hypot((playerPosition.x - activeNpcPosition.x) / 3.1, (playerPosition.y - activeNpcPosition.y) / 2.2) < 3.4;
   const currentNpcMessage = [...messages].reverse().find((message) => message.role === "npc" && message.speaker === scene.character);
@@ -692,6 +706,24 @@ export default function Home() {
     setPronunciationNote("Choose a phrase and record one clear attempt.");
     setEngineNote(provider === "demo" ? "Ready · no account or key required" : provider === "local" ? "Ollama selected · test the connection in Engine" : "API model selected · server connection checked on first message");
   }, [city, level, provider]);
+
+  useEffect(() => {
+    if (!cafeTourInCurrentCity || cafeTourPhase !== "riding") return;
+    const timer = window.setTimeout(() => {
+      setPlayerPosition({ x: 39, y: 75 });
+      setSceneId(city.scenes[0].id);
+      setCafeTourPhase("cafe");
+      addAgentEvent("set_waypoint", `${cafeTourStop.ride} dropped you at ${cafeTourStop.cafe}`);
+    }, 3300);
+    return () => window.clearTimeout(timer);
+  }, [addAgentEvent, cafeTourInCurrentCity, cafeTourPhase, cafeTourStop.cafe, cafeTourStop.ride, city.scenes]);
+
+  useEffect(() => {
+    if (!cafeTourInCurrentCity || cafeTourPhase !== "cafe" || !questProgress[0]) return;
+    setCafeTourVisited((current) => Array.from(new Set([...current, city.id])));
+    setCafeTourPhase("stop-complete");
+    addAgentEvent("give_item", `${city.name} cafe passport stamp earned`);
+  }, [addAgentEvent, cafeTourInCurrentCity, cafeTourPhase, city.id, city.name, questProgress]);
 
   useEffect(() => {
     window.localStorage.setItem("worldling-provider", provider);
@@ -761,7 +793,7 @@ export default function Home() {
   useEffect(() => {
     const pressed = new Set<string>();
     const movementKeys = new Set(["w", "a", "s", "d", "arrowup", "arrowleft", "arrowdown", "arrowright"]);
-    const movementBlocked = showPause || showPhrasebook || showWorldPicker || showEngine || showPronunciation;
+    const movementBlocked = showPause || showPhrasebook || showWorldPicker || showEngine || showPronunciation || cafeTourPhase === "riding";
     let animationFrame = 0;
     let previousTime = performance.now();
 
@@ -815,7 +847,7 @@ export default function Home() {
       window.removeEventListener("blur", clearPressed);
       pressed.clear();
     };
-  }, [city.id, showEngine, showPause, showPhrasebook, showPronunciation, showWorldPicker]);
+  }, [cafeTourPhase, city.id, showEngine, showPause, showPhrasebook, showPronunciation, showWorldPicker]);
 
   function speak(text: string, force = false) {
     if ((!autoSpeak && !force) || !("speechSynthesis" in window)) return;
@@ -1054,7 +1086,10 @@ export default function Home() {
     const nextTurnCount = missionStepTurns + 1;
     const modelCompletedObjective = validatedActions.some((action) => action.tool === "complete_step");
     const demoCompletedObjective = provider === "demo" && nextTurnCount >= 2 && clean.length >= 8 && asksQuestion;
-    const completesObjective = modelCompletedObjective || demoCompletedObjective;
+    const cafeVisitCompleted = cafeTourInCurrentCity && cafeTourPhase === "cafe" && missionStepIndex === 0 && nextTurnCount >= 2 && clean.length >= 4;
+    const completesObjective = cafeTourInCurrentCity && cafeTourPhase === "cafe"
+      ? cafeVisitCompleted
+      : modelCompletedObjective || demoCompletedObjective;
     if (completesObjective && !questProgress[missionStepIndex]) {
       const completedStep = missionStep;
       const nextIndex = missionStepIndex + 1;
@@ -1245,6 +1280,57 @@ export default function Home() {
     setShowWorldPicker(false);
   }
 
+  function startCafeTour() {
+    const firstCity = CITIES.find((item) => item.id === CAFE_TOUR_STOPS[0].cityId) ?? CITIES[0];
+    setCafeTourActive(true);
+    setCafeTourStopIndex(0);
+    setCafeTourPhase("call");
+    setCafeTourVisited([]);
+    setMessages([cityWelcome(firstCity, level)]);
+    setQuestProgress([false, false, false]);
+    setMissionStepIndex(0);
+    setMissionStepTurns(0);
+    setMissionInventory([]);
+    setReward(null);
+    setEvaluation(null);
+    chooseCity(firstCity);
+  }
+
+  function beginCafeRide() {
+    if (!cafeTourInCurrentCity || cafeTourPhase !== "pickup") return;
+    setCafeTourPhase("riding");
+    addAgentEvent("remember_fact", `Boarded ${cafeTourStop.ride} at ${cafeTourStop.pickup}`);
+  }
+
+  function callCafeRide() {
+    if (!cafeTourInCurrentCity || cafeTourPhase !== "call") return;
+    setCafeTourPhase("pickup");
+    addAgentEvent("set_waypoint", `${cafeTourStop.ride} called to ${cafeTourStop.pickup}`);
+  }
+
+  function continueCafeTour() {
+    const nextIndex = cafeTourStopIndex + 1;
+    if (nextIndex >= CAFE_TOUR_STOPS.length) {
+      setCafeTourVisited(CAFE_TOUR_STOPS.map((stop) => stop.cityId));
+      setCafeTourPhase("tour-complete");
+      setXp((current) => current + 300);
+      setCoins((current) => current + 90);
+      return;
+    }
+    const nextStop = CAFE_TOUR_STOPS[nextIndex];
+    const nextCity = CITIES.find((item) => item.id === nextStop.cityId);
+    if (!nextCity) return;
+    setCafeTourStopIndex(nextIndex);
+    setCafeTourPhase("call");
+    enterCity(nextCity);
+  }
+
+  function closeCafeTour() {
+    setCafeTourActive(false);
+    setCafeTourPhase("idle");
+    setShowWorldPicker(true);
+  }
+
   function chooseCity(nextCity: City) {
     if (provider === "local" && localStatus !== "connected") {
       setPendingCityId(nextCity.id);
@@ -1265,6 +1351,8 @@ export default function Home() {
   function leaveStreet() {
     setShowPause(false);
     setShowPhrasebook(false);
+    setCafeTourActive(false);
+    setCafeTourPhase("idle");
     setShowWorldPicker(true);
   }
 
@@ -1277,7 +1365,7 @@ export default function Home() {
   }
 
   return (
-    <main className="app-shell sadak-replace">
+    <main className={`app-shell sadak-replace ${cafeTourActive ? "cafe-tour-active" : ""}`}>
       <section className={`journey-section scene-${city.sceneClass}`} id="journey">
         <div className="journey-shell">
           <div className="play-world" aria-label={`Walkable scene in ${city.name}`}>
@@ -1299,6 +1387,8 @@ export default function Home() {
                 latitude={cityCenter[0]}
                 longitude={cityCenter[1]}
                 waypointLabel={missionStep.title}
+                rideLabel={cafeTourInCurrentCity ? cafeTourStop.ride : undefined}
+                ridePhase={cafeTourInCurrentCity ? cafeTourPhase : "idle"}
               />
             </Suspense>
 
@@ -1338,6 +1428,11 @@ export default function Home() {
                       {(["Beginner", "Intermediate", "Advanced"] as Level[]).map((option) => <button key={option} className={level === option ? "active" : ""} onClick={() => setLevel(option)}>{option}</button>)}
                     </div>
                   </div>
+                  <div className="cafe-tour-launch">
+                    <div className="tour-route-mark"><span>NYC</span><i /><span>BOM</span><i /><span>MAD</span></div>
+                    <div><small>FEATURED TRAVEL DEMO</small><strong>The Three-City Cafe Run</strong><p>Call a cab, ride through the district, order at a local cafe, and collect a passport stamp in New York, Mumbai, and Madrid.</p></div>
+                    <button onClick={startCafeTour}>Start trip <b>3 stops</b></button>
+                  </div>
                   <div className="sadak-district-grid">
                     {CITIES.map((item, index) => (
                       <button key={item.id} className={item.id === city.id ? "active" : ""} onClick={() => chooseCity(item)}>
@@ -1358,6 +1453,37 @@ export default function Home() {
                 <h3>{city.name}</h3>
                 <p>{mission.summary}</p>
                 <div><kbd>WASD</kbd> move <kbd>SHIFT</kbd> run <kbd>P</kbd> phrases <kbd>ESC</kbd> pause</div>
+              </div>
+            )}
+
+            {cafeTourInCurrentCity && cafeTourPhase !== "tour-complete" && (
+              <section className={`cafe-tour-hud glass-card phase-${cafeTourPhase}`} aria-label="Three-city cafe trip">
+                <header>
+                  <div><small>CAFE PASSPORT · STOP {cafeTourStopIndex + 1} OF {CAFE_TOUR_STOPS.length}</small><strong>{cafeTourStop.pickup} → {cafeTourStop.cafe}</strong></div>
+                  <span>{cafeTourVisited.length}/{CAFE_TOUR_STOPS.length}</span>
+                </header>
+                <div className="cafe-tour-progress">{CAFE_TOUR_STOPS.map((stop, index) => <i key={stop.cityId} className={cafeTourVisited.includes(stop.cityId) ? "done" : index === cafeTourStopIndex ? "current" : ""}><b>{index + 1}</b><em>{stop.cityId === "new-york" ? "NYC" : stop.cityId === "mumbai" ? "BOM" : "MAD"}</em></i>)}</div>
+                {cafeTourPhase === "call" && <><p>You have landed at {cafeTourStop.pickup}. Call a local ride to reach the café.</p><button onClick={callCafeRide}>Call {cafeTourStop.ride}</button></>}
+                {cafeTourPhase === "pickup" && <><p>Your {cafeTourStop.ride} has arrived on the road. Board it to begin this city visit.</p><button onClick={beginCafeRide}>Board {cafeTourStop.ride}</button></>}
+                {cafeTourPhase === "riding" && <p className="ride-status"><span /> Travelling through {city.name}…</p>}
+                {cafeTourPhase === "cafe" && <p>Arrived. Walk to {scene.character} and order {cafeTourStop.order}. Two natural turns earn this city’s café stamp.</p>}
+                {cafeTourPhase === "stop-complete" && <><p>Visit complete. Your {city.name} café stamp is in the passport.</p><button onClick={continueCafeTour}>{cafeTourStopIndex === CAFE_TOUR_STOPS.length - 1 ? "Finish the trip" : `Fly to ${CITIES.find((item) => item.id === CAFE_TOUR_STOPS[cafeTourStopIndex + 1]?.cityId)?.name ?? "next city"}`}</button></>}
+              </section>
+            )}
+
+            {cafeTourInCurrentCity && cafeTourPhase === "riding" && (
+              <div className="ride-cinematic" aria-live="polite"><span>IN TRANSIT</span><strong>{cafeTourStop.ride}</strong><p>{cafeTourStop.pickup} → {cafeTourStop.cafe}</p><i><b /></i></div>
+            )}
+
+            {cafeTourActive && cafeTourPhase === "tour-complete" && (
+              <div className="tour-complete-panel" role="dialog" aria-modal="true" aria-labelledby="tour-complete-title">
+                <section className="glass-card">
+                  <small>THREE-CITY CAFE RUN COMPLETE</small>
+                  <h2 id="tour-complete-title">Three rides. Three cafés. One passport.</h2>
+                  <div>{CAFE_TOUR_STOPS.map((stop) => <span key={stop.cityId}><b>✓</b><strong>{CITIES.find((item) => item.id === stop.cityId)?.name}</strong><small>{stop.cafe}</small></span>)}</div>
+                  <p>You used everyday language in three real travel situations and earned <b>+300 XP</b> and <b>+90 travel coins</b>.</p>
+                  <button onClick={closeCafeTour}>Back to world map</button>
+                </section>
               </div>
             )}
 
@@ -1431,7 +1557,7 @@ export default function Home() {
 
             {!nearCharacter && <div className="approach-hint glass-card"><b>WAYPOINT</b> Move closer to {city.scenes[activeNpcIndex].character} · {waypointDistance}m</div>}
 
-            <div className="movement-pad glass-card" aria-label="Movement controls">
+            <div className={`movement-pad glass-card ${cafeTourPhase === "riding" ? "disabled" : ""}`} aria-label="Movement controls">
               <button onClick={() => movePlayer(0, -5)} aria-label="Move up">↑</button>
               <button onClick={() => movePlayer(-5, 0)} aria-label="Move left">←</button>
               <button onClick={() => movePlayer(0, 5)} aria-label="Move down">↓</button>
@@ -1440,7 +1566,7 @@ export default function Home() {
             </div>
 
             <VirtualJoystick
-              disabled={showPause || showPhrasebook || showWorldPicker || showEngine || showPronunciation}
+              disabled={showPause || showPhrasebook || showWorldPicker || showEngine || showPronunciation || cafeTourPhase === "riding"}
               onMove={(x, y) => movePlayer(x * 1.15, y * 1.15)}
             />
 

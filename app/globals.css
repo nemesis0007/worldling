@@ -2092,6 +2092,94 @@ footer strong { color: #b9b6a9; }
 .sadak-replace .sheet-done { border: 2px solid var(--sadak-ink); border-radius: 4px; color: var(--sadak-ink); background: var(--sadak-main); box-shadow: 3px 3px 0 var(--sadak-ink); }
 .sadak-replace .sheet-done:disabled { color: #6a6455; background: #d8d3bd; box-shadow: none; cursor: not-allowed; }
 
+.cafe-tour-launch {
+  display: grid;
+  grid-template-columns: auto minmax(0,1fr) auto;
+  align-items: center;
+  gap: 18px;
+  margin: 0 0 20px;
+  border: 2px solid var(--sadak-ink);
+  border-radius: 6px;
+  padding: 14px;
+  background: linear-gradient(110deg,#d8ff5f 0 23%,#fff9e8 23% 100%);
+  box-shadow: 5px 5px 0 var(--sadak-ink);
+}
+.tour-route-mark { display: flex; align-items: center; gap: 6px; }
+.tour-route-mark span { display: grid; place-items: center; width: 42px; height: 42px; border: 2px solid var(--sadak-ink); border-radius: 50%; color: #fff; background: var(--sadak-ink); font-size: 8px; font-weight: 950; }
+.tour-route-mark i { width: 14px; border-top: 2px dashed var(--sadak-ink); }
+.cafe-tour-launch small,.cafe-tour-launch strong { display: block; }
+.cafe-tour-launch small { color: #6a624c; font-size: 7px; font-weight: 950; letter-spacing: .14em; }
+.cafe-tour-launch strong { margin: 3px 0; font-size: 17px; letter-spacing: -.03em; }
+.cafe-tour-launch p { margin: 0; color: #514b3e; font-size: 9px; line-height: 1.4; }
+.cafe-tour-launch > button,.cafe-tour-hud > button,.tour-complete-panel button { border: 2px solid var(--sadak-ink); border-radius: 4px; padding: 12px 14px; color: var(--sadak-ink); background: var(--sadak-main); box-shadow: 3px 3px 0 var(--sadak-ink); font-size: 9px; font-weight: 950; cursor: pointer; }
+.cafe-tour-launch > button b { display: block; margin-top: 2px; font-size: 6px; letter-spacing: .1em; }
+
+.cafe-tour-hud {
+  position: absolute;
+  z-index: 28;
+  top: 148px;
+  left: 18px;
+  width: 300px;
+  border: 2px solid var(--sadak-ink);
+  border-radius: 6px;
+  padding: 12px;
+  color: var(--sadak-ink);
+  background: var(--sadak-cream);
+  box-shadow: 5px 5px 0 rgba(18,18,15,.78);
+}
+.cafe-tour-hud header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.cafe-tour-hud header small,.cafe-tour-hud header strong { display: block; }
+.cafe-tour-hud header small { color: #6d654e; font-size: 6px; font-weight: 950; letter-spacing: .12em; }
+.cafe-tour-hud header strong { margin-top: 3px; font-size: 11px; }
+.cafe-tour-hud header > span { display: grid; place-items: center; min-width: 36px; height: 36px; border: 2px solid var(--sadak-ink); border-radius: 50%; background: var(--sadak-main); font-size: 9px; font-weight: 950; }
+.cafe-tour-hud p { margin: 10px 0 0; color: #514b3e; font-size: 8px; line-height: 1.45; }
+.cafe-tour-hud > button { width: 100%; margin-top: 10px; padding: 9px; background: var(--sadak-green); }
+.cafe-tour-progress { display: grid; grid-template-columns: repeat(3,1fr); gap: 5px; margin-top: 10px; }
+.cafe-tour-progress i { display: flex; align-items: center; gap: 5px; border: 1.5px solid var(--sadak-ink); border-radius: 4px; padding: 4px; color: #756f60; background: #fff; font-style: normal; }
+.cafe-tour-progress i.current { color: var(--sadak-ink); background: var(--sadak-main); }
+.cafe-tour-progress i.done { color: var(--sadak-ink); background: var(--sadak-green); }
+.cafe-tour-progress b { display: grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; color: #fff; background: var(--sadak-ink); font-size: 6px; }
+.cafe-tour-progress em { font-size: 6px; font-style: normal; font-weight: 950; letter-spacing: .08em; }
+.cafe-tour-hud .ride-status { font-weight: 900; letter-spacing: .04em; }
+.cafe-tour-hud .ride-status span { display: inline-block; width: 7px; height: 7px; margin-right: 5px; border-radius: 50%; background: var(--sadak-red); animation: micPulse 1s infinite; }
+.cafe-tour-active .game-mission { top: 350px !important; }
+.movement-pad.disabled { opacity: .35; pointer-events: none; }
+
+.ride-cinematic {
+  position: absolute;
+  z-index: 45;
+  left: 50%;
+  bottom: 150px;
+  translate: -50% 0;
+  width: min(440px,calc(100% - 40px));
+  border: 2px solid var(--sadak-ink);
+  border-radius: 6px;
+  padding: 13px 16px;
+  color: var(--sadak-ink);
+  text-align: center;
+  background: var(--sadak-main);
+  box-shadow: 6px 6px 0 var(--sadak-ink);
+}
+.ride-cinematic > span { display: block; font-size: 6px; font-weight: 950; letter-spacing: .2em; }
+.ride-cinematic strong { display: block; margin: 3px 0; font-size: 20px; text-transform: uppercase; }
+.ride-cinematic p { margin: 0; font-size: 8px; font-weight: 800; }
+.ride-cinematic > i { display: block; height: 8px; margin-top: 10px; border: 1.5px solid var(--sadak-ink); border-radius: 99px; background: #fff; overflow: hidden; }
+.ride-cinematic > i b { display: block; width: 100%; height: 100%; background: var(--sadak-green); transform-origin: left; animation: cafeRideProgress 3.3s linear both; }
+@keyframes cafeRideProgress { from { scale: 0 1; } to { scale: 1 1; } }
+
+.tour-complete-panel { position: absolute; inset: 0; z-index: 130; display: grid; place-items: center; padding: 20px; background: rgba(18,18,15,.8); backdrop-filter: blur(8px); }
+.tour-complete-panel > section { width: min(620px,100%); border: 3px solid var(--sadak-ink); border-radius: 8px; padding: 24px; color: var(--sadak-ink); background: var(--sadak-cream); box-shadow: 10px 10px 0 #000; }
+.tour-complete-panel > section > small { color: #6b6248; font-size: 8px; font-weight: 950; letter-spacing: .16em; }
+.tour-complete-panel h2 { margin: 7px 0 18px; font-size: clamp(30px,5vw,48px); line-height: .95; letter-spacing: -.06em; }
+.tour-complete-panel section > div { display: grid; grid-template-columns: repeat(3,1fr); gap: 9px; }
+.tour-complete-panel section > div span { border: 2px solid var(--sadak-ink); border-radius: 5px; padding: 10px; background: #fff; }
+.tour-complete-panel section > div b { display: grid; place-items: center; width: 22px; height: 22px; margin-bottom: 8px; border-radius: 50%; color: var(--sadak-ink); background: var(--sadak-green); }
+.tour-complete-panel section > div strong,.tour-complete-panel section > div small { display: block; }
+.tour-complete-panel section > div strong { font-size: 12px; }
+.tour-complete-panel section > div small { margin-top: 2px; color: #686151; font-size: 7px; }
+.tour-complete-panel p { color: #4e493e; font-size: 10px; line-height: 1.5; }
+.tour-complete-panel button { width: 100%; background: var(--sadak-green); }
+
 @media (max-width: 1040px) {
   .sadak-start-setup { display: grid; }
   .sadak-district-grid { grid-template-columns: repeat(3,minmax(0,1fr)); }
@@ -2107,6 +2195,8 @@ footer strong { color: #b9b6a9; }
   .sadak-world-picker > section { max-height: calc(100dvh - 20px); padding: 14px; box-shadow: 6px 6px 0 var(--sadak-ink); }
   .sadak-picker-heading { margin-top: 24px; }
   .sadak-picker-heading h1 { font-size: 44px; }
+  .cafe-tour-launch { grid-template-columns: 1fr auto; gap: 10px; }
+  .tour-route-mark { grid-column: 1 / -1; }
   .sadak-district-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 9px; }
   .sadak-district-grid > button { grid-template-columns: 58px minmax(0,1fr); min-height: 76px; }
   .district-cover { width: 58px; height: 58px; }
@@ -2118,6 +2208,8 @@ footer strong { color: #b9b6a9; }
   .sadak-brand-hud > div strong { font-size: 12px; }
   .sadak-replace .game-mission,
   .sadak-replace .focus-mode .game-mission { top: 124px; left: 10px; right: auto; width: 205px; }
+  .cafe-tour-hud { top: 124px; left: 10px; width: 225px; }
+  .cafe-tour-active .game-mission { top: 354px !important; width: 225px; }
   .sadak-replace .game-status,
   .sadak-replace .focus-mode .game-status { top: 10px; right: 10px; left: auto; max-width: calc(100% - 235px); overflow-x: auto; }
   .sadak-replace .game-status .model-chip,
@@ -2142,6 +2234,10 @@ footer strong { color: #b9b6a9; }
   .sadak-title-lockup strong { font-size: 13px; }
   .sadak-world-picker header > button { max-width: 128px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .sadak-district-grid { grid-template-columns: 1fr; }
+  .cafe-tour-launch { grid-template-columns: 1fr; }
+  .cafe-tour-launch > button { width: 100%; }
+  .tour-route-mark { display: none; }
+  .tour-complete-panel section > div { grid-template-columns: 1fr; }
   .sadak-level-row { width: 100%; }
   .sadak-level-row button { flex: 1; padding-inline: 5px; }
   .sadak-brain-picker { grid-template-columns: 1fr; }
