@@ -37,6 +37,7 @@ type Neighborhood = {
 const MODEL_ROOT = "/models/kenney-city";
 const CHARACTER_ROOT = "/models/quaternius";
 const CAR_ROOT = "/models/kenney-cars";
+const PLAYER_MODEL_FORWARD_OFFSET = Math.PI;
 
 function toWorld(point: Point): [number, number, number] {
   return [(point.x - 50) / 3.1, 0, (point.y - 70) / 2.2];
@@ -115,7 +116,9 @@ function Person({ active = false, model, name, onClick, player = false, position
     if (player && distance > .025) {
       const dx = destination.x - group.current.position.x;
       const dz = destination.z - group.current.position.z;
-      targetHeading.current = Math.atan2(dx, dz);
+      // Quaternius characters are mounted facing the opposite of the group's
+      // +Z axis, so include the model-space half turn when aiming the player.
+      targetHeading.current = Math.atan2(dx, dz) + PLAYER_MODEL_FORWARD_OFFSET;
     }
     if (player) {
       const headingDelta = Math.atan2(
