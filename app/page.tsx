@@ -453,6 +453,7 @@ export default function Home() {
   const [engineNote, setEngineNote] = useState("Ready · no account or key required");
   const [evaluation, setEvaluation] = useState<Evaluation | null>(null);
   const [showEngine, setShowEngine] = useState(false);
+  const [pendingCityId, setPendingCityId] = useState<string | null>(null);
   const [ollamaEndpoint, setOllamaEndpoint] = useState("http://127.0.0.1:11434");
   const [ollamaModel, setOllamaModel] = useState("qwen3:8b");
   const [localStatus, setLocalStatus] = useState<LocalStatus>("idle");
@@ -749,6 +750,12 @@ export default function Home() {
       setLocalMessage(`Connected · ${ollamaModel} is ready on this device`);
       setProvider("local");
       setEngineNote(`Ollama connected · using ${ollamaModel}`);
+      const pendingCity = CITIES.find((item) => item.id === pendingCityId);
+      if (pendingCity) {
+        enterCity(pendingCity);
+        setPendingCityId(null);
+        setShowEngine(false);
+      }
     } catch (error) {
       setLocalStatus("error");
       const base = ollamaEndpoint.trim().replace(/\/$/, "") || "the configured address";
@@ -1035,17 +1042,28 @@ export default function Home() {
     }
   }
 
-  function chooseCity(nextCity: City) {
-    if (provider === "local" && localStatus !== "connected") {
-      setLocalMessage(localStatus === "error" ? localMessage : "Test Ollama successfully before entering a district with Qwen.");
-      setEngineNote("Local model selected · connection required before play");
-      setShowEngine(true);
-      return;
-    }
+  function enterCity(nextCity: City) {
     setCityId(nextCity.id);
     setSceneId(nextCity.scenes[0].id);
     setPlayerPosition({ x: 50, y: 82 });
     setShowWorldPicker(false);
+  }
+
+  function chooseCity(nextCity: City) {
+    if (provider === "local" && localStatus !== "connected") {
+      setPendingCityId(nextCity.id);
+      setLocalMessage(localStatus === "error" ? localMessage : "Test Ollama successfully before entering a district with Qwen.");
+      setEngineNote(`${nextCity.name} queued · connect the local model to enter`);
+      setShowEngine(true);
+      return;
+    }
+    setPendingCityId(null);
+    enterCity(nextCity);
+  }
+
+  function closeEngine() {
+    setPendingCityId(null);
+    setShowEngine(false);
   }
 
   function leaveStreet() {
@@ -1380,9 +1398,9 @@ export default function Home() {
       )}
 
       {showEngine && (
-        <div className="modal-backdrop engine-backdrop" role="presentation" onClick={() => setShowEngine(false)}>
+        <div className="modal-backdrop engine-backdrop" role="presentation" onClick={closeEngine}>
           <section className="engine-sheet" role="dialog" aria-modal="true" aria-labelledby="engine-title" onClick={(event) => event.stopPropagation()}>
-            <button className="close-button" onClick={() => setShowEngine(false)} aria-label="Close engine settings">×</button>
+            <button className="close-button" onClick={closeEngine} aria-label="Close engine settings">×</button>
             <span className="score-kicker">MODEL ROUTER</span>
             <h2 id="engine-title">Choose the brain.</h2>
             <p className="engine-intro">The game uses one provider contract, so you can test cheaply and switch models without rebuilding the world.</p>
@@ -1427,8 +1445,13 @@ export default function Home() {
             <button
               className="sheet-done"
               disabled={provider === "local" && localStatus !== "connected"}
-              onClick={() => setShowEngine(false)}
-            >{provider === "local" && localStatus !== "connected" ? "Test Ollama to continue" : `Continue with ${providerLabels[provider]}`}</button>
+              onClick={() => {
+                const pendingCity = CITIES.find((item) => item.id === pendingCityId);
+                if (pendingCity) enterCity(pendingCity);
+                setPendingCityId(null);
+                setShowEngine(false);
+              }}
+            >{provider === "local" && localStatus !== "connected" ? "Test Ollama to continue" : pendingCityId ? `Enter ${CITIES.find((item) => item.id === pendingCityId)?.name ?? "district"}` : `Continue with ${providerLabels[provider]}`}</button>
           </section>
         </div>
       )}
