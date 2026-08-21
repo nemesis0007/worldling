@@ -489,7 +489,11 @@ function extractModelJson(text: string) {
   }
 }
 
-function buildConversationTurnPlan(input: string, objective: string) {
+function normalizedReply(text: string) {
+  return text.toLocaleLowerCase().replace(/[^\p{L}\p{N}\s]/gu, "").replace(/\s+/g, " ").trim();
+}
+
+function buildConversationTurnPlan(input: string, objective: string, previousNpcMessage = "") {
   const latest = input.toLocaleLowerCase();
   const goal = objective.toLocaleLowerCase();
   const tripIntent = /\b(trip|travel|travelling|traveling|visit|visiting|vacation|tour|tourist|holiday)\b/.test(latest);
@@ -501,6 +505,8 @@ function buildConversationTurnPlan(input: string, objective: string) {
     (foodIntent && /food|order|cafe|café|deli|restaurant|market|price|item/.test(goal)) ||
     (directionIntent && /route|subway|metro|train|platform|direction|stop|walk/.test(goal)) ||
     (activityIntent && /after work|event|tonight|local/.test(goal));
+
+  const shortAnswer = /^(yes|yeah|yep|yup|sure|it is|i am|no|nope|not really|nah|maybe|i think so|i dont think so|i don't think so)[.! ]*$/i.test(input.trim());
 
   if (tripIntent) {
     return {
@@ -530,6 +536,12 @@ function buildConversationTurnPlan(input: string, objective: string) {
     return {
       objectiveRelevant: false,
       guidance: "Return the greeting briefly and ask one easy question about how their day is going. Do not introduce the venue, products, food, directions, or the mission.",
+    };
+  }
+  if (shortAnswer && previousNpcMessage) {
+    return {
+      objectiveRelevant: false,
+      guidance: `The latest message is a direct short answer to your previous question: "${previousNpcMessage}" Acknowledge the player's answer and move the same topic forward. Ask a new related question if useful. Never repeat or paraphrase the previous question.`,
     };
   }
   return {
@@ -818,7 +830,8 @@ export default function Home() {
     if (!base || !ollamaModel.trim()) throw new Error("Enter an Ollama endpoint and model.");
     const conversationMessages = nextMessages.filter((message, index) => !(index === 0 && message.role === "npc" && message.text === city.greeting));
     const latestPlayerMessage = [...conversationMessages].reverse().find((message) => message.role === "user")?.text ?? "";
-    const turnPlan = buildConversationTurnPlan(latestPlayerMessage, missionStep.instruction);
+    const previousNpcMessage = [...conversationMessages].reverse().find((message) => message.role === "npc")?.text ?? "";
+    const turnPlan = buildConversationTurnPlan(latestPlayerMessage, missionStep.instruction, previousNpcMessage);
     const objectiveContext = turnPlan.objectiveRelevant
       ? `The player independently opened a topic relevant to the hidden objective "${missionStep.instruction}". Use it only to validate genuine progress.`
       : "The hidden objective is not relevant to this turn. Do not mention it, hint at it, or steer toward it.";
@@ -826,32 +839,41 @@ export default function Home() {
       role: message.role === "npc" ? "assistant" : "user",
       content: message.text,
     }));
-    const response = await fetch(`${base}/api/chat`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: ollamaModel.trim(),
-        stream: false,
-        format: action === "turn" ? OLLAMA_TURN_FORMAT : OLLAMA_EVALUATION_FORMAT,
-        think: false,
-        keep_alive: "30m",
-        messages: [
-          { role: "system", content: ollamaSystemPrompt(city, scene, level, action, `Hidden game state for validation only: mission "${mission.title}". ${objectiveContext} The player has taken ${nextMessages.filter((message) => message.role === "user").length} turn(s). Latest player message: "${latestPlayerMessage}". ${turnPlan.guidance} Items and facts already carried: ${missionInventory.join(", ") || "none"}. Learner focus words: ${learnerMemory.focusWords.join(", ") || "none"}.`) },
-          ...transcript,
-        ],
-        options: {
-          temperature: action === "turn" ? 0.4 : 0.1,
-          num_ctx: 4096,
-          num_predict: action === "turn" ? 160 : 220,
-        },
-      }),
-    });
-    if (!response.ok) {
-      const failure = await response.json().catch(() => null) as { error?: string } | null;
-      throw new Error(failure?.error ?? `Ollama returned ${response.status}.`);
+    const systemContent = ollamaSystemPrompt(city, scene, level, action, `Hidden game state for validation only: mission "${mission.title}". ${objectiveContext} The player has taken ${nextMessages.filter((message) => message.role === "user").length} turn(s). Latest player message: "${latestPlayerMessage}". Your previous reply was: "${previousNpcMessage || "none"}". ${turnPlan.guidance} Items and facts already carried: ${missionInventory.join(", ") || "none"}. Learner focus words: ${learnerMemory.focusWords.join(", ") || "none"}.`);
+    const generate = async (correction = "") => {
+      const response = await fetch(`${base}/api/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: ollamaModel.trim(),
+          stream: false,
+          format: action === "turn" ? OLLAMA_TURN_FORMAT : OLLAMA_EVALUATION_FORMAT,
+          think: false,
+          keep_alive: "30m",
+          messages: [
+            { role: "system", content: `${systemContent}${correction ? ` ${correction}` : ""}` },
+            ...transcript,
+          ],
+          options: {
+            temperature: action === "turn" ? 0.4 : 0.1,
+            num_ctx: 4096,
+            num_predict: action === "turn" ? 160 : 220,
+          },
+        }),
+      });
+      if (!response.ok) {
+        const failure = await response.json().catch(() => null) as { error?: string } | null;
+        throw new Error(failure?.error ?? `Ollama returned ${response.status}.`);
+      }
+      const payload = await response.json() as { message?: { content?: string } };
+      return extractModelJson(payload.message?.content ?? "");
+    };
+
+    const reply = await generate() as AgentReply;
+    if (action === "turn" && previousNpcMessage && normalizedReply(reply.text) === normalizedReply(previousNpcMessage)) {
+      return await generate("Your first draft repeated your previous reply. Produce a genuinely new response to the latest player message. Do not reuse the previous question.");
     }
-    const payload = await response.json() as { message?: { content?: string } };
-    return extractModelJson(payload.message?.content ?? "");
+    return reply;
   }
 
   async function testOllama() {

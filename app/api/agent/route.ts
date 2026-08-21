@@ -34,12 +34,24 @@ function systemPrompt(body: AgentRequest) {
   if (body.action === "evaluate") {
     return `You are a fair language-game evaluator. Evaluate whether the player communicated successfully in ${body.language} at ${body.level} level during a conversation in ${body.city}. The optional goal was: ${body.goal}. Reward communicative success and recovery. Do not punish a regional accent. Judge only evidence in the transcript. Return only valid JSON matching: ${evaluationShape}`;
   }
-  return `You are ${body.character}, a ${body.role} at ${body.location} in ${body.city}, ${body.country}. Speak naturally in ${body.language}. The player is at ${body.level} level. Stay warmly in character, respond to anything appropriate they say, and end with at most one natural follow-up question. For beginners, keep language simple.
+  return `You are ${body.character}, a ${body.role} at ${body.location} in ${body.city}, ${body.country}. Speak naturally in ${body.language}. The player is at ${body.level} level. Stay warmly in character, respond directly to the newest player message, and end with at most one natural follow-up question. Treat short replies such as yes, no, maybe, or I am as answers to your immediately preceding question. Never repeat or closely paraphrase your previous reply. For beginners, keep language simple.
 Connected mission: ${body.mission ?? "Street conversation"}.
 Current objective: ${body.objective ?? body.goal ?? "Have a useful exchange"}.
 World memory and inventory: ${(body.inventory ?? []).join(", ") || "none"}.
 Learner focus words: ${(body.learnerMemory?.focusWords ?? []).join(", ") || "none"}.
 Return only valid JSON: {"text":"reply in ${body.language}","translation":"concise English translation","actions":[{"tool":"remember_fact|give_item|complete_step|set_waypoint","value":"short value","reason":"short reason"}]}. Only use complete_step when the player's latest message meaningfully addresses the current objective. Do not grade or explain during the conversation.`;
+}
+
+function conversationMessages(body: AgentRequest) {
+  const messages = (body.messages ?? []).map((message) => ({
+    role: message.role === "npc" ? "assistant" : message.role,
+    content: message.content,
+  }));
+  const last = messages.at(-1);
+  if (body.action === "turn" && body.input && !(last?.role === "user" && last.content.trim() === body.input.trim())) {
+    messages.push({ role: "user", content: body.input });
+  }
+  return messages;
 }
 
 function extractJson(text: string) {
@@ -61,8 +73,7 @@ async function callLocal(body: AgentRequest) {
       temperature: body.action === "turn" ? 0.8 : 0.2,
       messages: [
         { role: "system", content: systemPrompt(body) },
-        ...(body.messages ?? []).map((message) => ({ role: message.role === "npc" ? "assistant" : "user", content: message.content })),
-        ...(body.action === "turn" && body.input ? [{ role: "user", content: body.input }] : []),
+        ...conversationMessages(body),
       ],
     }),
     signal: AbortSignal.timeout(30000),
@@ -76,14 +87,14 @@ async function callOpenAI(body: AgentRequest) {
   const apiKey = process.env.OPENAI_API_KEY;
   const model = process.env.OPENAI_MODEL ?? "gpt-5.6-luna";
   if (!apiKey) throw new Error("API model is not configured on the server.");
-  const transcript = (body.messages ?? []).map((message) => `${message.role}: ${message.content}`).join("\n");
+  const transcript = conversationMessages(body).map((message) => `${message.role}: ${message.content}`).join("\n");
   const response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify({
       model,
       instructions: systemPrompt(body),
-      input: body.action === "turn" ? `${transcript}\nuser: ${body.input ?? ""}` : transcript,
+      input: transcript,
       max_output_tokens: 700,
     }),
     signal: AbortSignal.timeout(30000),
