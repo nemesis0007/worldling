@@ -2345,3 +2345,68 @@ footer strong { color: #b9b6a9; }
   .score-card .reward-banner,.score-card .feedback-grid,.score-actions { grid-template-columns: 1fr; }
   .task-reward-toast { top: auto; right: 12px; bottom: 174px; }
 }
+
+/* High-contrast acoustic mission */
+.pronunciation-backdrop { background: rgba(12,15,13,.82); backdrop-filter: blur(9px) saturate(.72); }
+.pronunciation-sheet {
+  width: min(780px,100%);
+  border: 3px solid #171713;
+  border-top: 9px solid #ff7258;
+  border-radius: 12px;
+  padding: 28px 30px;
+  color: #171713;
+  background: #fffaf0;
+  box-shadow: 14px 14px 0 #171713, 0 34px 90px rgba(0,0,0,.48);
+}
+.pronunciation-sheet .close-button { top: 15px; right: 16px; border: 2px solid #171713; color: #171713; background: #fff; font-weight: 950; }
+.pronunciation-sheet .score-kicker { color: #c83c2d; font-size: 8px; font-weight: 950; letter-spacing: .16em; }
+.pronunciation-sheet > h2 { margin: 9px 42px 7px 0; color: #171713; font-family: var(--font-sans),system-ui,sans-serif; font-size: clamp(36px,4vw,50px); font-weight: 950; line-height: .96; letter-spacing: -.055em; }
+.pronunciation-sheet .pronunciation-intro { max-width: 650px; color: #625b4d; font-size: 10px; font-weight: 650; line-height: 1.55; }
+.pronunciation-sheet .pronunciation-providers { gap: 10px; margin: 20px 0 14px; }
+.pronunciation-sheet .pronunciation-providers button { border: 2px solid #171713; border-radius: 7px; padding: 13px 14px; color: #171713; background: #fff; box-shadow: 3px 3px 0 #171713; }
+.pronunciation-sheet .pronunciation-providers button.active { border-color: #171713; color: #171713; background: #d8f3e2; box-shadow: 4px 4px 0 #171713; }
+.pronunciation-sheet .pronunciation-providers button:not(.active) { color: #4e493e; background: #f0eadf; }
+.pronunciation-sheet .pronunciation-providers strong { color: inherit; font-size: 10px; font-weight: 950; }
+.pronunciation-sheet .pronunciation-providers small { color: #625b4d; font-size: 7px; font-weight: 700; }
+.pronunciation-sheet .pronunciation-endpoint { margin: 11px 0 16px; color: #554f43; font-size: 7px; font-weight: 950; }
+.pronunciation-sheet .pronunciation-endpoint input { margin-top: 7px; border: 2px solid #171713; border-radius: 6px; padding: 11px 12px; color: #171713; background: #fff; font-size: 10px; font-weight: 800; box-shadow: inset 0 0 0 2px #eee7d9; }
+.pronunciation-sheet .pronunciation-endpoint input:focus { border-color: #26845f; box-shadow: 0 0 0 3px rgba(73,185,133,.2); }
+.pronunciation-sheet .phrase-selector { margin: 18px 0 9px; }
+.pronunciation-sheet .phrase-selector > span { color: #554f43; font-size: 7px; font-weight: 950; }
+.pronunciation-sheet .phrase-selector button { width: 30px; height: 30px; border: 2px solid #171713; color: #171713; background: #fff; font-weight: 900; }
+.pronunciation-sheet .phrase-selector button.active { color: #171713; background: #f6ce5c; box-shadow: 2px 2px 0 #171713; }
+.pronunciation-sheet .target-phrase { border: 2px solid #171713; border-radius: 8px; padding: 17px 104px 17px 17px; color: #171713; background: #fff0bf; box-shadow: 4px 4px 0 #171713; }
+.pronunciation-sheet .target-phrase > span { color: #8b5d00; font-size: 7px; font-weight: 950; }
+.pronunciation-sheet .target-phrase > strong { color: #171713; font-family: var(--font-sans),system-ui,sans-serif; font-size: 22px; font-weight: 900; line-height: 1.35; }
+.pronunciation-sheet .target-phrase > button { border: 2px solid #171713; border-radius: 6px; padding: 8px 11px; color: #fff; background: #171713; font-size: 7px; font-weight: 900; }
+.pronunciation-sheet .record-pronunciation { min-height: 66px; margin-top: 16px; border: 3px solid #171713; border-radius: 8px; color: #fff; background: #ff7258; box-shadow: 5px 5px 0 #171713; }
+.pronunciation-sheet .record-pronunciation:hover:not(:disabled) { background: #ef6048; translate: 1px 1px; box-shadow: 4px 4px 0 #171713; }
+.pronunciation-sheet .record-pronunciation strong { color: #fff; font-size: 11px; font-weight: 950; }
+.pronunciation-sheet .record-pronunciation small { color: rgba(255,255,255,.88); font-weight: 700; }
+.pronunciation-sheet .pronunciation-note { margin-top: 11px; color: #625b4d; font-size: 8px; font-weight: 700; }
+.pronunciation-sheet .pronunciation-result { border-top: 2px solid #171713; color: #171713; }
+.pronunciation-sheet .pronunciation-score { border: 3px solid #171713; color: #171713; background: #f6ce5c; box-shadow: 5px 5px 0 #171713; }
+.pronunciation-sheet .pronunciation-score strong { color: #171713; font-family: var(--font-sans),system-ui,sans-serif; font-weight: 950; }
+.pronunciation-sheet .pronunciation-score > span,.pronunciation-sheet .pronunciation-score small { color: #514b3e; font-weight: 900; }
+.pronunciation-sheet .pronunciation-metrics span,.pronunciation-sheet .pronunciation-metrics strong { color: #312e27; font-weight: 900; }
+.pronunciation-sheet .pronunciation-metrics i { border: 1px solid #b9b19f; background: #e8e2d6; }
+.pronunciation-sheet .pronunciation-metrics b { background: #49b985; }
+.pronunciation-sheet .recognized-line { border: 2px solid #171713; color: #171713; background: #fff; }
+.pronunciation-sheet .recognized-line span,.pronunciation-sheet .pronunciation-feedback span { color: #554f43; font-weight: 950; }
+.pronunciation-sheet .recognized-line p,.pronunciation-sheet .pronunciation-feedback p { color: #171713; font-weight: 700; }
+.pronunciation-sheet .attempt-review { border: 2px solid #171713; color: #171713; background: #edf5f0; }
+.pronunciation-sheet .attempt-review span { color: #176747; }
+.pronunciation-sheet .attempt-review button { border: 2px solid #171713; color: #171713; background: #fff; }
+.pronunciation-sheet .word-heatmap > span { border-width: 2px; color: #171713; background: #fff; font-weight: 850; }
+.pronunciation-sheet .word-heatmap .good { border-color: #25845e; background: #d8f3e2; }
+.pronunciation-sheet .word-heatmap .close { border-color: #a37400; background: #fff0bf; }
+.pronunciation-sheet .word-heatmap .retry { border-color: #b83d2d; background: #ffdcd5; }
+.pronunciation-sheet .pronunciation-feedback { border: 2px solid #171713; border-left: 7px solid #f6ce5c; border-radius: 6px; color: #171713; background: #fff; }
+.pronunciation-sheet .phoneme-warning { color: #625b4d; font-weight: 700; }
+
+@media (max-width: 580px) {
+  .pronunciation-sheet { padding: 23px 16px; box-shadow: 8px 8px 0 #171713; }
+  .pronunciation-sheet > h2 { font-size: 34px; }
+  .pronunciation-sheet .target-phrase { padding: 15px; }
+  .pronunciation-sheet .target-phrase > button { margin-top: 12px; }
+}
