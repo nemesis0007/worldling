@@ -381,6 +381,21 @@ const LOCAL_MODEL_PROFILES: Record<Exclude<LocalProfile, "custom">, { model: str
   quality: { model: "qwen3:8b", label: "Quality", hint: "Smarter, but much slower" },
 };
 
+const LEVEL_EXPERIENCE: Record<Level, { hint: string; maxReplyWords: number; instruction: string }> = {
+  Beginner: { hint: "Guided phrases", maxReplyWords: 28, instruction: "Use common words, short sentences, and one clear idea at a time. Gently model a corrected phrase when useful." },
+  Intermediate: { hint: "Connected sentences", maxReplyWords: 45, instruction: "Use natural connected sentences, everyday past and future forms, and occasional local expressions that remain understandable from context." },
+  Advanced: { hint: "Full natural exchange", maxReplyWords: 65, instruction: "Speak naturally with idioms, varied sentence structures, implied meaning, and realistic local detail. Do not simplify unless the player asks." },
+};
+
+function phrasesForLevel(prompts: readonly string[], level: Level) {
+  if (level === "Beginner" || prompts.length < 2) return [...prompts];
+  return prompts.map((prompt, index) => {
+    const next = prompts[(index + 1) % prompts.length];
+    if (level === "Intermediate" || prompts.length < 3) return `${prompt} ${next}`;
+    return `${prompt} ${next} ${prompts[(index + 2) % prompts.length]}`;
+  });
+}
+
 function encodeWav(samples: Float32Array, sourceRate: number) {
   const targetRate = 16000;
   const targetLength = Math.max(1, Math.round(samples.length * targetRate / sourceRate));
@@ -737,7 +752,8 @@ function ollamaSystemPrompt(city: City, scene: Scene, level: Level, action: "tur
   if (action === "evaluate") {
     return `You are a strict but encouraging language-game evaluator. Judge only the player's messages in ${city.language} at ${level} level in ${city.name}. The objective was: ${scene.goal}. ${missionContext} Reward communicative success and recovery. Do not punish a regional accent. Score communication, vocabulary, grammar, and confidence independently from transcript evidence. A greeting or one short answer must not score above 65. Scores above 90 require several substantive turns, varied vocabulary, and successful objectives. Reserve 100 for exceptional, near-native, error-free performance across at least six substantive player turns. Never give every category the same score. Return only valid JSON with numeric fields overall, communication, vocabulary, grammar, confidence from 0 to 100, plus evidence-based string fields strength, improvement, and phrase.`;
   }
-  return `You are ${scene.character}, a real ${scene.role} in ${city.name}, ${city.country}. Your physical setting is ${scene.label}, but that setting is not automatically the conversation topic. Speak naturally in ${city.language}. The player is at ${level} level.
+  const difficulty = LEVEL_EXPERIENCE[level];
+  return `You are ${scene.character}, a real ${scene.role} in ${city.name}, ${city.country}. Your physical setting is ${scene.label}, but that setting is not automatically the conversation topic. Speak naturally in ${city.language}. The player is at ${level} level. ${difficulty.instruction}
 
 Conversation policy, in priority order:
 1. Respond directly to the meaning and tone of the player's latest message. Never ignore it to push your job, venue, or a game objective.
@@ -745,12 +761,13 @@ Conversation policy, in priority order:
 3. Treat your venue and the hidden mission as background, not a script. Mention food, products, directions, or services only after the player asks about them, expresses a related need, or creates a genuinely natural bridge later in the exchange.
 4. Do not repeat a previous line, invent that the player ordered something, or claim they completed an action they did not attempt.
 
-Stay warmly in character, remember the recent transcript, keep the spoken reply under 45 words, and keep beginner language simple. ${missionContext} Return only valid JSON with fields text for the ${city.language} reply, translation for concise English, and actions as an array of zero or more objects shaped {"tool":"remember_fact|give_item|complete_step|set_waypoint","value":"short value","reason":"short reason"}. Leave actions empty during ordinary small talk. Only use complete_step when the player's latest message explicitly and meaningfully addresses the hidden objective.`;
+Stay warmly in character, remember the recent transcript, and keep the spoken reply under ${difficulty.maxReplyWords} words. ${missionContext} Return only valid JSON with fields text for the ${city.language} reply, translation for concise English, and actions as an array of zero or more objects shaped {"tool":"remember_fact|give_item|complete_step|set_waypoint","value":"short value","reason":"short reason"}. Leave actions empty during ordinary small talk. Only use complete_step when the player's latest message explicitly and meaningfully addresses the hidden objective.`;
 }
 
 function fastOllamaTurnPrompt(city: City, scene: Scene, level: Level, missionContext = "") {
-  return `You are ${scene.character}, a friendly ${scene.role} at ${scene.label} in ${city.name}. Speak naturally in simple ${city.language} for a ${level} learner.
-Answer the player's newest meaning directly. Ask no more than one related question. Never repeat your last reply or force your venue, job, food, directions, or mission into small talk. Keep the spoken reply under 30 words.
+  const difficulty = LEVEL_EXPERIENCE[level];
+  return `You are ${scene.character}, a friendly ${scene.role} at ${scene.label} in ${city.name}. Speak naturally in ${city.language} for a ${level} learner. ${difficulty.instruction}
+Answer the player's newest meaning directly. Ask no more than one related question. Never repeat your last reply or force your venue, job, food, directions, or mission into small talk. Keep the spoken reply under ${difficulty.maxReplyWords} words.
 The mission is hidden. Use complete_step only when the newest player message clearly performs it. Otherwise return no actions. ${missionContext}
 Return only JSON: text is the ${city.language} reply, translation is concise English, and actions is an array using only remember_fact, give_item, complete_step, or set_waypoint.`;
 }
@@ -862,7 +879,7 @@ export default function Home() {
   const activeNpcPosition = npcPositions[activeNpcIndex];
   const characterInRange = worldDistance(playerPosition, activeNpcPosition) < 3.4;
   const nearCharacter = characterInRange && (!cafeTourInCurrentCity || cafeTourPhase === "cab-conversation" || cafeTourPhase === "cafe");
-  const conversationPrompts = cafeTourInCurrentCity && cafeTourPhase === "cab-conversation"
+  const baseConversationPrompts = cafeTourInCurrentCity && cafeTourPhase === "cab-conversation"
     ? cafeTourStop.driverPrompts
     : cafeTourInCurrentCity && cafeTourPhase === "cafe"
       ? cafeTourStop.cafePrompts
@@ -871,6 +888,7 @@ export default function Home() {
         : cityTravelStop && scene.role === "Cafe host"
           ? cityTravelStop.cafePrompts
           : city.prompts;
+  const conversationPrompts = phrasesForLevel(baseConversationPrompts, level);
   const pronunciationPhrases = Array.from(new Set([...conversationPrompts, ...city.prompts])).slice(0, 3);
   const suggestedPronunciationPhrase = pronunciationPhrases[Math.min(pronunciationPrompt, pronunciationPhrases.length - 1)] ?? city.prompts[0];
   const pronunciationTarget = pronunciationCustomText.trim().replace(/\s+/g, " ") || suggestedPronunciationPhrase;
@@ -1209,7 +1227,7 @@ export default function Home() {
     const objectiveContext = turnPlan.objectiveRelevant
       ? `The player independently opened a topic relevant to the hidden objective "${missionStep.instruction}". Use it only to validate genuine progress.`
       : "The hidden objective is not relevant to this turn. Do not mention it, hint at it, or steer toward it.";
-    const transcript = conversationMessages.slice(localProfile === "fast" ? -4 : -6).map((message) => ({
+    const transcript = conversationMessages.slice(localProfile === "fast" && level === "Beginner" ? -4 : -6).map((message) => ({
       role: message.role === "npc" ? "assistant" : "user",
       content: message.text,
     }));
@@ -1235,8 +1253,12 @@ export default function Home() {
           ],
           options: {
             temperature: action === "turn" ? 0.4 : 0.1,
-            num_ctx: localProfile === "quality" ? 3072 : 2048,
-            num_predict: action === "turn" ? (localProfile === "quality" ? 120 : 96) : 180,
+            num_ctx: localProfile === "quality" || level === "Advanced" ? 3072 : 2048,
+            num_predict: action === "turn"
+              ? (localProfile === "quality"
+                ? level === "Advanced" ? 220 : level === "Intermediate" ? 160 : 120
+                : level === "Advanced" ? 190 : level === "Intermediate" ? 140 : 96)
+              : 180,
           },
         }),
       });
@@ -1924,7 +1946,7 @@ export default function Home() {
                       ))}
                     </div>
                     <div className="sadak-level-row" aria-label="Difficulty level">
-                      {(["Beginner", "Intermediate", "Advanced"] as Level[]).map((option) => <button key={option} className={level === option ? "active" : ""} onClick={() => setLevel(option)}>{option}</button>)}
+                      {(["Beginner", "Intermediate", "Advanced"] as Level[]).map((option) => <button key={option} className={level === option ? "active" : ""} onClick={() => setLevel(option)}><strong>{option}</strong><small>{LEVEL_EXPERIENCE[option].hint}</small></button>)}
                     </div>
                   </div>
                   <div className="cafe-tour-launch">

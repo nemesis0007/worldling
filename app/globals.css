@@ -2059,8 +2059,12 @@ footer strong { color: #b9b6a9; }
 .sadak-brain-picker b { color: #625c4e; font-size: 6px; letter-spacing: .08em; }
 .sadak-level-row { display: flex; width: fit-content; margin-bottom: 18px; border: 2px solid var(--sadak-ink); border-radius: 5px; padding: 3px; background: #fff; box-shadow: 3px 3px 0 var(--sadak-ink); }
 .sadak-start-setup .sadak-level-row { flex: 0 0 auto; margin-bottom: 0; }
-.sadak-level-row button { border: 0; border-radius: 3px; padding: 9px 13px; color: #5c574c; background: transparent; font-size: 8px; font-weight: 850; cursor: pointer; }
+.sadak-level-row button { border: 0; border-radius: 3px; padding: 8px 13px; color: #5c574c; background: transparent; font-size: 8px; font-weight: 850; cursor: pointer; }
+.sadak-level-row button strong,.sadak-level-row button small { display: block; }
+.sadak-level-row button strong { font-size: 8px; }
+.sadak-level-row button small { margin-top: 2px; color: #777063; font-size: 6px; font-weight: 750; white-space: nowrap; }
 .sadak-level-row button.active { color: var(--sadak-ink); background: var(--sadak-main); }
+.sadak-level-row button.active small { color: #4d4318; }
 .sadak-district-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 12px; }
 .sadak-district-grid > button {
   position: relative;
