@@ -1,12 +1,12 @@
 "use client";
 
-import { memo, Suspense, type ComponentRef, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Canvas, ThreeElements, ThreeEvent, useFrame, useThree } from "@react-three/fiber";
+import { memo, Suspense, type ComponentRef, type ReactNode, type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Canvas, ThreeElements, useFrame, useThree } from "@react-three/fiber";
 import { Environment, Html, OrbitControls, Sparkles, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils.js";
 import SadakStreetBuilding from "./SadakStreetBuilding";
-import { ROAD_WIDTH, ROAD_WORLD_LINES, toScreen, toWorld, WORLD_LIMIT, type WorldPoint } from "./world-layout";
+import { ROAD_WIDTH, ROAD_WORLD_LINES, toWorld, WORLD_LIMIT, type WorldPoint } from "./world-layout";
 
 type Point = WorldPoint;
 type CameraDirection = { x: number; z: number };
@@ -18,7 +18,6 @@ type World3DProps = {
   npcNames: string[];
   npcPositions: Point[];
   onCameraDirectionChange: (direction: CameraDirection) => void;
-  onMoveTo: (point: Point) => void;
   onSelectNpc: (index: number) => void;
   playerPosition: Point;
   sceneClass: string;
@@ -41,6 +40,7 @@ const MODEL_ROOT = "/models/kenney-city";
 const CHARACTER_ROOT = "/models/quaternius";
 const CAR_ROOT = "/models/kenney-cars";
 const PLAYER_MODEL_FORWARD_OFFSET = Math.PI;
+const TOUR_RIDE_SPEED = 4.6;
 const CITY_BLOCK_CENTERS = [-14, 14] as const;
 const ROAD_DASH_POSITIONS = Array.from({ length: 29 }, (_, index) => -42 + index * 3)
   .filter((position) => ROAD_WORLD_LINES.every((line) => Math.abs(position - line) > ROAD_WIDTH * .72));
@@ -183,22 +183,20 @@ function Taxi({ position, rotation = 0 }: { position: [number, number, number]; 
   return <VehicleModel kind="taxi" position={position} rotation={rotation} scale={.74} />;
 }
 
-function TourRideVehicle({ label, phase }: { label: string; phase: NonNullable<World3DProps["ridePhase"]> }) {
-  const group = useRef<THREE.Group>(null);
-
+function TourRideVehicle({ label, phase, vehicleRef }: { label: string; phase: NonNullable<World3DProps["ridePhase"]>; vehicleRef: RefObject<THREE.Group | null> }) {
   useEffect(() => {
-    if (!group.current) return;
-    group.current.position.set(1.25, 0, phase === "riding" ? 15 : 9.5);
-  }, [phase]);
+    if (!vehicleRef.current) return;
+    vehicleRef.current.position.set(2.35, 0, 30.5);
+  }, [phase, vehicleRef]);
 
   useFrame((_, delta) => {
-    if (phase !== "riding" || !group.current) return;
-    group.current.position.z = Math.max(-19, group.current.position.z - delta * 10.5);
+    if (phase !== "riding" || !vehicleRef.current) return;
+    vehicleRef.current.position.z = Math.max(-3, vehicleRef.current.position.z - delta * TOUR_RIDE_SPEED);
   });
 
   if (phase !== "cab-conversation" && phase !== "riding") return null;
   return (
-    <group ref={group} position={[1.25, 0, 9.5]}>
+    <group ref={vehicleRef} position={[2.35, 0, 30.5]}>
       <Taxi position={[0, .08, 0]} rotation={Math.PI + .04} />
       {phase === "cab-conversation" && (
         <>
@@ -552,7 +550,7 @@ function CityLandmark({ cityName }: { cityName: string }) {
   );
 }
 
-function PlayerOrbitCamera({ onDirectionChange, playerPosition, resetSignal }: { onDirectionChange: (direction: CameraDirection) => void; playerPosition: Point; resetSignal: number }) {
+function PlayerOrbitCamera({ onDirectionChange, playerPosition, resetSignal, ridePhase, rideVehicleRef }: { onDirectionChange: (direction: CameraDirection) => void; playerPosition: Point; resetSignal: number; ridePhase: NonNullable<World3DProps["ridePhase"]>; rideVehicleRef: RefObject<THREE.Group | null> }) {
   const { camera } = useThree();
   const controlsRef = useRef<ComponentRef<typeof OrbitControls>>(null);
   const lastPlayerPosition = useRef(new THREE.Vector3());
@@ -586,8 +584,12 @@ function PlayerOrbitCamera({ onDirectionChange, playerPosition, resetSignal }: {
   }, [camera, onDirectionChange]);
 
   useFrame(() => {
-    const [x, , z] = toWorld(playerPosition);
-    playerTarget.set(x, 1.15, z);
+    const rideVehicle = ridePhase === "riding" ? rideVehicleRef.current : null;
+    if (rideVehicle) playerTarget.set(rideVehicle.position.x, 1.15, rideVehicle.position.z);
+    else {
+      const [x, , z] = toWorld(playerPosition);
+      playerTarget.set(x, 1.15, z);
+    }
     const controls = controlsRef.current;
     if (!controls) return;
 
@@ -643,14 +645,10 @@ function PlayerOrbitCamera({ onDirectionChange, playerPosition, resetSignal }: {
   );
 }
 
-function CityScene({ activeNpcIndex, cameraResetSignal, cityName, neighborhood, npcNames, npcPositions, onCameraDirectionChange, onMoveTo, onSelectNpc, playerPosition, rideLabel, ridePhase = "idle", sceneClass, waypointLabel }: World3DProps & { cameraResetSignal: number; neighborhood: Neighborhood | null }) {
+function CityScene({ activeNpcIndex, cameraResetSignal, cityName, neighborhood, npcNames, npcPositions, onCameraDirectionChange, onSelectNpc, playerPosition, rideLabel, ridePhase = "idle", sceneClass, waypointLabel }: World3DProps & { cameraResetSignal: number; neighborhood: Neighborhood | null }) {
   const playerWorld = toWorld(playerPosition);
+  const rideVehicleRef = useRef<THREE.Group>(null);
   const sky = sceneClass === "desert" ? "#c9966f" : sceneClass === "india" ? "#d79a72" : sceneClass === "east" ? "#7894a4" : sceneClass === "tropical" ? "#5f9b9a" : "#86abc0";
-
-  function moveOnGround(event: ThreeEvent<PointerEvent>) {
-    event.stopPropagation();
-    onMoveTo(toScreen(event.point.x, event.point.z));
-  }
 
   return (
     <>
@@ -662,11 +660,11 @@ function CityScene({ activeNpcIndex, cameraResetSignal, cityName, neighborhood, 
       <Environment preset="city" environmentIntensity={.45} />
       <Sparkles count={46} scale={[88, 6, 88]} size={1.1} speed={.18} opacity={.15} color="#d8ff5f" />
 
-      <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[0, -.03, 0]} onClick={moveOnGround}>
+      <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[0, -.03, 0]}>
         <planeGeometry args={[WORLD_LIMIT * 2.2, WORLD_LIMIT * 2.2]} />
         <meshStandardMaterial color="#70756e" roughness={.96} />
       </mesh>
-      <group onClick={moveOnGround}>{neighborhood ? <DetailedNeighborhood data={neighborhood} sceneClass={sceneClass} /> : <FallbackStreet />}</group>
+      <group>{neighborhood ? <DetailedNeighborhood data={neighborhood} sceneClass={sceneClass} /> : <FallbackStreet />}</group>
       <SadakDistrictGrid cityName={cityName} sceneClass={sceneClass} />
       {!['New York', 'Paris', 'Mumbai'].includes(cityName) && <>
         {[-11, -3, 6, 13].map((z, index) => <Model key={`tree-left-${z}`} url={`${MODEL_ROOT}/${index % 2 ? "tree-small" : "tree-large"}.glb`} position={[-9.4, 0, z]} scale={1.7} />)}
@@ -677,7 +675,7 @@ function CityScene({ activeNpcIndex, cameraResetSignal, cityName, neighborhood, 
         <CityLandmark cityName={cityName} />
       </>}
       <CityVehicles cityName={cityName} />
-      {rideLabel && <TourRideVehicle label={rideLabel} phase={ridePhase} />}
+      {rideLabel && <TourRideVehicle label={rideLabel} phase={ridePhase} vehicleRef={rideVehicleRef} />}
       {cityName === "New York" && <NewYorkStreetLife />}
       {cityName === "Paris" && <ParisStreetLife />}
       {cityName === "Mumbai" && <MumbaiStreetLife />}
@@ -687,7 +685,7 @@ function CityScene({ activeNpcIndex, cameraResetSignal, cityName, neighborhood, 
         <Person key={npcNames[index]} active={index === activeNpcIndex} model={["animated-woman.glb", "business.glb", "punk-woman.glb"][index]} name={npcNames[index]} onClick={() => onSelectNpc(index)} position={toWorld(point)} waypointLabel={index === activeNpcIndex ? waypointLabel : undefined} />
       ))}
       {ridePhase !== "riding" && <Person key={`player-${cityName}`} player model="casual.glb" position={playerWorld} />}
-      <PlayerOrbitCamera key={cityName} onDirectionChange={onCameraDirectionChange} playerPosition={playerPosition} resetSignal={cameraResetSignal} />
+      <PlayerOrbitCamera key={cityName} onDirectionChange={onCameraDirectionChange} playerPosition={playerPosition} resetSignal={cameraResetSignal} ridePhase={ridePhase} rideVehicleRef={rideVehicleRef} />
     </>
   );
 }

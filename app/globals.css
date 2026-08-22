@@ -2188,7 +2188,7 @@ footer strong { color: #b9b6a9; }
 .ride-cinematic strong { display: block; margin: 3px 0; font-size: 20px; text-transform: uppercase; }
 .ride-cinematic p { margin: 0; font-size: 8px; font-weight: 800; }
 .ride-cinematic > i { display: block; height: 8px; margin-top: 10px; border: 1.5px solid var(--sadak-ink); border-radius: 99px; background: #fff; overflow: hidden; }
-.ride-cinematic > i b { display: block; width: 100%; height: 100%; background: var(--sadak-green); transform-origin: left; animation: cafeRideProgress 3.3s linear both; }
+.ride-cinematic > i b { display: block; width: 100%; height: 100%; background: var(--sadak-green); transform-origin: left; animation: cafeRideProgress 7.2s linear both; }
 @keyframes cafeRideProgress { from { scale: 0 1; } to { scale: 1 1; } }
 
 .tour-complete-panel { position: absolute; inset: 0; z-index: 130; display: grid; place-items: center; padding: 20px; background: rgba(18,18,15,.8); backdrop-filter: blur(8px); }

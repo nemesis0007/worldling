@@ -23,13 +23,6 @@ export function toWorld(point: WorldPoint): [number, number, number] {
   return [(point.x - WORLD_CENTER) / WORLD_SCALE, 0, (point.y - WORLD_CENTER) / WORLD_SCALE];
 }
 
-export function toScreen(x: number, z: number): WorldPoint {
-  return {
-    x: WORLD_CENTER + x * WORLD_SCALE,
-    y: WORLD_CENTER + z * WORLD_SCALE,
-  };
-}
-
 export function clampToPlayableStreet(point: WorldPoint): WorldPoint {
   let x = Math.min(PLAYABLE_STREET_BOUNDS.maxX, Math.max(PLAYABLE_STREET_BOUNDS.minX, point.x));
   let y = Math.min(PLAYABLE_STREET_BOUNDS.maxY, Math.max(PLAYABLE_STREET_BOUNDS.minY, point.y));

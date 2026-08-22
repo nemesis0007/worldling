@@ -1,7 +1,6 @@
 "use client";
 
 import { FormEvent, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import VirtualJoystick from "./VirtualJoystick";
 import { AgentAction, FLAGSHIP_MISSIONS, genericMission } from "./mission-data";
 import { clampToPlayableStreet, SCREEN_ROAD_LINES, STREET_NPC_POSITIONS, WORLD_SCALE, worldDistance } from "./world-layout";
 
@@ -172,6 +171,7 @@ type PronunciationResult = {
 type WavCapture = { stop: () => Promise<Blob> };
 
 type CafeTourPhase = "idle" | "call" | "cab-conversation" | "riding" | "cafe" | "stop-complete" | "tour-complete";
+const CAFE_RIDE_DURATION_MS = 7200;
 
 const CAFE_TOUR_STOPS = [
   {
@@ -748,7 +748,7 @@ export default function Home() {
       setMissionStepTurns(0);
       setCafeTourPhase("cafe");
       addAgentEvent("set_waypoint", `${activeTravelStop.ride} dropped you at ${activeTravelStop.cafe}`);
-    }, 3300);
+    }, CAFE_RIDE_DURATION_MS);
     return () => window.clearTimeout(timer);
   }, [activeTravelStop, addAgentEvent, cafeTourPhase, city.scenes]);
 
@@ -826,7 +826,7 @@ export default function Home() {
 
   useEffect(() => {
     const pressed = new Set<string>();
-    const movementKeys = new Set(["w", "a", "s", "d", "arrowup", "arrowleft", "arrowdown", "arrowright"]);
+    const movementKeys = new Set(["w", "a", "s", "d"]);
     const movementBlocked = showPause || showPhrasebook || showWorldPicker || showEngine || showPronunciation || cafeTourPhase === "riding";
     let animationFrame = 0;
     let previousTime = performance.now();
@@ -854,8 +854,8 @@ export default function Home() {
     function moveFromHeldKeys(time: number) {
       const elapsed = Math.min((time - previousTime) / 1000, .05);
       previousTime = time;
-      const forwardInput = Number(pressed.has("w") || pressed.has("arrowup")) - Number(pressed.has("s") || pressed.has("arrowdown"));
-      const rightInput = Number(pressed.has("d") || pressed.has("arrowright")) - Number(pressed.has("a") || pressed.has("arrowleft"));
+      const forwardInput = Number(pressed.has("w")) - Number(pressed.has("s"));
+      const rightInput = Number(pressed.has("d")) - Number(pressed.has("a"));
 
       if (forwardInput || rightInput) {
         const inputLength = Math.hypot(forwardInput, rightInput);
@@ -1400,14 +1400,6 @@ export default function Home() {
     setShowWorldPicker(true);
   }
 
-  function movePlayer(dx: number, dy: number) {
-    setPlayerPosition((current) => clampToPlayableStreet({ x: current.x + dx, y: current.y + dy }));
-  }
-
-  function movePlayerTo(point: { x: number; y: number }) {
-    setPlayerPosition(clampToPlayableStreet(point));
-  }
-
   return (
     <main className={`app-shell sadak-replace ${cafeTourActive ? "cafe-tour-active" : ""}`}>
       <section className={`journey-section scene-${city.sceneClass}`} id="journey">
@@ -1421,7 +1413,6 @@ export default function Home() {
                 npcNames={city.scenes.map((person) => person.character)}
                 npcPositions={npcPositions}
                 onCameraDirectionChange={updateCameraDirection}
-                onMoveTo={movePlayerTo}
                 onSelectNpc={(index) => {
                   if (index === activeNpcIndex) setSceneId(city.scenes[index].id);
                   else addAgentEvent("set_waypoint", `${city.scenes[index].character} points you toward ${city.scenes[activeNpcIndex].character}`);
@@ -1605,19 +1596,6 @@ export default function Home() {
 
             {!nearCharacter && <div className="approach-hint glass-card"><b>WAYPOINT</b> Move closer to {city.scenes[activeNpcIndex].character} · {waypointDistance}m</div>}
 
-            <div className={`movement-pad glass-card ${cafeTourPhase === "riding" ? "disabled" : ""}`} aria-label="Movement controls">
-              <button onClick={() => movePlayer(0, -5)} aria-label="Move up">↑</button>
-              <button onClick={() => movePlayer(-5, 0)} aria-label="Move left">←</button>
-              <button onClick={() => movePlayer(0, 5)} aria-label="Move down">↓</button>
-              <button onClick={() => movePlayer(5, 0)} aria-label="Move right">→</button>
-              <small>WASD</small>
-            </div>
-
-            <VirtualJoystick
-              disabled={showPause || showPhrasebook || showWorldPicker || showEngine || showPronunciation || cafeTourPhase === "riding"}
-              onMove={(x, y) => movePlayer(x * 1.15, y * 1.15)}
-            />
-
             <div className="game-minimap glass-card" aria-label="Street radar">
               {SCREEN_ROAD_LINES.map((line) => <i key={`road-h-${line}`} className="radar-road horizontal grid" style={{ top: `${line}%` }} />)}
               {SCREEN_ROAD_LINES.map((line) => <i key={`road-v-${line}`} className="radar-road vertical grid" style={{ left: `${line}%` }} />)}
@@ -1643,7 +1621,7 @@ export default function Home() {
             <div className={`voice-hud glass-card ${nearCharacter ? "engaged" : "roaming"}`}>
               <div className="voice-context">
                 <span>{scene.avatar}</span>
-                <div><small>{nearCharacter ? `TALKING TO ${scene.character.toUpperCase()} · BOND ${affinity}%` : "EXPLORE THE SCENE"}</small><strong>{nearCharacter ? `Speak naturally in ${city.language}` : "Use WASD or the arrows to move"}</strong></div>
+                <div><small>{nearCharacter ? `TALKING TO ${scene.character.toUpperCase()} · BOND ${affinity}%` : "EXPLORE THE SCENE"}</small><strong>{nearCharacter ? `Speak naturally in ${city.language}` : "Use WASD to move"}</strong></div>
               </div>
               {lastHeard && <div className="voice-heard"><span>MIC HEARD</span><p>{lastHeard}</p></div>}
               <form onSubmit={handleSubmit}>
