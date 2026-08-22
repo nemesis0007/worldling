@@ -1737,6 +1737,9 @@ footer strong { color: #b9b6a9; }
 .sadak-replace .mission-steps i.current { color: #fff; background: var(--sadak-red); animation: micPulse 1.5s infinite; }
 
 .agent-trace {
+  display: grid;
+  align-items: stretch;
+  gap: 0;
   position: absolute;
   z-index: 18;
   top: 70px;
@@ -1750,13 +1753,32 @@ footer strong { color: #b9b6a9; }
   box-shadow: 4px 4px 0 var(--sadak-ink);
   backdrop-filter: blur(12px);
 }
+.agent-trace.idle {
+  width: auto;
+  min-width: 112px;
+  padding: 7px;
+}
+.agent-trace.idle header { border-bottom: 0; padding-bottom: 0; }
+.agent-trace.idle header span { background: var(--sadak-green); color: var(--sadak-ink); }
 .agent-trace header,.agent-trace footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .agent-trace header { border-bottom: 1px solid rgba(18,18,15,.24); padding-bottom: 7px; font-size: 6px; font-weight: 950; letter-spacing: .12em; }
 .agent-trace header span { color: #fff; background: var(--sadak-red); padding: 4px 6px; }
 .agent-trace-events { display: grid; gap: 5px; padding: 7px 0; }
 .agent-trace-events p { display: grid; grid-template-columns: 72px 1fr; gap: 7px; margin: 0; font-size: 7px; line-height: 1.25; }
 .agent-trace-events i { color: #625c4d; font-size: 5px; font-style: normal; font-weight: 950; letter-spacing: .06em; text-transform: uppercase; }
-.agent-trace footer { border-top: 1px solid rgba(18,18,15,.18); padding-top: 6px; color: #6a6454; font-size: 5px; font-weight: 800; text-transform: uppercase; }
+.agent-trace footer {
+  min-height: 0;
+  margin: 0;
+  border: 0;
+  border-top: 1px solid rgba(18,18,15,.18);
+  padding: 6px 0 0;
+  color: #6a6454;
+  background: transparent;
+  box-shadow: none;
+  font-size: 5px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
 
 .sadak-replace .game-status,
 .sadak-replace .focus-mode .game-status {

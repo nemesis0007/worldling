@@ -672,6 +672,7 @@ export default function Home() {
   const scene = useMemo(() => city.scenes.find((item) => item.id === sceneId) ?? city.scenes[0], [city, sceneId]);
   const userTurns = messages.filter((message) => message.role === "user").length;
   const completedQuests = questProgress.filter(Boolean).length;
+  const agentHasActivity = thinking || learnerMemory.attempts > 0 || missionInventory.length > 0 || learnerMemory.focusWords.length > 0;
   const cityCenter = CITY_CENTERS[city.name] ?? [90 - city.mapY * 1.8, city.mapX * 3.6 - 180];
   const streetViewUrl = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${encodeURIComponent(`${cityCenter[0].toFixed(4)},${cityCenter[1].toFixed(4)}`)}`;
   const cafeTourStop = CAFE_TOUR_STOPS[Math.min(cafeTourStopIndex, CAFE_TOUR_STOPS.length - 1)];
@@ -1552,12 +1553,16 @@ export default function Home() {
               </div>
             </div>
 
-            <aside className="agent-trace glass-card" aria-label="Agent activity">
-              <header><span>LIVE AGENT</span><strong>{thinking ? "REASONING" : "WORLD STATE"}</strong></header>
-              <div className="agent-trace-events">
-                {agentEvents.map((event) => <p key={event.id}><i>{event.tool.replace("_", " ")}</i><span>{event.label}</span></p>)}
-              </div>
-              <footer><span>{missionInventory.length} items remembered</span><span>{learnerMemory.focusWords.length} focus sounds</span></footer>
+            <aside className={`agent-trace glass-card ${agentHasActivity ? "active" : "idle"}`} aria-label={agentHasActivity ? "Agent activity" : "Agent ready"}>
+              <header><span>LIVE AGENT</span><strong>{thinking ? "REASONING" : agentHasActivity ? "WORLD STATE" : "READY"}</strong></header>
+              {agentHasActivity && (
+                <>
+                  <div className="agent-trace-events">
+                    {agentEvents.map((event) => <p key={event.id}><i>{event.tool.replace("_", " ")}</i><span>{event.label}</span></p>)}
+                  </div>
+                  <footer><span>{missionInventory.length} items remembered</span><span>{learnerMemory.focusWords.length} focus sounds</span></footer>
+                </>
+              )}
             </aside>
 
             <div className="game-status glass-card">
