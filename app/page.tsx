@@ -203,18 +203,21 @@ const CAFE_TOUR_STOPS = [
   {
     cityId: "new-york", ride: "yellow cab", pickup: "Times Square", cafe: "Midtown cafe & deli", order: "coffee and a New York bite",
     destinationWords: ["midtown", "cafe", "deli"], orderWords: ["coffee", "bite", "bagel", "pastrami", "sandwich"],
+    finalWords: ["after work", "new yorkers", "locals do", "happening tonight", "weekend", "recommend here"], finalTurns: 1,
     driverPrompts: ["Please take me to Midtown Cafe and Deli.", "How much will the ride cost?", "Yes, that works. Let's go."],
     cafePrompts: ["Could I get a coffee, please?", "What New York bite do you recommend?", "Can I have that to stay?"],
   },
   {
     cityId: "mumbai", ride: "black-and-yellow cab", pickup: "Gateway of India", cafe: "Irani cafe", order: "cutting chai and bun maska",
     destinationWords: ["irani", "cafe", "कॅफे", "कॅफेत"], orderWords: ["chai", "maska", "चहा", "मस्का"],
+    finalWords: ["price", "cost", "how much", "item", "buy", "किती", "किंमत", "वस्तू", "द्या"], finalTurns: 2,
     driverPrompts: ["मला इराणी कॅफेत जायचे आहे.", "भाडे किती होईल?", "हो, ठीक आहे. चला."],
     cafePrompts: ["एक कटिंग चहा द्या.", "बन मस्का मिळेल का?", "किती पैसे झाले?"],
   },
   {
     cityId: "madrid", ride: "city taxi", pickup: "Puerta del Sol", cafe: "Cafe Lucia", order: "cafe con leche and a small plate",
     destinationWords: ["lucia", "lucía", "cafe", "café"], orderWords: ["cafe", "café", "leche", "comer"],
+    finalWords: ["precio", "cuánto", "cuanto", "cost", "price", "artículo", "articulo", "item", "comprar"], finalTurns: 2,
     driverPrompts: ["Lléveme al Café Lucía, por favor.", "¿Cuánto cuesta el viaje?", "Sí, de acuerdo. Vamos."],
     cafePrompts: ["Quisiera un café con leche.", "¿Qué me recomienda para comer?", "¿Cuánto cuesta?"],
   },
@@ -1476,16 +1479,24 @@ export default function Home() {
       .join(" ");
     const destinationMentioned = activeTravelStop?.destinationWords.some((word) => stepTranscript.includes(word)) ?? false;
     const orderMentioned = activeTravelStop?.orderWords.some((word) => stepTranscript.includes(word)) ?? false;
+    const finalTopicMentioned = activeTravelStop?.finalWords.some((word) => stepTranscript.includes(word)) ?? false;
     const confirmationMentioned = /\b(yes|yeah|yep|yup|sure|okay|ok|confirm|confirmed|go ahead|that works|sounds good|let's go|lets go|please do|correct|thank you|thanks|vale|de acuerdo|correcto|vamos|sí|si)\b|हो|चला|ठीक|बरोबर/iu.test(stepTranscript);
     const isCabTravelStep = Boolean(activeTravelStop) && missionStepIndex === 0 && scene.role === "Cab driver";
     const isCafeOrderStep = Boolean(activeTravelStop) && missionStepIndex === 1 && scene.role === "Cafe host";
+    const isTravelFinalStep = Boolean(activeTravelStop) && missionStepIndex === 2 && scene.role === "Neighbourhood local";
     const cabConversationCompleted = isCabTravelStep && nextTurnCount >= 2 && destinationMentioned && confirmationMentioned;
     const cafeOrderCompleted = isCafeOrderStep && nextTurnCount >= 2 && orderMentioned && confirmationMentioned;
+    const travelFinalCompleted = isTravelFinalStep
+      && nextTurnCount >= (activeTravelStop?.finalTurns ?? 2)
+      && finalTopicMentioned
+      && ((activeTravelStop?.finalTurns ?? 2) === 1 || confirmationMentioned);
     const completesObjective = isCabTravelStep
       ? cabConversationCompleted
       : isCafeOrderStep
         ? cafeOrderCompleted
-        : modelCompletedObjective || demoCompletedObjective;
+        : isTravelFinalStep
+          ? travelFinalCompleted
+          : modelCompletedObjective || demoCompletedObjective;
     if (completesObjective && !questProgress[missionStepIndex]) {
       const completedStep = missionStep;
       const nextIndex = missionStepIndex + 1;
