@@ -2083,7 +2083,7 @@ export default function Home() {
                   <strong>One-time setup for this hosted game</strong>
                   <ol>
                     <li>Start Ollama and run <code>ollama pull {ollamaModel || "qwen3:8b"}</code></li>
-                    <li>On Windows run <code>setx OLLAMA_ORIGINS &quot;https://worldling-sadak-game.vercel.app&quot;</code></li>
+                    <li>On Windows run <code>setx OLLAMA_ORIGINS &quot;https://worldling.vercel.app&quot;</code></li>
                     <li>Fully restart Ollama, then press Test connection.</li>
                   </ol>
                   <p><b>Fast local mode:</b> hidden reasoning off · shorter replies · 4K context · model kept warm for 30 minutes.</p>

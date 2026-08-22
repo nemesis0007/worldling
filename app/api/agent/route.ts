@@ -136,7 +136,7 @@ async function callOpenAICompatible(body: AgentRequest, config: ApiConfig) {
     Authorization: `Bearer ${config.apiKey}`,
   };
   if (config.provider === "openrouter") {
-    headers["HTTP-Referer"] = "https://worldling-sadak-game.vercel.app";
+    headers["HTTP-Referer"] = "https://worldling.vercel.app";
     headers["X-Title"] = "Worldling";
   }
   const response = await fetch(openAICompatibleEndpoints[config.provider], {
