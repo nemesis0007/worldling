@@ -183,19 +183,19 @@ const CAFE_TOUR_STOPS = [
   {
     cityId: "new-york", ride: "yellow cab", pickup: "Times Square", cafe: "Midtown cafe & deli", order: "coffee and a New York bite",
     destinationWords: ["midtown", "cafe", "deli"], orderWords: ["coffee", "bagel", "pastrami", "sandwich"],
-    driverPrompts: ["Please take me to Midtown Cafe and Deli.", "How much will the ride cost?", "How long will it take?"],
+    driverPrompts: ["Please take me to Midtown Cafe and Deli.", "How much will the ride cost?", "Yes, that works. Let's go."],
     cafePrompts: ["Could I get a coffee, please?", "What New York bite do you recommend?", "Can I have that to stay?"],
   },
   {
     cityId: "mumbai", ride: "black-and-yellow cab", pickup: "Gateway of India", cafe: "Irani cafe", order: "cutting chai and bun maska",
     destinationWords: ["irani", "cafe", "कॅफे", "कॅफेत"], orderWords: ["chai", "maska", "चहा", "मस्का"],
-    driverPrompts: ["मला इराणी कॅफेत जायचे आहे.", "भाडे किती होईल?", "किती वेळ लागेल?"],
+    driverPrompts: ["मला इराणी कॅफेत जायचे आहे.", "भाडे किती होईल?", "हो, ठीक आहे. चला."],
     cafePrompts: ["एक कटिंग चहा द्या.", "बन मस्का मिळेल का?", "किती पैसे झाले?"],
   },
   {
     cityId: "madrid", ride: "city taxi", pickup: "Puerta del Sol", cafe: "Cafe Lucia", order: "cafe con leche and a small plate",
     destinationWords: ["lucia", "lucía", "cafe", "café"], orderWords: ["cafe", "café", "leche", "comer"],
-    driverPrompts: ["Lléveme al Café Lucía, por favor.", "¿Cuánto cuesta el viaje?", "¿Cuánto tardaremos?"],
+    driverPrompts: ["Lléveme al Café Lucía, por favor.", "¿Cuánto cuesta el viaje?", "Sí, de acuerdo. Vamos."],
     cafePrompts: ["Quisiera un café con leche.", "¿Qué me recomienda para comer?", "¿Cuánto cuesta?"],
   },
 ] as const;
@@ -678,6 +678,7 @@ export default function Home() {
   const cafeTourStop = CAFE_TOUR_STOPS[Math.min(cafeTourStopIndex, CAFE_TOUR_STOPS.length - 1)];
   const cityTravelStop = CAFE_TOUR_STOPS.find((stop) => stop.cityId === city.id);
   const cafeTourInCurrentCity = cafeTourActive && cafeTourStop.cityId === city.id;
+  const activeTravelStop = cafeTourInCurrentCity ? cafeTourStop : cityTravelStop;
   const activeNpcIndex = missionStep.npcIndex;
   const npcPositions = cafeTourInCurrentCity
     ? [{ x: 35, y: 72 }, { x: 58, y: 82 }, { x: 35, y: 32 }]
@@ -754,23 +755,17 @@ export default function Home() {
   }, [cafeTourActive, city, level, mission, provider]);
 
   useEffect(() => {
-    if (!cafeTourInCurrentCity || cafeTourPhase !== "cab-conversation" || !questProgress[0]) return;
-    setCafeTourPhase("riding");
-    addAgentEvent("remember_fact", `${city.scenes[1].character} confirmed the ride to ${cafeTourStop.cafe}`);
-  }, [addAgentEvent, cafeTourInCurrentCity, cafeTourPhase, cafeTourStop.cafe, city.scenes, questProgress]);
-
-  useEffect(() => {
-    if (!cafeTourInCurrentCity || cafeTourPhase !== "riding") return;
+    if (!activeTravelStop || cafeTourPhase !== "riding") return;
     const timer = window.setTimeout(() => {
       setPlayerPosition({ x: 39, y: 75 });
       setSceneId(city.scenes[0].id);
-      setMessages([]);
+      setInput("");
       setMissionStepTurns(0);
       setCafeTourPhase("cafe");
-      addAgentEvent("set_waypoint", `${cafeTourStop.ride} dropped you at ${cafeTourStop.cafe}`);
+      addAgentEvent("set_waypoint", `${activeTravelStop.ride} dropped you at ${activeTravelStop.cafe}`);
     }, 3300);
     return () => window.clearTimeout(timer);
-  }, [addAgentEvent, cafeTourInCurrentCity, cafeTourPhase, cafeTourStop.cafe, cafeTourStop.ride, city.scenes]);
+  }, [activeTravelStop, addAgentEvent, cafeTourPhase, city.scenes]);
 
   useEffect(() => {
     if (!cafeTourInCurrentCity || cafeTourPhase !== "cafe" || !questProgress[1]) return;
@@ -1141,13 +1136,17 @@ export default function Home() {
     const modelCompletedObjective = validatedActions.some((action) => action.tool === "complete_step");
     const demoCompletedObjective = provider === "demo" && nextTurnCount >= 2 && clean.length >= 8 && asksQuestion;
     const tourTranscript = nextMessages.filter((message) => message.role === "user").map((message) => message.text.toLocaleLowerCase()).join(" ");
-    const destinationMentioned = cafeTourStop.destinationWords.some((word) => tourTranscript.includes(word));
-    const orderMentioned = cafeTourStop.orderWords.some((word) => tourTranscript.includes(word));
-    const cabConversationCompleted = cafeTourInCurrentCity && cafeTourPhase === "cab-conversation" && missionStepIndex === 0 && nextTurnCount >= 2 && destinationMentioned;
+    const destinationMentioned = activeTravelStop?.destinationWords.some((word) => tourTranscript.includes(word)) ?? false;
+    const orderMentioned = activeTravelStop?.orderWords.some((word) => tourTranscript.includes(word)) ?? false;
+    const confirmationMentioned = /\b(yes|yeah|yep|yup|sure|okay|ok|confirm|confirmed|go ahead|that works|sounds good|let's go|lets go|please do|correct|vale|de acuerdo|correcto|vamos|sí|si)\b|हो|चला|ठीक|बरोबर/iu.test(tourTranscript);
+    const isCabTravelStep = Boolean(activeTravelStop) && missionStepIndex === 0 && scene.role === "Cab driver";
+    const cabConversationCompleted = isCabTravelStep && nextTurnCount >= 2 && destinationMentioned && confirmationMentioned;
     const cafeVisitCompleted = cafeTourInCurrentCity && cafeTourPhase === "cafe" && missionStepIndex === 1 && nextTurnCount >= 2 && orderMentioned;
-    const completesObjective = cafeTourInCurrentCity && (cafeTourPhase === "cab-conversation" || cafeTourPhase === "cafe")
-      ? cabConversationCompleted || cafeVisitCompleted
-      : modelCompletedObjective || demoCompletedObjective;
+    const completesObjective = isCabTravelStep
+      ? cabConversationCompleted
+      : cafeTourInCurrentCity && cafeTourPhase === "cafe"
+        ? cafeVisitCompleted
+        : modelCompletedObjective || demoCompletedObjective;
     if (completesObjective && !questProgress[missionStepIndex]) {
       const completedStep = missionStep;
       const nextIndex = missionStepIndex + 1;
@@ -1161,6 +1160,11 @@ export default function Home() {
         setMissionStepTurns(0);
         setSceneId(city.scenes[nextStep.npcIndex].id);
         addAgentEvent("set_waypoint", `Waypoint set: ${city.scenes[nextStep.npcIndex].character}`);
+        if (isCabTravelStep && activeTravelStop) {
+          setCafeTourPhase("riding");
+          setShowTranscript(false);
+          addAgentEvent("remember_fact", `${scene.character} confirmed the ride to ${activeTravelStop.cafe}`);
+        }
       } else {
         setMissionStepTurns(nextTurnCount);
         setLearnerMemory((current) => ({
@@ -1442,8 +1446,8 @@ export default function Home() {
                 latitude={cityCenter[0]}
                 longitude={cityCenter[1]}
                 waypointLabel={missionStep.title}
-                rideLabel={cafeTourInCurrentCity ? cafeTourStop.ride : undefined}
-                ridePhase={cafeTourInCurrentCity ? cafeTourPhase : "idle"}
+                rideLabel={activeTravelStop?.ride}
+                ridePhase={activeTravelStop ? cafeTourPhase : "idle"}
               />
             </Suspense>
 
@@ -1519,15 +1523,15 @@ export default function Home() {
                 </header>
                 <div className="cafe-tour-progress">{CAFE_TOUR_STOPS.map((stop, index) => <i key={stop.cityId} className={cafeTourVisited.includes(stop.cityId) ? "done" : index === cafeTourStopIndex ? "current" : ""}><b>{index + 1}</b><em>{stop.cityId === "new-york" ? "NYC" : stop.cityId === "mumbai" ? "BOM" : "MAD"}</em></i>)}</div>
                 {cafeTourPhase === "call" && <><p>You have landed at {cafeTourStop.pickup}. Call a local ride to reach the café.</p><button onClick={callCafeRide}>Call {cafeTourStop.ride}</button></>}
-                {cafeTourPhase === "cab-conversation" && <p>Your driver {scene.character} has arrived. Speak naturally: say you want to go to {cafeTourStop.cafe}, then confirm the destination, fare, or journey time. The ride starts after two useful turns.</p>}
+                {cafeTourPhase === "cab-conversation" && <p>Your driver {scene.character} has arrived. Name {cafeTourStop.cafe}, ask one practical question, then explicitly confirm the ride. The cab starts when you say yes.</p>}
                 {cafeTourPhase === "riding" && <p className="ride-status"><span /> Travelling through {city.name}…</p>}
                 {cafeTourPhase === "cafe" && <p>Arrived. Walk to {scene.character} and order {cafeTourStop.order}. Two natural turns earn this city’s café stamp.</p>}
                 {cafeTourPhase === "stop-complete" && <><p>Visit complete. Your {city.name} café stamp is in the passport.</p><button onClick={continueCafeTour}>{cafeTourStopIndex === CAFE_TOUR_STOPS.length - 1 ? "Finish the trip" : `Fly to ${CITIES.find((item) => item.id === CAFE_TOUR_STOPS[cafeTourStopIndex + 1]?.cityId)?.name ?? "next city"}`}</button></>}
               </section>
             )}
 
-            {cafeTourInCurrentCity && cafeTourPhase === "riding" && (
-              <div className="ride-cinematic" aria-live="polite"><span>IN TRANSIT</span><strong>{cafeTourStop.ride}</strong><p>{cafeTourStop.pickup} → {cafeTourStop.cafe}</p><i><b /></i></div>
+            {activeTravelStop && cafeTourPhase === "riding" && (
+              <div className="ride-cinematic" aria-live="polite"><span>IN TRANSIT</span><strong>{activeTravelStop.ride}</strong><p>{activeTravelStop.pickup} → {activeTravelStop.cafe}</p><i><b /></i></div>
             )}
 
             {cafeTourActive && cafeTourPhase === "tour-complete" && (
