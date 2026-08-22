@@ -202,7 +202,7 @@ const TASK_REWARD_COINS = 5;
 const CAFE_TOUR_STOPS = [
   {
     cityId: "new-york", ride: "yellow cab", pickup: "Times Square", cafe: "Midtown cafe & deli", order: "coffee and a New York bite",
-    destinationWords: ["midtown", "cafe", "deli"], orderWords: ["coffee", "bagel", "pastrami", "sandwich"],
+    destinationWords: ["midtown", "cafe", "deli"], orderWords: ["coffee", "bite", "bagel", "pastrami", "sandwich"],
     driverPrompts: ["Please take me to Midtown Cafe and Deli.", "How much will the ride cost?", "Yes, that works. Let's go."],
     cafePrompts: ["Could I get a coffee, please?", "What New York bite do you recommend?", "Can I have that to stay?"],
   },
@@ -1469,17 +1469,22 @@ export default function Home() {
     const nextTurnCount = missionStepTurns + 1;
     const modelCompletedObjective = validatedActions.some((action) => action.tool === "complete_step");
     const demoCompletedObjective = provider === "demo" && nextTurnCount >= 2 && clean.length >= 8 && asksQuestion;
-    const tourTranscript = nextMessages.filter((message) => message.role === "user").map((message) => message.text.toLocaleLowerCase()).join(" ");
-    const destinationMentioned = activeTravelStop?.destinationWords.some((word) => tourTranscript.includes(word)) ?? false;
-    const orderMentioned = activeTravelStop?.orderWords.some((word) => tourTranscript.includes(word)) ?? false;
-    const confirmationMentioned = /\b(yes|yeah|yep|yup|sure|okay|ok|confirm|confirmed|go ahead|that works|sounds good|let's go|lets go|please do|correct|vale|de acuerdo|correcto|vamos|sí|si)\b|हो|चला|ठीक|बरोबर/iu.test(tourTranscript);
+    const stepTranscript = nextMessages
+      .filter((message) => message.role === "user")
+      .slice(-nextTurnCount)
+      .map((message) => message.text.toLocaleLowerCase())
+      .join(" ");
+    const destinationMentioned = activeTravelStop?.destinationWords.some((word) => stepTranscript.includes(word)) ?? false;
+    const orderMentioned = activeTravelStop?.orderWords.some((word) => stepTranscript.includes(word)) ?? false;
+    const confirmationMentioned = /\b(yes|yeah|yep|yup|sure|okay|ok|confirm|confirmed|go ahead|that works|sounds good|let's go|lets go|please do|correct|thank you|thanks|vale|de acuerdo|correcto|vamos|sí|si)\b|हो|चला|ठीक|बरोबर/iu.test(stepTranscript);
     const isCabTravelStep = Boolean(activeTravelStop) && missionStepIndex === 0 && scene.role === "Cab driver";
+    const isCafeOrderStep = Boolean(activeTravelStop) && missionStepIndex === 1 && scene.role === "Cafe host";
     const cabConversationCompleted = isCabTravelStep && nextTurnCount >= 2 && destinationMentioned && confirmationMentioned;
-    const cafeVisitCompleted = cafeTourInCurrentCity && cafeTourPhase === "cafe" && missionStepIndex === 1 && nextTurnCount >= 2 && orderMentioned;
+    const cafeOrderCompleted = isCafeOrderStep && nextTurnCount >= 2 && orderMentioned && confirmationMentioned;
     const completesObjective = isCabTravelStep
       ? cabConversationCompleted
-      : cafeTourInCurrentCity && cafeTourPhase === "cafe"
-        ? cafeVisitCompleted
+      : isCafeOrderStep
+        ? cafeOrderCompleted
         : modelCompletedObjective || demoCompletedObjective;
     if (completesObjective && !questProgress[missionStepIndex]) {
       const completedStep = missionStep;
