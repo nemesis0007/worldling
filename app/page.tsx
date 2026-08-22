@@ -565,6 +565,53 @@ function demoEvaluation(messages: Message[], city: City, level: Level): Evaluati
   };
 }
 
+function calibrateEvaluation(candidate: Evaluation, messages: Message[], completedObjectives: number, city: City, level: Level): Evaluation {
+  const userMessages = messages.filter((message) => message.role === "user");
+  const turnWords = userMessages.map((message) => message.text.match(/[\p{L}\p{N}']+/gu) ?? []);
+  const words = turnWords.flat();
+  const uniqueWords = new Set(words.map((word) => word.toLocaleLowerCase())).size;
+  const substantiveTurns = turnWords.filter((turn) => turn.length >= 3).length;
+  const voiceTurns = userMessages.filter((message) => message.viaVoice).length;
+  const questions = userMessages.filter((message) => /[?？]|\b(what|where|when|why|how|which|who|can|could|would|do|does|is|are)\b/i.test(message.text)).length;
+  const averageTurnLength = words.length / Math.max(1, userMessages.length);
+  const difficultyPenalty = level === "Advanced" ? 8 : level === "Intermediate" ? 4 : 0;
+  const evidence = {
+    communication: 38 + substantiveTurns * 8 + completedObjectives * 9 + Math.min(questions, 2) * 4 + Math.min(userMessages.length, 5) * 2 - difficultyPenalty,
+    vocabulary: 34 + Math.min(uniqueWords, 22) * 2.5 + substantiveTurns * 2 - difficultyPenalty,
+    grammar: 43 + Math.min(averageTurnLength, 12) * 2 + substantiveTurns * 3 - difficultyPenalty,
+    confidence: 40 + Math.min(userMessages.length, 6) * 6 + voiceTurns * 5 + completedObjectives * 4 - Math.round(difficultyPenalty / 2),
+  };
+  const ceilings = {
+    communication: Math.min(97, 52 + Math.min(userMessages.length, 5) * 7 + completedObjectives * 4),
+    vocabulary: Math.min(96, 46 + uniqueWords * 2.7),
+    grammar: Math.min(95, 56 + averageTurnLength * 2.2 + substantiveTurns * 2),
+    confidence: Math.min(97, 52 + Math.min(userMessages.length, 6) * 6 + voiceTurns * 4 + completedObjectives * 2),
+  };
+  const fallback = demoEvaluation(messages, city, level);
+  const score = (key: keyof typeof evidence) => {
+    const raw = Number(candidate?.[key]);
+    const modelScore = Number.isFinite(raw) ? raw : fallback[key];
+    return Math.max(25, Math.min(Math.round(ceilings[key]), Math.round(modelScore * .58 + evidence[key] * .42), 99));
+  };
+  const communication = score("communication");
+  const vocabulary = score("vocabulary");
+  const grammar = score("grammar");
+  const confidence = score("confidence");
+  const overall = Math.round(communication * .35 + vocabulary * .2 + grammar * .2 + confidence * .25);
+  const perfectEvidence = userMessages.length >= 6 && substantiveTurns >= 5 && uniqueWords >= 28 && completedObjectives >= 3;
+  const safeOverall = perfectEvidence ? Math.min(overall, 99) : Math.min(overall, 94);
+  return {
+    overall: safeOverall,
+    communication,
+    vocabulary,
+    grammar,
+    confidence,
+    strength: typeof candidate?.strength === "string" && candidate.strength.trim() ? candidate.strength : fallback.strength,
+    improvement: typeof candidate?.improvement === "string" && candidate.improvement.trim() ? candidate.improvement : fallback.improvement,
+    phrase: typeof candidate?.phrase === "string" && candidate.phrase.trim() ? candidate.phrase : fallback.phrase,
+  };
+}
+
 function extractModelJson(text: string) {
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1];
   const start = text.indexOf("{");
@@ -658,7 +705,7 @@ function buildConversationTurnPlan(input: string, objective: string, previousNpc
 
 function ollamaSystemPrompt(city: City, scene: Scene, level: Level, action: "turn" | "evaluate", missionContext = "") {
   if (action === "evaluate") {
-    return `You are a fair language-game evaluator. Judge whether the player communicated successfully in ${city.language} at ${level} level in ${city.name}. The objective was: ${scene.goal}. ${missionContext} Reward communicative success and recovery. Do not punish a regional accent. Use only transcript evidence. Return only valid JSON with numeric fields overall, communication, vocabulary, grammar, confidence from 0 to 100, plus string fields strength, improvement, and phrase.`;
+    return `You are a strict but encouraging language-game evaluator. Judge only the player's messages in ${city.language} at ${level} level in ${city.name}. The objective was: ${scene.goal}. ${missionContext} Reward communicative success and recovery. Do not punish a regional accent. Score communication, vocabulary, grammar, and confidence independently from transcript evidence. A greeting or one short answer must not score above 65. Scores above 90 require several substantive turns, varied vocabulary, and successful objectives. Reserve 100 for exceptional, near-native, error-free performance across at least six substantive player turns. Never give every category the same score. Return only valid JSON with numeric fields overall, communication, vocabulary, grammar, confidence from 0 to 100, plus evidence-based string fields strength, improvement, and phrase.`;
   }
   return `You are ${scene.character}, a real ${scene.role} in ${city.name}, ${city.country}. Your physical setting is ${scene.label}, but that setting is not automatically the conversation topic. Speak naturally in ${city.language}. The player is at ${level} level.
 
@@ -1337,6 +1384,8 @@ export default function Home() {
               language: city.language,
               level,
               goal: `${mission.title}: ${mission.summary}. Completed ${completedQuests}/3 connected encounters.`,
+              completedObjectives: completedQuests,
+              userTurnCount: userTurns,
               messages: messages.map(({ role, text: content }) => ({ role, content })),
             }),
           });
@@ -1355,6 +1404,7 @@ export default function Home() {
       await new Promise((resolve) => window.setTimeout(resolve, 450));
       setEngineNote("Demo rubric complete · no audio was stored");
     }
+    result = calibrateEvaluation(result, messages, completedQuests, city, level);
     if (!rewarded) {
       const xpEarned = Math.max(20, Math.round(result.overall * 0.55) + completedQuests * 8);
       const coinsEarned = Math.max(5, Math.round(result.overall / 12));

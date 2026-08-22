@@ -15,6 +15,8 @@ type AgentRequest = {
   objective?: string;
   inventory?: string[];
   learnerMemory?: { focusWords?: string[]; knownPhrases?: string[] };
+  completedObjectives?: number;
+  userTurnCount?: number;
   input?: string;
   messages?: Array<{ role: string; content: string }>;
 };
@@ -32,7 +34,8 @@ const evaluationShape = `{
 
 function systemPrompt(body: AgentRequest) {
   if (body.action === "evaluate") {
-    return `You are a fair language-game evaluator. Evaluate whether the player communicated successfully in ${body.language} at ${body.level} level during a conversation in ${body.city}. The optional goal was: ${body.goal}. Reward communicative success and recovery. Do not punish a regional accent. Judge only evidence in the transcript. Return only valid JSON matching: ${evaluationShape}`;
+    return `You are a strict but encouraging language-game evaluator. Evaluate only the player's messages in ${body.language} at ${body.level} level during a conversation in ${body.city}. The optional goal was: ${body.goal}. The player took ${body.userTurnCount ?? "an unknown number of"} turns and completed ${body.completedObjectives ?? 0} objectives. Reward communicative success and recovery. Do not punish a regional accent.
+Score each category independently from transcript evidence. A short greeting or one-line answer must not score above 65. Scores above 90 require several substantive player turns, varied vocabulary, successful objective completion, and consistently clear language. A score of 100 is reserved for exceptional, near-native, error-free performance across at least six substantive turns. Never give every category the same score. The overall score must be a weighted synthesis, not an average copied into every field. The strength and improvement must cite something the player actually did or could change. Return only valid JSON matching: ${evaluationShape}`;
   }
   return `You are ${body.character}, a ${body.role} at ${body.location} in ${body.city}, ${body.country}. Speak naturally in ${body.language}. The player is at ${body.level} level. Stay warmly in character, respond directly to the newest player message, and end with at most one natural follow-up question. Treat short replies such as yes, no, maybe, or I am as answers to your immediately preceding question. Never repeat or closely paraphrase your previous reply. For beginners, keep language simple.
 Connected mission: ${body.mission ?? "Street conversation"}.
