@@ -2268,3 +2268,80 @@ footer strong { color: #b9b6a9; }
   .sadak-replace .game-status > button:not(:last-child) { display: none; }
   .sadak-replace .game-status { max-width: 72px; }
 }
+
+/* High-contrast mission results and immediate objective rewards */
+.modal-backdrop { background: rgba(12,15,13,.78); backdrop-filter: blur(7px) saturate(.75); }
+.score-card {
+  width: min(720px,100%);
+  border: 3px solid #171713;
+  border-top: 9px solid #f6c83f;
+  border-radius: 12px;
+  padding: 28px;
+  color: #171713;
+  background: #fffaf0;
+  box-shadow: 14px 14px 0 #171713, 0 30px 80px rgba(0,0,0,.42);
+}
+.score-card .close-button { top: 16px; right: 17px; border: 2px solid #171713; color: #171713; background: #fff; font-weight: 900; }
+.score-card .score-top { display: grid; grid-template-columns: 116px 1fr; gap: 24px; border-bottom: 2px solid #171713; padding: 0 48px 23px 0; }
+.score-card .score-ring { width: 112px; height: 112px; border: 3px solid #171713; color: #171713; background: #f6ce5c; box-shadow: 6px 7px 0 #171713; }
+.score-card .score-ring strong { color: #171713; font-family: var(--font-sans),system-ui,sans-serif; font-size: 46px; font-weight: 950; }
+.score-card .score-ring span { color: #514b3e; font-weight: 800; }
+.score-card .score-kicker { color: #d94332; font-size: 8px; font-weight: 950; letter-spacing: .16em; }
+.score-card .score-top h2 { margin: 6px 0 5px; color: #171713; font-family: var(--font-sans),system-ui,sans-serif; font-size: clamp(32px,4.2vw,48px); font-weight: 950; line-height: .95; letter-spacing: -.055em; }
+.score-card .score-top p { color: #675f50; font-size: 9px; font-weight: 750; }
+.score-card .reward-banner { gap: 9px; margin-top: 17px; }
+.score-card .reward-banner > span { border: 2px solid #171713; border-radius: 7px; padding: 12px 9px; color: #171713; background: #fff; box-shadow: 3px 3px 0 #171713; }
+.score-card .reward-banner > span:nth-child(1) { background: #d6f4df; }
+.score-card .reward-banner > span:nth-child(2) { background: #d8ebf2; }
+.score-card .reward-banner strong { color: #171713; font-family: var(--font-sans),system-ui,sans-serif; font-size: 20px; font-weight: 950; }
+.score-card .reward-banner small { color: #5f584b; font-weight: 850; }
+.score-card .reward-banner .stamp-won { color: #171713; background: #f6ce5c; }
+.score-card .score-bars { gap: 10px; margin: 22px 0; }
+.score-card .score-bars > div { grid-template-columns: 100px 1fr 30px; }
+.score-card .score-bars span,.score-card .score-bars strong { color: #312e27; font-size: 9px; font-weight: 900; }
+.score-card .score-bars i { height: 9px; border: 1px solid #b9b19f; background: #e8e2d6; }
+.score-card .score-bars b { background: #49b985; }
+.score-card .feedback-grid { gap: 11px; }
+.score-card .feedback-grid article { border: 2px solid #171713; border-radius: 7px; padding: 14px; color: #171713; background: #fff; }
+.score-card .feedback-grid article:first-child { background: #e2f5e7; }
+.score-card .feedback-grid article:last-child { background: #fff0d1; }
+.score-card .feedback-grid span,.score-card .takeaway span { color: #554f43; font-size: 7px; font-weight: 950; }
+.score-card .feedback-grid p { color: #171713; font-size: 10px; font-weight: 700; }
+.score-card .takeaway { border: 2px solid #171713; border-radius: 7px; color: #171713; background: #d9eee7; }
+.score-card .takeaway strong { color: #171713; font-weight: 950; }
+.score-actions { display: grid; grid-template-columns: 1.35fr .8fr; gap: 9px; margin-top: 16px; }
+.score-actions button { min-height: 45px; border: 2px solid #171713; border-radius: 6px; font-size: 9px; font-weight: 950; letter-spacing: .08em; text-transform: uppercase; cursor: pointer; }
+.score-actions .score-continue { color: #171713; background: #7eddb2; box-shadow: 4px 4px 0 #171713; }
+.score-actions .replay-button { width: auto; margin: 0; color: #171713; background: #fff; }
+
+.task-reward-toast {
+  position: absolute;
+  z-index: 125;
+  top: 350px;
+  right: 20px;
+  width: min(270px,calc(100% - 40px));
+  border: 3px solid #171713;
+  border-radius: 7px;
+  padding: 13px 15px;
+  color: #171713;
+  background: #f6ce5c;
+  box-shadow: 7px 7px 0 #171713;
+  animation: taskRewardIn .34s cubic-bezier(.2,.85,.25,1.25) both;
+}
+.task-reward-toast::before { content: ""; position: absolute; inset: 0 0 auto; height: 5px; background: #ef654a; }
+.task-reward-toast span,.task-reward-toast strong,.task-reward-toast small { display: block; }
+.task-reward-toast span { margin-top: 4px; color: #8b291f; font-size: 7px; font-weight: 950; letter-spacing: .15em; }
+.task-reward-toast strong { margin: 5px 0 3px; font-size: 23px; font-weight: 950; letter-spacing: -.04em; }
+.task-reward-toast strong i { margin-left: 8px; color: #176747; font-size: 14px; font-style: normal; letter-spacing: -.02em; }
+.task-reward-toast small { color: #504936; font-size: 8px; font-weight: 800; line-height: 1.35; }
+@keyframes taskRewardIn { from { opacity: 0; translate: 18px 0; scale: .9; } to { opacity: 1; translate: 0; scale: 1; } }
+
+@media (max-width: 620px) {
+  .score-card { padding: 22px 16px; box-shadow: 8px 8px 0 #171713; }
+  .score-card .score-top { grid-template-columns: 82px 1fr; gap: 14px; padding-right: 34px; }
+  .score-card .score-ring { width: 78px; height: 78px; }
+  .score-card .score-ring strong { font-size: 32px; }
+  .score-card .score-top h2 { font-size: 29px; }
+  .score-card .reward-banner,.score-card .feedback-grid,.score-actions { grid-template-columns: 1fr; }
+  .task-reward-toast { top: auto; right: 12px; bottom: 174px; }
+}

@@ -17,6 +17,7 @@ type Message = {
   translation?: string;
   viaVoice?: boolean;
   speaker?: string;
+  opening?: boolean;
 };
 
 type AgentEvent = {
@@ -131,6 +132,13 @@ type Reward = {
   newStamp: boolean;
 };
 
+type TaskReward = {
+  id: number;
+  title: string;
+  xp: number;
+  coins: number;
+};
+
 const CITY_CENTERS: Record<string, [number, number]> = {
   "New York": [40.7580, -73.9855],
   Beijing: [39.9163, 116.3972],
@@ -172,6 +180,8 @@ type WavCapture = { stop: () => Promise<Blob> };
 
 type CafeTourPhase = "idle" | "call" | "cab-conversation" | "riding" | "cafe" | "stop-complete" | "tour-complete";
 const CAFE_RIDE_DURATION_MS = 7200;
+const TASK_REWARD_XP = 25;
+const TASK_REWARD_COINS = 5;
 
 const CAFE_TOUR_STOPS = [
   {
@@ -417,6 +427,75 @@ function cityWelcome(city: City, level: Level): Message {
     text: city.greeting,
     translation: level === "Advanced" ? undefined : city.translation,
     speaker: city.scenes[0].character,
+    opening: true,
+  };
+}
+
+const NPC_FOLLOWUP_GREETINGS: Record<string, [{ text: string; translation: string }, { text: string; translation: string }]> = {
+  "new-york": [
+    { text: "Hey, I'm Theo. Where are you headed, and do you need the fare first?", translation: "Theo is ready to help with your ride." },
+    { text: "You made it! I'm Jordan. What would you like to know about the neighborhood?", translation: "Jordan welcomes you to the neighborhood." },
+  ],
+  beijing: [
+    { text: "你好，我是伟。你想去哪里？", translation: "Hello, I'm Wei. Where would you like to go?" },
+    { text: "欢迎来到早市！我是林。你想买什么？", translation: "Welcome to the morning market! I'm Lin. What would you like to buy?" },
+  ],
+  delhi: [
+    { text: "नमस्ते, मैं नैना हूँ। आपको कहाँ जाना है?", translation: "Hello, I'm Naina. Where do you need to go?" },
+    { text: "चाँदनी चौक में आपका स्वागत है। मैं कबीर हूँ—आप क्या ढूँढ रहे हैं?", translation: "Welcome to Chandni Chowk. I'm Kabir—what are you looking for?" },
+  ],
+  madrid: [
+    { text: "Hola, soy Mateo. ¿Adónde quieres ir y necesitas saber la tarifa?", translation: "Hi, I'm Mateo. Where would you like to go, and do you need the fare?" },
+    { text: "¡Bienvenido! Soy Sofía. ¿Qué te gustaría descubrir por aquí?", translation: "Welcome! I'm Sofia. What would you like to discover nearby?" },
+  ],
+  paris: [
+    { text: "Bonjour, je suis Luc. Vous cherchez un livre ou votre chemin ?", translation: "Hello, I'm Luc. Are you looking for a book or directions?" },
+    { text: "Bienvenue au marché ! Je suis Amélie. Qu'est-ce que vous cherchez ?", translation: "Welcome to the market! I'm Amelie. What are you looking for?" },
+  ],
+  cairo: [
+    { text: "أهلاً، أنا عمر. إلى أين تريد أن تذهب؟", translation: "Hello, I'm Omar. Where would you like to go?" },
+    { text: "أهلاً بك في السوق! أنا نور. ماذا تبحث عنه؟", translation: "Welcome to the market! I'm Nour. What are you looking for?" },
+  ],
+  dhaka: [
+    { text: "নমস্কার, আমি রাফি। আপনি কোথায় যেতে চান?", translation: "Hello, I'm Rafi. Where would you like to go?" },
+    { text: "নিউ মার্কেটে স্বাগতম! আমি মিতু। আপনি কী খুঁজছেন?", translation: "Welcome to New Market! I'm Mitu. What are you looking for?" },
+  ],
+  "sao-paulo": [
+    { text: "Oi, sou o Lucas. Para onde você quer ir?", translation: "Hi, I'm Lucas. Where would you like to go?" },
+    { text: "Bem-vindo à feira! Sou Dani. O que você procura?", translation: "Welcome to the street fair! I'm Dani. What are you looking for?" },
+  ],
+  moscow: [
+    { text: "Здравствуйте, я Михаил. Куда вы хотите поехать?", translation: "Hello, I'm Mikhail. Where would you like to go?" },
+    { text: "Добро пожаловать на рынок! Я Саша. Что вы ищете?", translation: "Welcome to the market! I'm Sasha. What are you looking for?" },
+  ],
+  lahore: [
+    { text: "السلام علیکم، میں حمزہ ہوں۔ آپ کہاں جانا چاہتے ہیں؟", translation: "Hello, I'm Hamza. Where would you like to go?" },
+    { text: "انارکلی بازار میں خوش آمدید! میں نور ہوں۔ آپ کیا ڈھونڈ رہے ہیں؟", translation: "Welcome to Anarkali Bazaar! I'm Noor. What are you looking for?" },
+  ],
+  mumbai: [
+    { text: "नमस्कार, मी रोहन. तुम्हाला कुठे जायचं आहे आणि भाडं विचारायचं आहे का?", translation: "Hello, I'm Rohan. Where would you like to go, and do you want to ask the fare?" },
+    { text: "दादर मार्केटमध्ये स्वागत! मी साहिल. तुम्ही काय शोधत आहात?", translation: "Welcome to Dadar Market! I'm Sahil. What are you looking for?" },
+  ],
+  bengaluru: [
+    { text: "ನಮಸ್ಕಾರ, ನಾನು ರವಿ. ನೀವು ಎಲ್ಲಿಗೆ ಹೋಗಬೇಕು?", translation: "Hello, I'm Ravi. Where would you like to go?" },
+    { text: "ಕೆಆರ್ ಮಾರುಕಟ್ಟೆಗೆ ಸ್ವಾಗತ! ನಾನು ಮೀರಾ. ನಿಮಗೆ ಏನು ಬೇಕು?", translation: "Welcome to KR Market! I'm Meera. What are you looking for?" },
+  ],
+};
+
+function npcGreeting(city: City, sceneIndex: number, level: Level, id: number): Message {
+  if (sceneIndex === 0) return { ...cityWelcome(city, level), id };
+  const scene = city.scenes[sceneIndex];
+  const greeting = NPC_FOLLOWUP_GREETINGS[city.id]?.[sceneIndex - 1] ?? {
+    text: `Hi, I'm ${scene.character}. Welcome to ${scene.label}. How can I help?`,
+    translation: `${scene.character} welcomes you and offers to help.`,
+  };
+  return {
+    id,
+    role: "npc",
+    text: greeting.text,
+    translation: level === "Advanced" ? undefined : greeting.translation,
+    speaker: scene.character,
+    opening: true,
   };
 }
 
@@ -615,6 +694,7 @@ export default function Home() {
   const [affinity, setAffinity] = useState(12);
   const [questProgress, setQuestProgress] = useState([false, false, false]);
   const [reward, setReward] = useState<Reward | null>(null);
+  const [taskReward, setTaskReward] = useState<TaskReward | null>(null);
   const [rewarded, setRewarded] = useState(false);
   const [playerPosition, setPlayerPosition] = useState({ x: 50, y: 82 });
   const [showTranscript, setShowTranscript] = useState(false);
@@ -648,6 +728,7 @@ export default function Home() {
   const pronunciationTimerRef = useRef<number | null>(null);
   const worldInputRef = useRef<HTMLInputElement | null>(null);
   const cameraDirectionRef = useRef({ x: 0, z: -1 });
+  const spokenOpeningIdsRef = useRef(new Set<number>());
 
   const updateCameraDirection = useCallback((direction: { x: number; z: number }) => {
     cameraDirectionRef.current = direction;
@@ -732,6 +813,7 @@ export default function Home() {
     setAgentEvents([{ id: Date.now(), tool: "set_waypoint", label: `Director marked ${city.scenes[firstNpcIndex].character}` }]);
     setAffinity(12);
     setReward(null);
+    setTaskReward(null);
     setRewarded(false);
     setPronunciationPrompt(0);
     setPronunciationResult(null);
@@ -740,17 +822,24 @@ export default function Home() {
   }, [cafeTourActive, city, level, mission, provider]);
 
   useEffect(() => {
+    if (!taskReward) return;
+    const timer = window.setTimeout(() => setTaskReward(null), 4200);
+    return () => window.clearTimeout(timer);
+  }, [taskReward]);
+
+  useEffect(() => {
     if (!activeTravelStop || cafeTourPhase !== "riding") return;
     const timer = window.setTimeout(() => {
-      setPlayerPosition({ x: 42, y: 53 });
+      setPlayerPosition({ x: 43, y: 51 });
       setSceneId(city.scenes[0].id);
+      setMessages((current) => [...current, npcGreeting(city, 0, level, messageId.current++)]);
       setInput("");
       setMissionStepTurns(0);
       setCafeTourPhase("cafe");
       addAgentEvent("set_waypoint", `${activeTravelStop.ride} dropped you at ${activeTravelStop.cafe}`);
     }, CAFE_RIDE_DURATION_MS);
     return () => window.clearTimeout(timer);
-  }, [activeTravelStop, addAgentEvent, cafeTourPhase, city.scenes]);
+  }, [activeTravelStop, addAgentEvent, cafeTourPhase, city, level]);
 
   useEffect(() => {
     if (!cafeTourInCurrentCity || cafeTourPhase !== "cafe" || !questProgress[1]) return;
@@ -883,14 +972,20 @@ export default function Home() {
     };
   }, [cafeTourPhase, city.id, showEngine, showPause, showPhrasebook, showPronunciation, showWorldPicker]);
 
-  function speak(text: string, force = false) {
+  const speak = useCallback((text: string, force = false) => {
     if ((!autoSpeak && !force) || !("speechSynthesis" in window)) return;
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = city.locale;
     utterance.rate = level === "Beginner" ? 0.82 : level === "Advanced" ? 1.05 : 0.94;
     window.speechSynthesis.speak(utterance);
-  }
+  }, [autoSpeak, city.locale, level]);
+
+  useEffect(() => {
+    if (!nearCharacter || !currentNpcMessage?.opening || spokenOpeningIdsRef.current.has(currentNpcMessage.id)) return;
+    spokenOpeningIdsRef.current.add(currentNpcMessage.id);
+    speak(currentNpcMessage.text);
+  }, [currentNpcMessage, nearCharacter, speak]);
 
   async function callOllama(action: "turn", nextMessages: Message[]): Promise<AgentReply>;
   async function callOllama(action: "evaluate", nextMessages: Message[]): Promise<Evaluation>;
@@ -1135,6 +1230,9 @@ export default function Home() {
     if (completesObjective && !questProgress[missionStepIndex]) {
       const completedStep = missionStep;
       const nextIndex = missionStepIndex + 1;
+      setXp((current) => current + TASK_REWARD_XP);
+      setCoins((current) => current + TASK_REWARD_COINS);
+      setTaskReward({ id: Date.now(), title: completedStep.title, xp: TASK_REWARD_XP, coins: TASK_REWARD_COINS });
       setQuestProgress((current) => current.map((done, index) => index === missionStepIndex ? true : done));
       setMissionInventory((current) => Array.from(new Set([...current, completedStep.handoff, completedStep.reward])));
       addAgentEvent("complete_step", `Objective complete: ${completedStep.title}`);
@@ -1149,6 +1247,8 @@ export default function Home() {
           setCafeTourPhase("riding");
           setShowTranscript(false);
           addAgentEvent("remember_fact", `${scene.character} confirmed the ride to ${activeTravelStop.cafe}`);
+        } else {
+          setMessages((current) => [...current, npcGreeting(city, nextStep.npcIndex, level, messageId.current++)]);
         }
       } else {
         setMissionStepTurns(nextTurnCount);
@@ -1348,6 +1448,7 @@ export default function Home() {
     if (!cafeTourInCurrentCity || cafeTourPhase !== "call") return;
     setSceneId(city.scenes[1].id);
     setPlayerPosition({ x: 50, y: 82 });
+    setMessages([npcGreeting(city, 1, level, messageId.current++)]);
     setCafeTourPhase("cab-conversation");
     addAgentEvent("set_waypoint", `${cafeTourStop.ride} arrived with ${city.scenes[1].character} driving`);
   }
@@ -1508,6 +1609,14 @@ export default function Home() {
 
             {activeTravelStop && cafeTourPhase === "riding" && (
               <div className="ride-cinematic" aria-live="polite"><span>IN TRANSIT</span><strong>{activeTravelStop.ride}</strong><p>{activeTravelStop.pickup} → {activeTravelStop.cafe}</p><i><b /></i></div>
+            )}
+
+            {taskReward && (
+              <div key={taskReward.id} className="task-reward-toast" role="status" aria-live="polite">
+                <span>OBJECTIVE COMPLETE</span>
+                <strong>+{taskReward.xp} XP <i>+{taskReward.coins} ◆</i></strong>
+                <small>{taskReward.title}</small>
+              </div>
             )}
 
             {cafeTourActive && cafeTourPhase === "tour-complete" && (
@@ -1676,7 +1785,10 @@ export default function Home() {
               <article><span>↗ TRY NEXT</span><p>{evaluation.improvement}</p></article>
             </div>
             <div className="takeaway"><span>Phrase to keep</span><strong>{evaluation.phrase}</strong></div>
-            <button className="replay-button" onClick={() => { setMessages([cityWelcome(city, level)]); setEvaluation(null); setReward(null); setRewarded(false); setQuestProgress([false, false, false]); setMissionStepIndex(0); setMissionStepTurns(0); setMissionInventory([]); setSceneId(city.scenes[0].id); setAffinity(12); addAgentEvent("set_waypoint", `Mission restarted at ${city.scenes[0].character}`); }}>Replay the mission</button>
+            <div className="score-actions">
+              <button className="score-continue" onClick={() => setEvaluation(null)}>{completedQuests < 3 ? "Continue mission" : "Keep exploring"}</button>
+              <button className="replay-button" onClick={() => { setMessages([cityWelcome(city, level)]); setEvaluation(null); setReward(null); setTaskReward(null); setRewarded(false); setQuestProgress([false, false, false]); setMissionStepIndex(0); setMissionStepTurns(0); setMissionInventory([]); setSceneId(city.scenes[0].id); setAffinity(12); addAgentEvent("set_waypoint", `Mission restarted at ${city.scenes[0].character}`); }}>Replay mission</button>
+            </div>
           </section>
         </div>
       )}
