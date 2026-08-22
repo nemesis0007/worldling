@@ -30,13 +30,16 @@ app = FastAPI(title="Worldling Local Pronunciation", version="1.0.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
+        "https://worldling-sadak-game.vercel.app",
         "https://worldling-voice-lab.niraj-khumkar24.chatgpt.site",
         "http://localhost:3000",
         "http://127.0.0.1:3000",
     ],
+    allow_origin_regex=r"https://worldling-sadak-game(?:-[a-z0-9-]+)?\.vercel\.app",
     allow_credentials=False,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
+    allow_private_network=True,
 )
 
 WHISPER_LANGUAGE = {

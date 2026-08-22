@@ -711,6 +711,7 @@ export default function Home() {
   const [pronunciationBest, setPronunciationBest] = useState<Record<string, number>>({});
   const [lastAttemptUrl, setLastAttemptUrl] = useState("");
   const [localPronunciationEndpoint, setLocalPronunciationEndpoint] = useState("http://127.0.0.1:8787");
+  const [localPronunciationStatus, setLocalPronunciationStatus] = useState<"unknown" | "checking" | "ready" | "error">("unknown");
   const [missionStepIndex, setMissionStepIndex] = useState(0);
   const [missionStepTurns, setMissionStepTurns] = useState(0);
   const [missionInventory, setMissionInventory] = useState<string[]>([]);
@@ -1381,6 +1382,33 @@ export default function Home() {
       : "Intelligibility and timing were scored; phoneme scoring was unavailable for this attempt.");
   }
 
+  async function testLocalPronunciation(): Promise<boolean> {
+    const base = localPronunciationEndpoint.trim().replace(/\/$/, "");
+    if (!base) {
+      setLocalPronunciationStatus("error");
+      setPronunciationNote("Enter the local service address first.");
+      return false;
+    }
+    setLocalPronunciationStatus("checking");
+    setPronunciationNote("Checking the local speech lab…");
+    try {
+      const response = await fetch(`${base}/health`, { method: "GET", cache: "no-store" });
+      if (!response.ok) throw new Error(`Service returned ${response.status}.`);
+      const payload = await response.json() as { status?: string; whisperModel?: string; phonemeRecognizerInstalled?: boolean };
+      if (payload.status !== "ready") throw new Error("Service is not ready yet.");
+      setLocalPronunciationStatus("ready");
+      setPronunciationNote(`Local lab connected · Whisper ${payload.whisperModel ?? "model"}${payload.phonemeRecognizerInstalled ? " + phoneme scoring" : ""}.`);
+      return true;
+    } catch (error) {
+      const detail = error instanceof Error && !/Failed to fetch|Load failed|NetworkError/i.test(error.message)
+        ? ` ${error.message}`
+        : "";
+      setLocalPronunciationStatus("error");
+      setPronunciationNote(`Local lab is offline.${detail} Run .\\start-local-pronunciation.ps1 in the project folder, keep that PowerShell window open, then test again.`);
+      return false;
+    }
+  }
+
   async function finishPronunciationCapture() {
     const capture = pronunciationCaptureRef.current;
     if (!capture) return;
@@ -1407,6 +1435,10 @@ export default function Home() {
     if (pronunciationRecording) {
       await finishPronunciationCapture();
       return;
+    }
+    if (pronunciationProvider === "local" && localPronunciationStatus !== "ready") {
+      const ready = await testLocalPronunciation();
+      if (!ready) return;
     }
     setPronunciationResult(null);
     setPronunciationNote("Listening… read the highlighted phrase once.");
@@ -1807,7 +1839,12 @@ export default function Home() {
             </div>
 
             {pronunciationProvider === "local" && (
-              <label className="pronunciation-endpoint">Local service address<input value={localPronunciationEndpoint} disabled={pronunciationRecording || pronunciationBusy} onChange={(event) => setLocalPronunciationEndpoint(event.target.value)} /></label>
+              <div className={`pronunciation-local-service ${localPronunciationStatus}`}>
+                <label className="pronunciation-endpoint">Local service address<input value={localPronunciationEndpoint} disabled={pronunciationRecording || pronunciationBusy} onChange={(event) => { setLocalPronunciationEndpoint(event.target.value); setLocalPronunciationStatus("unknown"); }} /></label>
+                <button type="button" disabled={pronunciationRecording || pronunciationBusy || localPronunciationStatus === "checking"} onClick={() => void testLocalPronunciation()}>
+                  <i />{localPronunciationStatus === "checking" ? "Checking…" : localPronunciationStatus === "ready" ? "Connected" : "Test service"}
+                </button>
+              </div>
             )}
 
             <div className="phrase-selector">

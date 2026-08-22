@@ -2371,6 +2371,15 @@ footer strong { color: #b9b6a9; }
 .pronunciation-sheet .pronunciation-endpoint { margin: 11px 0 16px; color: #554f43; font-size: 7px; font-weight: 950; }
 .pronunciation-sheet .pronunciation-endpoint input { margin-top: 7px; border: 2px solid #171713; border-radius: 6px; padding: 11px 12px; color: #171713; background: #fff; font-size: 10px; font-weight: 800; box-shadow: inset 0 0 0 2px #eee7d9; }
 .pronunciation-sheet .pronunciation-endpoint input:focus { border-color: #26845f; box-shadow: 0 0 0 3px rgba(73,185,133,.2); }
+.pronunciation-sheet .pronunciation-local-service { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 9px; margin-bottom: 16px; }
+.pronunciation-sheet .pronunciation-local-service .pronunciation-endpoint { margin: 0; }
+.pronunciation-sheet .pronunciation-local-service > button { min-width: 112px; height: 40px; border: 2px solid #171713; border-radius: 6px; color: #171713; background: #fff; font-size: 8px; font-weight: 950; text-transform: uppercase; box-shadow: 3px 3px 0 #171713; cursor: pointer; }
+.pronunciation-sheet .pronunciation-local-service > button i { display: inline-block; width: 7px; height: 7px; margin-right: 6px; border-radius: 50%; background: #a59d8d; }
+.pronunciation-sheet .pronunciation-local-service.ready > button { background: #d8f3e2; }
+.pronunciation-sheet .pronunciation-local-service.ready > button i { background: #2f9d70; }
+.pronunciation-sheet .pronunciation-local-service.error > button { background: #ffe0d8; }
+.pronunciation-sheet .pronunciation-local-service.error > button i { background: #db4d3d; }
+.pronunciation-sheet .pronunciation-local-service > button:disabled { opacity: .68; cursor: wait; }
 .pronunciation-sheet .phrase-selector { margin: 18px 0 9px; }
 .pronunciation-sheet .phrase-selector > span { color: #554f43; font-size: 7px; font-weight: 950; }
 .pronunciation-sheet .phrase-selector button { width: 30px; height: 30px; border: 2px solid #171713; color: #171713; background: #fff; font-weight: 900; }
@@ -2384,6 +2393,12 @@ footer strong { color: #b9b6a9; }
 .pronunciation-sheet .record-pronunciation strong { color: #fff; font-size: 11px; font-weight: 950; }
 .pronunciation-sheet .record-pronunciation small { color: rgba(255,255,255,.88); font-weight: 700; }
 .pronunciation-sheet .pronunciation-note { margin-top: 11px; color: #625b4d; font-size: 8px; font-weight: 700; }
+.pronunciation-sheet .pronunciation-local-service.error ~ .phrase-selector ~ .target-phrase ~ .record-pronunciation + .pronunciation-note { color: #9a2d23; }
+
+@media (max-width: 580px) {
+  .pronunciation-sheet .pronunciation-local-service { grid-template-columns: 1fr; }
+  .pronunciation-sheet .pronunciation-local-service > button { width: 100%; }
+}
 .pronunciation-sheet .pronunciation-result { border-top: 2px solid #171713; color: #171713; }
 .pronunciation-sheet .pronunciation-score { border: 3px solid #171713; color: #171713; background: #f6ce5c; box-shadow: 5px 5px 0 #171713; }
 .pronunciation-sheet .pronunciation-score strong { color: #171713; font-family: var(--font-sans),system-ui,sans-serif; font-weight: 950; }

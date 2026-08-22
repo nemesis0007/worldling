@@ -15,9 +15,12 @@ The first run installs dependencies and downloads the selected Whisper model.
 The service listens only on `127.0.0.1:8787` and permits requests from the
 Worldling hosted origin and its local development origins.
 
+Keep the PowerShell window open while using the pronunciation lab. You can
+confirm the service is ready by opening `http://127.0.0.1:8787/health`, or by
+clicking **Test service** in the game.
+
 Environment variables:
 
 - `WORLDLING_WHISPER_MODEL`: defaults to `small`
 - `WORLDLING_WHISPER_DEVICE`: defaults to `cpu`
 - `WORLDLING_WHISPER_COMPUTE`: defaults to `int8`
-
