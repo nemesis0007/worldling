@@ -36,6 +36,17 @@ type LearnerMemory = {
   completedMissions: string[];
 };
 
+type PlayerAccount = {
+  name: string;
+  email: string;
+};
+
+const EMPTY_LEARNER_MEMORY: LearnerMemory = { attempts: 0, knownPhrases: [], focusWords: [], completedMissions: [] };
+
+function playerStorageKey(email: string, area: "progress" | "memory" | "pronunciation-best") {
+  return `worldling-player:${encodeURIComponent(email.trim().toLowerCase())}:${area}`;
+}
+
 type AgentReply = {
   text: string;
   translation?: string;
@@ -800,8 +811,12 @@ export default function Home() {
   const [cafeTourVisited, setCafeTourVisited] = useState<string[]>([]);
   const [agentEvents, setAgentEvents] = useState<AgentEvent[]>([]);
   const [lastHeard, setLastHeard] = useState("");
-  const [learnerMemory, setLearnerMemory] = useState<LearnerMemory>({ attempts: 0, knownPhrases: [], focusWords: [], completedMissions: [] });
+  const [learnerMemory, setLearnerMemory] = useState<LearnerMemory>(EMPTY_LEARNER_MEMORY);
   const [hydrated, setHydrated] = useState(false);
+  const [playerAccount, setPlayerAccount] = useState<PlayerAccount | null>(null);
+  const [loginName, setLoginName] = useState("");
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginError, setLoginError] = useState("");
   const recognitionRef = useRef<{ start: () => void; stop: () => void } | null>(null);
   const messageId = useRef(1);
   const pronunciationCaptureRef = useRef<WavCapture | null>(null);
@@ -866,10 +881,88 @@ export default function Home() {
     setAgentEvents((current) => [{ id: Date.now() + Math.random(), tool, label }, ...current].slice(0, 4));
   }, []);
 
+  const loadPlayerState = useCallback((email: string, allowLegacy = false) => {
+    const progressRaw = window.localStorage.getItem(playerStorageKey(email, "progress"))
+      ?? (allowLegacy ? window.localStorage.getItem("worldling-progress") : null);
+    const memoryRaw = window.localStorage.getItem(playerStorageKey(email, "memory"))
+      ?? (allowLegacy ? window.localStorage.getItem("worldling-learner-memory") : null);
+    const pronunciationRaw = window.localStorage.getItem(playerStorageKey(email, "pronunciation-best"))
+      ?? (allowLegacy ? window.localStorage.getItem("worldling-pronunciation-best") : null);
+    try {
+      const progress = JSON.parse(progressRaw ?? "null") as { xp?: number; coins?: number; stamps?: string[] } | null;
+      setXp(typeof progress?.xp === "number" ? progress.xp : 120);
+      setCoins(typeof progress?.coins === "number" ? progress.coins : 35);
+      setStamps(Array.isArray(progress?.stamps) ? progress.stamps : []);
+
+      const memory = JSON.parse(memoryRaw ?? "null") as Partial<LearnerMemory> | null;
+      setLearnerMemory(memory ? {
+        attempts: typeof memory.attempts === "number" ? memory.attempts : 0,
+        knownPhrases: Array.isArray(memory.knownPhrases) ? memory.knownPhrases.slice(0, 8) : [],
+        focusWords: Array.isArray(memory.focusWords) ? memory.focusWords.slice(0, 8) : [],
+        completedMissions: Array.isArray(memory.completedMissions) ? memory.completedMissions : [],
+      } : EMPTY_LEARNER_MEMORY);
+
+      const best = JSON.parse(pronunciationRaw ?? "null") as Record<string, number> | null;
+      setPronunciationBest(best ?? {});
+    } catch {
+      setXp(120);
+      setCoins(35);
+      setStamps([]);
+      setLearnerMemory(EMPTY_LEARNER_MEMORY);
+      setPronunciationBest({});
+    }
+  }, []);
+
+  function signInPlayer(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const name = loginName.trim().replace(/\s+/g, " ");
+    const email = loginEmail.trim().toLowerCase();
+    if (name.length < 2) {
+      setLoginError("Enter the name other travellers should call you.");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setLoginError("Enter a valid email address.");
+      return;
+    }
+    const account = { name, email };
+    const allowLegacy = !window.localStorage.getItem("worldling-player-progress-migrated");
+    loadPlayerState(email, allowLegacy);
+    window.localStorage.setItem("worldling-player", JSON.stringify(account));
+    if (allowLegacy) window.localStorage.setItem("worldling-player-progress-migrated", email);
+    setPlayerAccount(account);
+    setLoginError("");
+    setShowWorldPicker(true);
+  }
+
+  function signOutPlayer() {
+    window.localStorage.removeItem("worldling-player");
+    window.sessionStorage.removeItem("worldling-api-session");
+    setPlayerAccount(null);
+    setLoginName("");
+    setLoginEmail("");
+    setApiKey("");
+    setApiStatus("idle");
+    setXp(120);
+    setCoins(35);
+    setStamps([]);
+    setLearnerMemory(EMPTY_LEARNER_MEMORY);
+    setPronunciationBest({});
+    setShowWorldPicker(true);
+  }
+
   useEffect(() => {
     const saved = window.localStorage.getItem("worldling-provider") as Provider | null;
     if (saved && ["demo", "local", "api"].includes(saved)) setProvider(saved);
     try {
+      const storedPlayer = JSON.parse(window.localStorage.getItem("worldling-player") ?? "null") as Partial<PlayerAccount> | null;
+      if (typeof storedPlayer?.name === "string" && typeof storedPlayer?.email === "string") {
+        const account = { name: storedPlayer.name, email: storedPlayer.email.toLowerCase() };
+        setPlayerAccount(account);
+        setLoginName(account.name);
+        setLoginEmail(account.email);
+        loadPlayerState(account.email, true);
+      }
       const local = JSON.parse(window.localStorage.getItem("worldling-ollama") ?? "null") as { endpoint?: string; model?: string; profile?: LocalProfile } | null;
       if (local?.endpoint) setOllamaEndpoint(local.endpoint);
       if (local?.profile && ["fast", "quality", "custom"].includes(local.profile)) {
@@ -879,22 +972,9 @@ export default function Home() {
         setLocalProfile("custom");
         setOllamaModel(local.model);
       }
-      const progress = JSON.parse(window.localStorage.getItem("worldling-progress") ?? "null") as { xp?: number; coins?: number; stamps?: string[] } | null;
-      if (typeof progress?.xp === "number") setXp(progress.xp);
-      if (typeof progress?.coins === "number") setCoins(progress.coins);
-      if (Array.isArray(progress?.stamps)) setStamps(progress.stamps);
       const pronunciation = JSON.parse(window.localStorage.getItem("worldling-pronunciation") ?? "null") as { provider?: PronunciationProvider; endpoint?: string } | null;
       if (pronunciation?.provider === "local" || pronunciation?.provider === "azure") setPronunciationProvider(pronunciation.provider);
       if (pronunciation?.endpoint) setLocalPronunciationEndpoint(pronunciation.endpoint);
-      const memory = JSON.parse(window.localStorage.getItem("worldling-learner-memory") ?? "null") as Partial<LearnerMemory> | null;
-      if (memory) setLearnerMemory({
-        attempts: typeof memory.attempts === "number" ? memory.attempts : 0,
-        knownPhrases: Array.isArray(memory.knownPhrases) ? memory.knownPhrases.slice(0, 8) : [],
-        focusWords: Array.isArray(memory.focusWords) ? memory.focusWords.slice(0, 8) : [],
-        completedMissions: Array.isArray(memory.completedMissions) ? memory.completedMissions : [],
-      });
-      const best = JSON.parse(window.localStorage.getItem("worldling-pronunciation-best") ?? "null") as Record<string, number> | null;
-      if (best) setPronunciationBest(best);
       const apiSession = JSON.parse(window.sessionStorage.getItem("worldling-api-session") ?? "null") as { provider?: ApiProvider; model?: string; apiKey?: string } | null;
       if (apiSession?.provider && apiSession.provider in API_PROVIDER_MODELS) setApiProvider(apiSession.provider);
       if (apiSession?.model) setApiModel(apiSession.model);
@@ -903,7 +983,7 @@ export default function Home() {
       // Ignore malformed device-local prototype state.
     }
     setHydrated(true);
-  }, []);
+  }, [loadPlayerState]);
 
   useEffect(() => {
     const firstNpcIndex = mission.steps[0].npcIndex;
@@ -985,9 +1065,9 @@ export default function Home() {
   }, [apiKey, apiModel, apiProvider, hydrated]);
 
   useEffect(() => {
-    if (!hydrated) return;
-    window.localStorage.setItem("worldling-progress", JSON.stringify({ xp, coins, stamps }));
-  }, [hydrated, xp, coins, stamps]);
+    if (!hydrated || !playerAccount) return;
+    window.localStorage.setItem(playerStorageKey(playerAccount.email, "progress"), JSON.stringify({ xp, coins, stamps }));
+  }, [hydrated, playerAccount, xp, coins, stamps]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -995,14 +1075,14 @@ export default function Home() {
   }, [hydrated, pronunciationProvider, localPronunciationEndpoint]);
 
   useEffect(() => {
-    if (!hydrated) return;
-    window.localStorage.setItem("worldling-learner-memory", JSON.stringify(learnerMemory));
-  }, [hydrated, learnerMemory]);
+    if (!hydrated || !playerAccount) return;
+    window.localStorage.setItem(playerStorageKey(playerAccount.email, "memory"), JSON.stringify(learnerMemory));
+  }, [hydrated, learnerMemory, playerAccount]);
 
   useEffect(() => {
-    if (!hydrated) return;
-    window.localStorage.setItem("worldling-pronunciation-best", JSON.stringify(pronunciationBest));
-  }, [hydrated, pronunciationBest]);
+    if (!hydrated || !playerAccount) return;
+    window.localStorage.setItem(playerStorageKey(playerAccount.email, "pronunciation-best"), JSON.stringify(pronunciationBest));
+  }, [hydrated, playerAccount, pronunciationBest]);
 
   useEffect(() => () => {
     if (lastAttemptUrl) URL.revokeObjectURL(lastAttemptUrl);
@@ -1720,6 +1800,29 @@ export default function Home() {
 
   return (
     <main className={`app-shell sadak-replace ${cafeTourActive ? "cafe-tour-active" : ""} ${nearCharacter ? "near-npc" : "roaming-player"}`}>
+      {hydrated && !playerAccount && (
+        <div className="worldling-login" role="dialog" aria-modal="true" aria-labelledby="login-title">
+          <section className="login-story">
+            <div className="login-wordmark"><b>W</b><span>WORLDLING<small>WALK · MEET · SPEAK</small></span></div>
+            <div className="login-route" aria-hidden="true"><span>NYC</span><i /><span>BOM</span><i /><span>MAD</span></div>
+            <h1>Speak your way<br />around the world.</h1>
+            <p>Walk through living districts, meet local characters, complete everyday errands, and build a language passport one conversation at a time.</p>
+            <div className="login-stats"><span><b>10+</b> languages</span><span><b>3D</b> districts</span><span><b>AI</b> locals</span></div>
+          </section>
+          <section className="login-card">
+            <span className="login-kicker">PLAYER LOGIN</span>
+            <h2 id="login-title">Your passport is waiting.</h2>
+            <p>Sign in to keep district stamps, XP, pronunciation scores, and conversation progress together on this device.</p>
+            <form onSubmit={signInPlayer}>
+              <label>Traveller name<input autoFocus value={loginName} onChange={(event) => { setLoginName(event.target.value); setLoginError(""); }} maxLength={48} placeholder="What should locals call you?" autoComplete="name" /></label>
+              <label>Email<input type="email" value={loginEmail} onChange={(event) => { setLoginEmail(event.target.value); setLoginError(""); }} maxLength={120} placeholder="you@example.com" autoComplete="email" /></label>
+              {loginError && <p className="login-error" role="alert">{loginError}</p>}
+              <button type="submit">Enter Worldling <span>→</span></button>
+            </form>
+            <small className="login-privacy">Prototype login · progress stays in this browser and API keys are never added to the profile.</small>
+          </section>
+        </div>
+      )}
       <section className={`journey-section scene-${city.sceneClass}`} id="journey">
         <div className="journey-shell">
           <div className="play-world" aria-label={`Walkable scene in ${city.name}`}>
@@ -1780,7 +1883,10 @@ export default function Home() {
                 <section>
                   <header>
                     <div className="sadak-title-lockup"><span>W</span><div><strong>WORLDLING</strong><small>WALK · MEET · SPEAK</small></div></div>
-                    <button onClick={() => setShowEngine(true)}><i className={`status-dot ${provider} ${provider === "local" ? localStatus : provider === "api" ? apiStatus : ""}`} />{provider === "local" ? ollamaModel : provider === "api" ? `${API_PROVIDER_MODELS[apiProvider].label} · ${apiModel}` : providerLabels[provider]}</button>
+                    <div className="sadak-picker-actions">
+                      {playerAccount && <div className="player-account"><span>{playerAccount.name.slice(0, 1).toUpperCase()}</span><p><strong>{playerAccount.name}</strong><small>{stamps.length} district stamps</small></p><button onClick={signOutPlayer}>Sign out</button></div>}
+                      <button className="picker-engine" onClick={() => setShowEngine(true)}><i className={`status-dot ${provider} ${provider === "local" ? localStatus : provider === "api" ? apiStatus : ""}`} />{provider === "local" ? ollamaModel : provider === "api" ? `${API_PROVIDER_MODELS[apiProvider].label} · ${apiModel}` : providerLabels[provider]}</button>
+                    </div>
                   </header>
                   <div className="sadak-picker-heading">
                     <span>YOUR NEXT ERRAND</span>
