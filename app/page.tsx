@@ -3,6 +3,7 @@
 import { FormEvent, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import VirtualJoystick from "./VirtualJoystick";
 import { AgentAction, FLAGSHIP_MISSIONS, genericMission } from "./mission-data";
+import { clampToPlayableStreet, SCREEN_ROAD_LINES, STREET_NPC_POSITIONS, WORLD_SCALE, worldDistance } from "./world-layout";
 
 const World3D = lazy(() => import("./World3D"));
 
@@ -170,13 +171,6 @@ type PronunciationResult = {
 
 type WavCapture = { stop: () => Promise<Blob> };
 
-const PLAYABLE_STREET_BOUNDS = { minX: 33, maxX: 67, minY: 22, maxY: 96 } as const;
-const STREET_NPC_POSITIONS = [
-  { x: 35, y: 72 },
-  { x: 65, y: 55 },
-  { x: 35, y: 32 },
-];
-
 type CafeTourPhase = "idle" | "call" | "cab-conversation" | "riding" | "cafe" | "stop-complete" | "tour-complete";
 
 const CAFE_TOUR_STOPS = [
@@ -199,13 +193,6 @@ const CAFE_TOUR_STOPS = [
     cafePrompts: ["Quisiera un café con leche.", "¿Qué me recomienda para comer?", "¿Cuánto cuesta?"],
   },
 ] as const;
-
-function clampToPlayableStreet(point: { x: number; y: number }) {
-  return {
-    x: Math.min(PLAYABLE_STREET_BOUNDS.maxX, Math.max(PLAYABLE_STREET_BOUNDS.minX, point.x)),
-    y: Math.min(PLAYABLE_STREET_BOUNDS.maxY, Math.max(PLAYABLE_STREET_BOUNDS.minY, point.y)),
-  };
-}
 
 type BrowserSpeechRecognition = {
   lang: string;
@@ -680,11 +667,9 @@ export default function Home() {
   const cafeTourInCurrentCity = cafeTourActive && cafeTourStop.cityId === city.id;
   const activeTravelStop = cafeTourInCurrentCity ? cafeTourStop : cityTravelStop;
   const activeNpcIndex = missionStep.npcIndex;
-  const npcPositions = cafeTourInCurrentCity
-    ? [{ x: 35, y: 72 }, { x: 58, y: 82 }, { x: 35, y: 32 }]
-    : STREET_NPC_POSITIONS;
+  const npcPositions = STREET_NPC_POSITIONS;
   const activeNpcPosition = npcPositions[activeNpcIndex];
-  const characterInRange = Math.hypot((playerPosition.x - activeNpcPosition.x) / 3.1, (playerPosition.y - activeNpcPosition.y) / 2.2) < 3.4;
+  const characterInRange = worldDistance(playerPosition, activeNpcPosition) < 3.4;
   const nearCharacter = characterInRange && (!cafeTourInCurrentCity || cafeTourPhase === "cab-conversation" || cafeTourPhase === "cafe");
   const conversationPrompts = cafeTourInCurrentCity && cafeTourPhase === "cab-conversation"
     ? cafeTourStop.driverPrompts
@@ -696,7 +681,7 @@ export default function Home() {
           ? cityTravelStop.cafePrompts
           : city.prompts;
   const currentNpcMessage = [...messages].reverse().find((message) => message.role === "npc" && message.speaker === scene.character);
-  const waypointDistance = Math.round(Math.hypot(playerPosition.x - activeNpcPosition.x, playerPosition.y - activeNpcPosition.y));
+  const waypointDistance = Math.round(worldDistance(playerPosition, activeNpcPosition));
   const weakestWord = pronunciationResult?.words.length
     ? [...pronunciationResult.words].sort((a, b) => a.accuracy - b.accuracy)[0]
     : null;
@@ -757,7 +742,7 @@ export default function Home() {
   useEffect(() => {
     if (!activeTravelStop || cafeTourPhase !== "riding") return;
     const timer = window.setTimeout(() => {
-      setPlayerPosition({ x: 39, y: 75 });
+      setPlayerPosition({ x: 42, y: 53 });
       setSceneId(city.scenes[0].id);
       setInput("");
       setMissionStepTurns(0);
@@ -876,7 +861,7 @@ export default function Home() {
         const inputLength = Math.hypot(forwardInput, rightInput);
         const forward = cameraDirectionRef.current;
         const right = { x: -forward.z, z: forward.x };
-        const speed = (pressed.has("shift") ? 42 : 24) * elapsed / inputLength;
+        const speed = (pressed.has("shift") ? 9.5 : 4.6) * WORLD_SCALE * elapsed / inputLength;
         const xDelta = (forward.x * forwardInput + right.x * rightInput) * speed;
         const yDelta = (forward.z * forwardInput + right.z * rightInput) * speed;
         setPlayerPosition((current) => clampToPlayableStreet({ x: current.x + xDelta, y: current.y + yDelta }));
@@ -1634,7 +1619,8 @@ export default function Home() {
             />
 
             <div className="game-minimap glass-card" aria-label="Street radar">
-              <i className="radar-road horizontal" /><i className="radar-road vertical" />
+              {SCREEN_ROAD_LINES.map((line) => <i key={`road-h-${line}`} className="radar-road horizontal grid" style={{ top: `${line}%` }} />)}
+              {SCREEN_ROAD_LINES.map((line) => <i key={`road-v-${line}`} className="radar-road vertical grid" style={{ left: `${line}%` }} />)}
               {npcPositions.map((position, index) => <span key={city.scenes[index].id} className={index === activeNpcIndex ? "npc-dot active" : "npc-dot"} style={{ left: `${position.x}%`, top: `${position.y}%` }} />)}
               <b style={{ left: `${playerPosition.x}%`, top: `${playerPosition.y}%` }}>▲</b>
               <small>{city.name}</small>

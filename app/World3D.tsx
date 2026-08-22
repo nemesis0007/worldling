@@ -1,13 +1,14 @@
 "use client";
 
-import { Suspense, type ComponentRef, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, Suspense, type ComponentRef, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, ThreeElements, ThreeEvent, useFrame, useThree } from "@react-three/fiber";
 import { Environment, Html, OrbitControls, Sparkles, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils.js";
 import SadakStreetBuilding from "./SadakStreetBuilding";
+import { ROAD_WIDTH, ROAD_WORLD_LINES, toScreen, toWorld, WORLD_LIMIT, type WorldPoint } from "./world-layout";
 
-type Point = { x: number; y: number };
+type Point = WorldPoint;
 type CameraDirection = { x: number; z: number };
 
 type World3DProps = {
@@ -40,17 +41,23 @@ const MODEL_ROOT = "/models/kenney-city";
 const CHARACTER_ROOT = "/models/quaternius";
 const CAR_ROOT = "/models/kenney-cars";
 const PLAYER_MODEL_FORWARD_OFFSET = Math.PI;
-
-function toWorld(point: Point): [number, number, number] {
-  return [(point.x - 50) / 3.1, 0, (point.y - 70) / 2.2];
-}
-
-function toScreen(x: number, z: number): Point {
-  return {
-    x: Math.min(90, Math.max(10, 50 + x * 3.1)),
-    y: Math.min(88, Math.max(54, 70 + z * 2.2)),
-  };
-}
+const CITY_BLOCK_CENTERS = [-11, 11] as const;
+const ROAD_DASH_POSITIONS = Array.from({ length: 23 }, (_, index) => -33 + index * 3)
+  .filter((position) => ROAD_WORLD_LINES.every((line) => Math.abs(position - line) > ROAD_WIDTH * .72));
+const DISTRICT_BUILDING_EDGES = [
+  ...CITY_BLOCK_CENTERS.flatMap((x) => CITY_BLOCK_CENTERS.flatMap((z) => [
+    { x, z: z - 7.55, rotation: 0 },
+    { x, z: z + 7.55, rotation: Math.PI },
+    { x: x - 7.55, z, rotation: Math.PI / 2 },
+    { x: x + 7.55, z, rotation: -Math.PI / 2 },
+  ])),
+  ...CITY_BLOCK_CENTERS.flatMap((offset) => [
+    { x: -29.55, z: offset, rotation: -Math.PI / 2 },
+    { x: 29.55, z: offset, rotation: Math.PI / 2 },
+    { x: offset, z: -29.55, rotation: Math.PI },
+    { x: offset, z: 29.55, rotation: 0 },
+  ]),
+];
 
 function Model({ url, ...props }: { url: string } & ThreeElements["group"]) {
   const { scene } = useGLTF(url);
@@ -405,83 +412,95 @@ function footprintScale(building: Neighborhood["buildings"][number], maximum = .
   return Math.min(maximum, 4.4 / span);
 }
 
-function PlayableRoad() {
+const PlayableRoad = memo(function PlayableRoad() {
+  const span = WORLD_LIMIT * 2;
   return <group>
-    <mesh receiveShadow position={[0, .01, 0]}><boxGeometry args={[8.4, .09, 48]} /><meshStandardMaterial color="#202427" roughness={.94} /></mesh>
-    {[-5.15, 5.15].map((x) => <mesh key={x} receiveShadow position={[x, .055, 0]}><boxGeometry args={[1.5, .16, 48]} /><meshStandardMaterial color="#a9a49b" roughness={.96} /></mesh>)}
-    {[-1.45, 1.45].map((x) => <group key={x}>{Array.from({ length: 16 }, (_, index) => <mesh key={index} position={[x, .075, -22.5 + index * 3]}><boxGeometry args={[.055, .018, 1.35]} /><meshBasicMaterial color="#e7d477" /></mesh>)}</group>)}
-    {[-17, -5, 7, 19].map((z) => <group key={z}>{Array.from({ length: 11 }, (_, index) => <mesh key={index} position={[-3.6 + index * .72, .082, z]}><boxGeometry args={[.46, .018, .16]} /><meshBasicMaterial color="#eeeadd" /></mesh>)}</group>)}
+    {ROAD_WORLD_LINES.map((line) => <group key={`roads-${line}`}>
+      <mesh receiveShadow position={[line, .01, 0]}><boxGeometry args={[ROAD_WIDTH, .09, span]} /><meshStandardMaterial color="#202427" roughness={.94} /></mesh>
+      <mesh receiveShadow position={[0, .012, line]}><boxGeometry args={[span, .09, ROAD_WIDTH]} /><meshStandardMaterial color="#202427" roughness={.94} /></mesh>
+    </group>)}
+    {CITY_BLOCK_CENTERS.flatMap((x) => CITY_BLOCK_CENTERS.map((z) => <mesh key={`pavement-${x}-${z}`} receiveShadow position={[x, .075, z]}><boxGeometry args={[13.2, .15, 13.2]} /><meshStandardMaterial color="#aaa69d" roughness={.98} /></mesh>))}
+    {ROAD_WORLD_LINES.flatMap((line) => ROAD_DASH_POSITIONS.flatMap((position) => [
+      <mesh key={`lane-z-${line}-${position}`} position={[line, .075, position]}><boxGeometry args={[.16, .018, 1.35]} /><meshBasicMaterial color="#e7d477" /></mesh>,
+      <mesh key={`lane-x-${line}-${position}`} position={[position, .075, line]}><boxGeometry args={[1.35, .018, .16]} /><meshBasicMaterial color="#e7d477" /></mesh>,
+    ]))}
+    {[-3, -1.8, -.6, .6, 1.8, 3].flatMap((offset) => [
+      <mesh key={`cross-z-${offset}`} position={[offset, .082, 5.25]}><boxGeometry args={[.62, .018, 1.8]} /><meshBasicMaterial color="#eeeadd" /></mesh>,
+      <mesh key={`cross-x-${offset}`} position={[5.25, .082, offset]}><boxGeometry args={[1.8, .018, .62]} /><meshBasicMaterial color="#eeeadd" /></mesh>,
+    ])}
   </group>;
-}
+});
 
-function NewYorkNeighborhood({ data }: { data: Neighborhood }) {
-  const towers = useMemo(() => [...data.buildings].sort((a, b) => b.height - a.height).slice(0, 18), [data.buildings]);
+const TOWER_SLOTS = CITY_BLOCK_CENTERS.flatMap((x) => CITY_BLOCK_CENTERS.flatMap((z) => [
+  { x: x - 2.35, z: z - 2.35 },
+  { x: x + 2.35, z: z + 2.35 },
+  { x: x - 2.35, z: z + 2.35 },
+  { x: x + 2.35, z: z - 2.35 },
+]));
+
+const NewYorkNeighborhood = memo(function NewYorkNeighborhood({ data }: { data: Neighborhood }) {
+  const towers = useMemo(() => [...data.buildings].sort((a, b) => b.height - a.height).slice(0, TOWER_SLOTS.length), [data.buildings]);
   return <group>
     <PlayableRoad />
     {towers.map((building, index) => {
-      const side = index % 2 === 0 ? -1 : 1;
-      const slot = Math.floor(index / 2);
-      const target = { x: side * (8.2 + (index % 3) * .18), z: -19.2 + slot * 4.8 };
+      const target = TOWER_SLOTS[index];
       const center = buildingCenter(building);
-      const scale = footprintScale(building);
+      const scale = footprintScale(building, .48);
       return <group key={building.id}>
         <group position={[target.x - center.x * scale, 0, target.z - center.z * scale]} scale={[scale, 1, scale]}><OsmBuilding building={building} sceneClass="atlantic" detailed /></group>
       </group>;
     })}
   </group>;
-}
+});
 
-function OsmNeighborhood({ data, sceneClass }: { data: Neighborhood; sceneClass: string }) {
+const OsmNeighborhood = memo(function OsmNeighborhood({ data, sceneClass }: { data: Neighborhood; sceneClass: string }) {
   const detailed = data.detailLevel === "nyc-official";
   if (detailed) return <NewYorkNeighborhood data={data} />;
-  const buildings = [...data.buildings].sort((a, b) => b.height - a.height).slice(0, 16);
+  const buildings = [...data.buildings].sort((a, b) => b.height - a.height).slice(0, 12);
   return <group>
     <PlayableRoad />
     {buildings.map((building, index) => {
-      const side = index % 2 === 0 ? -1 : 1;
-      const slot = Math.floor(index / 2);
-      const target = { x: side * (8.25 + (index % 3) * .15), z: -18 + slot * 5.1 };
+      const target = TOWER_SLOTS[index];
       const center = buildingCenter(building);
-      const scale = footprintScale(building, .7);
+      const scale = footprintScale(building, .42);
       return <group key={building.id} position={[target.x - center.x * scale, 0, target.z - center.z * scale]} scale={[scale, 1, scale]}>
         <OsmBuilding building={building} sceneClass={sceneClass} />
       </group>;
     })}
   </group>;
-}
+});
 
-function DetailedNeighborhood({ data, sceneClass }: { data: Neighborhood; sceneClass: string }) {
+const DetailedNeighborhood = memo(function DetailedNeighborhood({ data, sceneClass }: { data: Neighborhood; sceneClass: string }) {
   return <OsmNeighborhood data={data} sceneClass={sceneClass} />;
-}
+});
 
 function FallbackStreet() {
   return <PlayableRoad />;
 }
 
-function SadakStreetRibbon({ cityName, sceneClass }: { cityName: string; sceneClass: string }) {
+const SadakDistrictGrid = memo(function SadakDistrictGrid({ cityName, sceneClass }: { cityName: string; sceneClass: string }) {
   const citySeed = [...cityName].reduce((total, character) => total + character.charCodeAt(0), 0);
-  const slots = [-11.5, -4.8, 1.9, 8.6, 15.3];
   return (
     <group>
-      {([-1, 1] as const).flatMap((side) => slots.map((z, index) => {
-        const seed = citySeed + index * 17 + (side > 0 ? 101 : 0);
+      {DISTRICT_BUILDING_EDGES.map((edge, index) => {
+        const seed = citySeed + index * 17;
         const floors = cityName === "New York" ? 4 + seed % 3 : 2 + seed % 3;
         return (
           <SadakStreetBuilding
-            key={`${side}-${z}`}
-            position={[side * 10.55, 0, z]}
-            rotation={Math.PI / 2}
-            width={6.15}
-            depth={cityName === "New York" ? 4.1 : 4.5}
+            key={`${edge.x}-${edge.z}`}
+            position={[edge.x, 0, edge.z]}
+            rotation={edge.rotation}
+            width={12.7}
+            depth={cityName === "New York" ? 4 : 4.35}
             floors={floors}
             seed={seed}
             sceneClass={sceneClass}
           />
         );
-      }))}
+      })}
     </group>
   );
-}
+});
 
 const LANDMARKS: Record<string, string> = {
   "New York": "Liberty Harbor",
@@ -620,19 +639,19 @@ function CityScene({ activeNpcIndex, cameraResetSignal, cityName, neighborhood, 
   return (
     <>
       <color attach="background" args={[sky]} />
-      <fog attach="fog" args={[sky, 18, 46]} />
+      <fog attach="fog" args={[sky, 38, 92]} />
       <ambientLight intensity={1.25} />
       <hemisphereLight args={["#d9efff", "#29372f", 2.1]} />
       <directionalLight castShadow position={[-9, 14, 8]} intensity={3.2} color="#fff1d5" shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
       <Environment preset="city" environmentIntensity={.45} />
-      <Sparkles count={30} scale={[24, 5, 24]} size={1.1} speed={.18} opacity={.18} color="#d8ff5f" />
+      <Sparkles count={46} scale={[68, 6, 68]} size={1.1} speed={.18} opacity={.15} color="#d8ff5f" />
 
       <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[0, -.03, 0]} onClick={moveOnGround}>
-        <planeGeometry args={[44, 48]} />
+        <planeGeometry args={[WORLD_LIMIT * 2.2, WORLD_LIMIT * 2.2]} />
         <meshStandardMaterial color="#70756e" roughness={.96} />
       </mesh>
       <group onClick={moveOnGround}>{neighborhood ? <DetailedNeighborhood data={neighborhood} sceneClass={sceneClass} /> : <FallbackStreet />}</group>
-      <SadakStreetRibbon cityName={cityName} sceneClass={sceneClass} />
+      <SadakDistrictGrid cityName={cityName} sceneClass={sceneClass} />
       {!['New York', 'Paris', 'Mumbai'].includes(cityName) && <>
         {[-11, -3, 6, 13].map((z, index) => <Model key={`tree-left-${z}`} url={`${MODEL_ROOT}/${index % 2 ? "tree-small" : "tree-large"}.glb`} position={[-6.8, 0, z]} scale={1.7} />)}
         {[-8, 1, 9].map((z, index) => <Model key={`tree-right-${z}`} url={`${MODEL_ROOT}/${index % 2 ? "tree-large" : "tree-small"}.glb`} position={[6.8, 0, z]} scale={1.6} />)}

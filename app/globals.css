@@ -1123,6 +1123,8 @@ footer { min-height: 64px; padding-inline: max(24px,calc((100vw - 1320px)/2)); b
 .radar-road { position: absolute; display: block; background: rgba(255,255,255,.13); }
 .radar-road.horizontal { left: -10%; right: -10%; top: 58%; height: 13px; rotate: -12deg; }
 .radar-road.vertical { top: -10%; bottom: -10%; left: 47%; width: 10px; rotate: 18deg; }
+.radar-road.horizontal.grid { left: 0; right: 0; height: 5px; rotate: 0deg; }
+.radar-road.vertical.grid { top: 0; bottom: 0; width: 5px; rotate: 0deg; }
 .game-minimap .npc-dot { position: absolute; z-index: 2; width: 6px; height: 6px; translate: -50% -50%; border-radius: 50%; background: white; box-shadow: 0 0 0 3px rgba(255,255,255,.11); }
 .game-minimap .npc-dot.active { background: var(--yellow); box-shadow: 0 0 0 4px rgba(216,255,95,.18),0 0 12px var(--yellow); }
 .game-minimap b { position: absolute; z-index: 3; translate: -50% -50%; color: #58aaff; font-size: 10px; text-shadow: 0 0 10px #58aaff; }
