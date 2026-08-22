@@ -1,4 +1,14 @@
 # Local artifacts that are not part of the Worldling web build.
+node_modules/
+.next/
+.vinext/
+dist/
+.wrangler/
 output/
+tmp/
+work/
+local-pronunciation/.venv/
+local-pronunciation/__pycache__/
+local-pronunciation/test-*.wav
 scripts/generate_equip_expo_booth.py
 scripts/validate_equip_expo_booth.py
