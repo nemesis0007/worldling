@@ -2269,6 +2269,116 @@ footer strong { color: #b9b6a9; }
   .sadak-replace .game-status { max-width: 72px; }
 }
 
+/* Phone game mode: clear play space, thumb movement, and safe-area controls. */
+@media (max-width: 680px) {
+  .sadak-replace { height: 100svh; min-height: 100svh; overscroll-behavior: none; }
+  .sadak-replace .journey-section,
+  .sadak-replace .journey-shell,
+  .sadak-replace .play-world { height: 100svh; min-height: 100svh; }
+  .sadak-replace .world3d-canvas canvas { touch-action: none; }
+
+  .sadak-brand-hud { top: max(8px,env(safe-area-inset-top)); left: 8px; min-width: 0; width: 202px; padding: 7px; box-shadow: 3px 3px 0 var(--sadak-ink); }
+  .sadak-wordmark { gap: 5px; padding-bottom: 4px; font-size: 9px; }
+  .sadak-wordmark b { width: 22px; height: 22px; font-size: 12px; }
+  .sadak-brand-hud > div small { max-width: 118px; overflow: hidden; font-size: 6px; text-overflow: ellipsis; white-space: nowrap; }
+  .sadak-brand-hud > button { min-height: 36px; padding: 6px; }
+
+  .sadak-replace .game-status,
+  .sadak-replace .focus-mode .game-status { top: max(8px,env(safe-area-inset-top)); right: 8px; max-width: 56px; padding: 4px; overflow: visible; }
+  .sadak-replace .game-status > button { min-width: 44px; min-height: 40px; padding: 5px; font-size: 8px; }
+  .sadak-replace .game-status > button:not(:last-child),
+  .sadak-replace .game-status .model-chip { display: none; }
+
+  .camera-orbit-hud { top: 90px; right: 8px; left: auto; grid-template-columns: auto auto; gap: 4px; min-height: 36px; padding: 4px; translate: 0; box-shadow: 3px 3px 0 #1e211c; }
+  .camera-orbit-hud > div { display: none; }
+  .camera-orbit-hud > span { min-width: 34px; height: 30px; }
+  .camera-orbit-hud button { min-width: 43px; min-height: 30px; padding: 0 5px; }
+
+  .sadak-replace .game-mission,
+  .sadak-replace .focus-mode .game-mission { top: 99px; left: 8px; width: calc(100% - 108px); max-width: 245px; padding: 8px; }
+  .sadak-replace .game-mission strong { display: -webkit-box; overflow: hidden; font-size: 9px; line-height: 1.3; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
+  .sadak-replace .game-mission small { font-size: 6px; }
+  .sadak-replace .osm-world-status { display: none; }
+
+  .sadak-replace .virtual-joystick { display: block; left: max(14px,env(safe-area-inset-left)); bottom: max(18px,env(safe-area-inset-bottom)); z-index: 38; }
+  .virtual-joystick-base { width: 98px; height: 98px; border: 2px solid rgba(255,255,255,.72); background: rgba(18,18,15,.58); box-shadow: inset 0 0 0 9px rgba(255,255,255,.05),3px 4px 0 rgba(18,18,15,.85); }
+  .virtual-joystick-knob { width: 46px; height: 46px; border: 2px solid var(--sadak-ink); background: var(--sadak-main); box-shadow: 3px 3px 0 var(--sadak-ink); }
+  .near-npc .virtual-joystick { bottom: calc(180px + env(safe-area-inset-bottom)); }
+
+  .sadak-replace .game-minimap,
+  .sadak-replace .focus-mode .game-minimap { right: 10px; bottom: calc(76px + env(safe-area-inset-bottom)); width: 76px; height: 76px; border-width: 2px; }
+  .near-npc .game-minimap { bottom: calc(184px + env(safe-area-inset-bottom)) !important; }
+  .sadak-replace .game-minimap small { bottom: 7px; max-width: 54px; }
+
+  .sadak-replace .voice-hud,
+  .sadak-replace .voice-hud.roaming,
+  .sadak-replace .focus-mode .voice-hud { left: 8px; right: 8px; bottom: max(8px,env(safe-area-inset-bottom)); width: auto; padding: 8px; translate: 0; box-shadow: 3px 3px 0 var(--sadak-ink); }
+  .roaming-player .voice-hud { left: auto; width: min(244px,calc(100% - 132px)); }
+  .roaming-player .voice-hud form,
+  .roaming-player .voice-actions,
+  .roaming-player .suggestion-strip,
+  .roaming-player .voice-heard { display: none; }
+  .sadak-replace .voice-context { margin: 0; }
+  .sadak-replace .voice-context > span { width: 30px; height: 30px; font-size: 17px; }
+  .sadak-replace .voice-context strong { font-size: 8px; line-height: 1.25; }
+  .sadak-replace .voice-hud form { grid-template-columns: 96px minmax(0,1fr); gap: 6px; margin-top: 7px; }
+  .sadak-replace .world-mic { min-height: 48px; padding: 4px 6px; font-size: 7px; }
+  .sadak-replace .world-text-entry { min-height: 48px; grid-template-columns: minmax(0,1fr) 40px; padding: 4px; }
+  .sadak-replace .world-text-entry input { width: 100%; padding: 0 5px; font-size: 16px; }
+  .sadak-replace .voice-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
+  .sadak-replace .voice-actions button { min-height: 35px; font-size: 7px; }
+  .sadak-replace .suggestion-strip { display: none; }
+  .sadak-replace .world-dialogue { right: 8px; bottom: calc(184px + env(safe-area-inset-bottom)); left: auto; width: calc(100% - 128px); max-width: 300px; padding: 8px; }
+  .sadak-replace .world-dialogue p { display: -webkit-box; overflow: hidden; font-size: 9px; line-height: 1.35; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
+  .sadak-replace .approach-hint { right: 8px; bottom: calc(76px + env(safe-area-inset-bottom)); left: auto; max-width: calc(100% - 130px); padding: 7px 9px; font-size: 7px; }
+
+  .sadak-replace .transcript-drawer { inset: max(64px,calc(env(safe-area-inset-top) + 56px)) 8px max(8px,env(safe-area-inset-bottom)); width: auto; padding: 12px; box-shadow: 4px 4px 0 var(--sadak-ink); }
+  .sadak-replace .transcript-drawer .message { max-width: 100%; }
+  .sadak-replace .transcript-drawer .message p { font-size: 14px; }
+  .sadak-replace .phrasebook-panel { top: max(8px,env(safe-area-inset-top)); bottom: max(8px,env(safe-area-inset-bottom)); width: calc(100% - 16px); max-height: none; padding: 14px; translate: -50% 0; overflow-y: auto; }
+  .sadak-replace .phrasebook-list article { grid-template-columns: 26px minmax(0,1fr); padding: 10px; }
+  .sadak-replace .phrasebook-list article > div { grid-column: 2; }
+  .sadak-replace .phrasebook-list button { min-height: 40px; font-size: 8px; }
+  .overlay-shortcut { display: none; }
+
+  .modal-backdrop,
+  .pronunciation-backdrop { place-items: start center; padding: max(8px,env(safe-area-inset-top)) 8px max(8px,env(safe-area-inset-bottom)); overflow-y: auto; }
+  .score-card,
+  .pronunciation-sheet { width: 100%; max-height: none; border-radius: 9px; padding: 20px 14px; box-shadow: 6px 6px 0 #171713; }
+  .pronunciation-sheet > h2 { font-size: 30px; }
+  .pronunciation-sheet .pronunciation-intro { font-size: 11px; }
+  .pronunciation-sheet .pronunciation-providers button,
+  .pronunciation-sheet .pronunciation-local-service > button,
+  .pronunciation-sheet .record-pronunciation { min-height: 48px; }
+  .pronunciation-sheet .pronunciation-endpoint input { min-height: 46px; font-size: 16px; }
+  .pronunciation-sheet .phrase-selector button { width: 40px; height: 40px; }
+  .pronunciation-sheet .target-phrase > strong { font-size: 19px; }
+  .pronunciation-sheet .target-phrase > button { min-height: 44px; }
+
+  .sadak-world-picker { padding: max(8px,env(safe-area-inset-top)) 8px max(8px,env(safe-area-inset-bottom)); }
+  .sadak-world-picker > section { max-height: calc(100svh - max(16px,env(safe-area-inset-top))); padding: 12px; }
+  .sadak-picker-heading { margin: 18px 0 12px; }
+  .sadak-picker-heading h1 { font-size: 38px; }
+  .sadak-picker-heading p { font-size: 10px; }
+  .sadak-level-row button { min-height: 42px; }
+  .cafe-tour-launch { padding: 11px; }
+}
+
+@media (max-width: 680px) and (max-height: 520px) and (orientation: landscape) {
+  .sadak-brand-hud { width: 154px; grid-template-columns: 1fr; }
+  .sadak-brand-hud > div { display: none; }
+  .sadak-brand-hud > button { position: absolute; top: 6px; right: 6px; min-height: 30px; }
+  .sadak-wordmark { border: 0; padding: 0; }
+  .sadak-replace .game-mission { top: 55px; max-width: 210px; }
+  .camera-orbit-hud { top: 8px; right: 64px; }
+  .roaming-player .voice-hud { width: 220px; }
+  .sadak-replace .virtual-joystick { bottom: 10px; }
+  .near-npc .virtual-joystick { bottom: 142px; }
+  .sadak-replace .voice-hud form { grid-template-columns: 90px minmax(0,1fr); }
+  .near-npc .game-minimap,
+  .near-npc .world-dialogue { bottom: 146px !important; }
+}
+
 /* High-contrast mission results and immediate objective rewards */
 .modal-backdrop { background: rgba(12,15,13,.78); backdrop-filter: blur(7px) saturate(.75); }
 .score-card {

@@ -2,6 +2,7 @@
 
 import { FormEvent, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AgentAction, FLAGSHIP_MISSIONS, genericMission } from "./mission-data";
+import VirtualJoystick from "./VirtualJoystick";
 import { clampToPlayableStreet, SCREEN_ROAD_LINES, STREET_NPC_POSITIONS, WORLD_SCALE, worldDistance } from "./world-layout";
 
 const World3D = lazy(() => import("./World3D"));
@@ -733,6 +734,17 @@ export default function Home() {
 
   const updateCameraDirection = useCallback((direction: { x: number; z: number }) => {
     cameraDirectionRef.current = direction;
+  }, []);
+
+  const moveWithJoystick = useCallback((rightInput: number, verticalInput: number) => {
+    const forwardInput = -verticalInput;
+    const inputLength = Math.max(1, Math.hypot(forwardInput, rightInput));
+    const forward = cameraDirectionRef.current;
+    const right = { x: -forward.z, z: forward.x };
+    const speed = .085 * WORLD_SCALE / inputLength;
+    const xDelta = (forward.x * forwardInput + right.x * rightInput) * speed;
+    const yDelta = (forward.z * forwardInput + right.z * rightInput) * speed;
+    setPlayerPosition((current) => clampToPlayableStreet({ x: current.x + xDelta, y: current.y + yDelta }));
   }, []);
 
   const city = useMemo(() => CITIES.find((item) => item.id === cityId) ?? CITIES[0], [cityId]);
@@ -1533,7 +1545,7 @@ export default function Home() {
   }
 
   return (
-    <main className={`app-shell sadak-replace ${cafeTourActive ? "cafe-tour-active" : ""}`}>
+    <main className={`app-shell sadak-replace ${cafeTourActive ? "cafe-tour-active" : ""} ${nearCharacter ? "near-npc" : "roaming-player"}`}>
       <section className={`journey-section scene-${city.sceneClass}`} id="journey">
         <div className="journey-shell">
           <div className="play-world" aria-label={`Walkable scene in ${city.name}`}>
@@ -1619,7 +1631,7 @@ export default function Home() {
                 <span>{city.flag} {city.country}</span>
                 <h3>{city.name}</h3>
                 <p>{mission.summary}</p>
-                <div><kbd>WASD</kbd> move <kbd>SHIFT</kbd> run <kbd>P</kbd> phrases <kbd>ESC</kbd> pause</div>
+                <div><kbd>WASD</kbd> or touch stick to move <kbd>DRAG</kbd> turn camera</div>
               </div>
             )}
 
@@ -1741,6 +1753,11 @@ export default function Home() {
               <small>{city.name}</small>
             </div>
 
+            <VirtualJoystick
+              disabled={showPause || showPhrasebook || showWorldPicker || showEngine || showPronunciation || cafeTourPhase === "riding"}
+              onMove={moveWithJoystick}
+            />
+
             {showTranscript && (
               <aside className="transcript-drawer glass-card">
                 <div><strong>Conversation</strong><button onClick={() => setShowTranscript(false)}>×</button></div>
@@ -1758,7 +1775,7 @@ export default function Home() {
             <div className={`voice-hud glass-card ${nearCharacter ? "engaged" : "roaming"}`}>
               <div className="voice-context">
                 <span>{scene.avatar}</span>
-                <div><small>{nearCharacter ? `TALKING TO ${scene.character.toUpperCase()} · BOND ${affinity}%` : "EXPLORE THE SCENE"}</small><strong>{nearCharacter ? `Speak naturally in ${city.language}` : "Use WASD to move"}</strong></div>
+                <div><small>{nearCharacter ? `TALKING TO ${scene.character.toUpperCase()} · BOND ${affinity}%` : "EXPLORE THE SCENE"}</small><strong>{nearCharacter ? `Speak naturally in ${city.language}` : "Use WASD or the touch stick to move"}</strong></div>
               </div>
               {lastHeard && <div className="voice-heard"><span>MIC HEARD</span><p>{lastHeard}</p></div>}
               <form onSubmit={handleSubmit}>
