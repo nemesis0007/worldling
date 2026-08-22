@@ -838,7 +838,7 @@ export default function Home() {
         pressed.add(key);
         return;
       }
-      if (movementBlocked || !movementKeys.has(key) || (event.target as HTMLElement).closest("input, textarea, button")) return;
+      if (movementBlocked || !movementKeys.has(key) || (event.target as HTMLElement).closest("input, textarea, [contenteditable='true']")) return;
       event.preventDefault();
       pressed.add(key);
     }

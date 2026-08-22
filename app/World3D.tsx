@@ -560,6 +560,22 @@ function PlayerOrbitCamera({ onDirectionChange, playerPosition, resetSignal }: {
   const movementDelta = useMemo(() => new THREE.Vector3(), []);
   const initialized = useRef(false);
 
+  const resetCamera = useCallback((target: THREE.Vector3) => {
+    const nearestVerticalRoad = Math.min(...ROAD_WORLD_LINES.map((line) => Math.abs(target.x - line)));
+    const nearestHorizontalRoad = Math.min(...ROAD_WORLD_LINES.map((line) => Math.abs(target.z - line)));
+    const cameraDistance = 7.2;
+
+    // Keep the camera travelling along the nearest road. Offsetting across a
+    // road can place it inside the building immediately behind the player.
+    if (nearestVerticalRoad <= nearestHorizontalRoad) {
+      const direction = target.z > WORLD_LIMIT - cameraDistance - 2 ? -1 : 1;
+      camera.position.set(target.x, 5.1, target.z + cameraDistance * direction);
+    } else {
+      const direction = target.x > WORLD_LIMIT - cameraDistance - 2 ? -1 : 1;
+      camera.position.set(target.x + cameraDistance * direction, 5.1, target.z);
+    }
+  }, [camera]);
+
   const publishDirection = useCallback(() => {
     const controls = controlsRef.current;
     if (!controls) return;
@@ -576,7 +592,7 @@ function PlayerOrbitCamera({ onDirectionChange, playerPosition, resetSignal }: {
     if (!controls) return;
 
     if (!initialized.current) {
-      camera.position.set(x, 5.1, z + 7.2);
+      resetCamera(playerTarget);
       controls.target.copy(playerTarget);
       lastPlayerPosition.current.copy(playerTarget);
       controls.update();
@@ -597,10 +613,10 @@ function PlayerOrbitCamera({ onDirectionChange, playerPosition, resetSignal }: {
     const controls = controlsRef.current;
     if (!controls || resetSignal === 0) return;
     const currentTarget = lastPlayerPosition.current;
-    camera.position.set(currentTarget.x, 5.1, currentTarget.z + 7.2);
+    resetCamera(currentTarget);
     controls.target.copy(currentTarget);
     controls.update();
-  }, [camera, resetSignal]);
+  }, [resetCamera, resetSignal]);
 
   return (
     <OrbitControls
@@ -730,7 +746,7 @@ export default function World3D(props: World3DProps) {
       <div className="camera-orbit-hud" role="group" aria-label="360 degree camera controls">
         <span aria-hidden="true">360°</span>
         <div><strong>ORBIT CAMERA</strong><small>DRAG TO TURN · WHEEL OR PINCH TO ZOOM</small></div>
-        <button type="button" onClick={() => setCameraResetSignal((current) => current + 1)}>RESET</button>
+        <button type="button" onClick={(event) => { event.currentTarget.blur(); setCameraResetSignal((current) => current + 1); }}>RESET</button>
       </div>
       <button className={`osm-world-status ${mapStatus}`} onClick={props.cityId === "new-york" ? undefined : refreshMap} disabled={props.cityId === "new-york" || mapStatus === "loading" || mapStatus === "refreshing"} title={props.cityId === "new-york" ? "Official NYC building footprints and roof heights" : "Load the newest map data from OpenStreetMap"}>
         <span />{props.cityId === "new-york" && mapStatus === "bundled" ? "NYC official digital street" : mapStatus === "live" ? "Live OSM district" : mapStatus === "bundled" ? "Downloaded OSM district · refresh" : mapStatus === "loading" ? "Loading city area…" : mapStatus === "refreshing" ? "Refreshing map…" : "Designed fallback district"}
