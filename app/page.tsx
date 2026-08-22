@@ -8,6 +8,7 @@ import { clampToPlayableStreet, SCREEN_ROAD_LINES, STREET_NPC_POSITIONS, WORLD_S
 const World3D = lazy(() => import("./World3D"));
 
 type Provider = "demo" | "local" | "api";
+type ApiProvider = "groq" | "openai" | "openrouter" | "gemini";
 type Level = "Beginner" | "Intermediate" | "Advanced";
 type Role = "npc" | "user" | "system";
 
@@ -349,6 +350,13 @@ const providerLabels: Record<Provider, string> = {
   demo: "Demo brain",
   local: "Local model",
   api: "API model",
+};
+
+const API_PROVIDER_MODELS: Record<ApiProvider, { label: string; model: string; hint: string }> = {
+  groq: { label: "Groq", model: "qwen/qwen3.6-27b", hint: "Fast free-tier option" },
+  openai: { label: "OpenAI", model: "gpt-4.1-mini", hint: "Reliable hosted model" },
+  openrouter: { label: "OpenRouter", model: "openrouter/free", hint: "Routes across free models" },
+  gemini: { label: "Google Gemini", model: "gemini-3.7-flash", hint: "Strong multilingual option" },
 };
 
 function encodeWav(samples: Float32Array, sourceRate: number) {
@@ -736,6 +744,11 @@ export default function Home() {
   const [ollamaModel, setOllamaModel] = useState("qwen3:8b");
   const [localStatus, setLocalStatus] = useState<LocalStatus>("idle");
   const [localMessage, setLocalMessage] = useState("Not tested yet");
+  const [apiProvider, setApiProvider] = useState<ApiProvider>("groq");
+  const [apiModel, setApiModel] = useState(API_PROVIDER_MODELS.groq.model);
+  const [apiKey, setApiKey] = useState("");
+  const [apiStatus, setApiStatus] = useState<LocalStatus>("idle");
+  const [apiMessage, setApiMessage] = useState("Enter a key to test this browser session");
   const [xp, setXp] = useState(120);
   const [coins, setCoins] = useState(35);
   const [stamps, setStamps] = useState<string[]>([]);
@@ -854,6 +867,10 @@ export default function Home() {
       });
       const best = JSON.parse(window.localStorage.getItem("worldling-pronunciation-best") ?? "null") as Record<string, number> | null;
       if (best) setPronunciationBest(best);
+      const apiSession = JSON.parse(window.sessionStorage.getItem("worldling-api-session") ?? "null") as { provider?: ApiProvider; model?: string; apiKey?: string } | null;
+      if (apiSession?.provider && apiSession.provider in API_PROVIDER_MODELS) setApiProvider(apiSession.provider);
+      if (apiSession?.model) setApiModel(apiSession.model);
+      if (apiSession?.apiKey) setApiKey(apiSession.apiKey);
     } catch {
       // Ignore malformed device-local prototype state.
     }
@@ -916,6 +933,15 @@ export default function Home() {
     if (!hydrated) return;
     window.localStorage.setItem("worldling-ollama", JSON.stringify({ endpoint: ollamaEndpoint, model: ollamaModel }));
   }, [hydrated, ollamaEndpoint, ollamaModel]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    if (apiKey.trim()) {
+      window.sessionStorage.setItem("worldling-api-session", JSON.stringify({ provider: apiProvider, model: apiModel, apiKey }));
+    } else {
+      window.sessionStorage.removeItem("worldling-api-session");
+    }
+  }, [apiKey, apiModel, apiProvider, hydrated]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -1179,6 +1205,37 @@ export default function Home() {
     }
   }
 
+  function personalApiConfig() {
+    return { provider: apiProvider, model: apiModel.trim(), apiKey: apiKey.trim() };
+  }
+
+  async function testPersonalApi() {
+    if (!apiModel.trim() || apiKey.trim().length < 8) {
+      setApiStatus("error");
+      setApiMessage("Enter a model name and a valid API key first.");
+      return;
+    }
+    setApiStatus("checking");
+    setApiMessage(`Contacting ${API_PROVIDER_MODELS[apiProvider].label}…`);
+    try {
+      const response = await fetch("/api/agent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "test", provider: "api", apiConfig: personalApiConfig() }),
+      });
+      const payload = await response.json() as { ok?: boolean; error?: string; provider?: string; model?: string };
+      if (!response.ok || !payload.ok) throw new Error(payload.error ?? "The provider did not confirm the connection.");
+      setApiStatus("connected");
+      setProvider("api");
+      setApiMessage(`Connected · ${payload.provider} · ${payload.model}`);
+      setEngineNote(`${API_PROVIDER_MODELS[apiProvider].label} connected · using ${apiModel.trim()}`);
+    } catch (error) {
+      setApiStatus("error");
+      const detail = error instanceof Error ? error.message : "Connection failed.";
+      setApiMessage(detail.length > 180 ? `${detail.slice(0, 180)}…` : detail);
+    }
+  }
+
   async function askProvider(text: string, nextMessages: Message[]): Promise<AgentReply> {
     if (provider === "local") {
       return await callOllama("turn", nextMessages) as AgentReply;
@@ -1189,6 +1246,7 @@ export default function Home() {
       body: JSON.stringify({
         action: "turn",
         provider,
+        apiConfig: provider === "api" ? personalApiConfig() : undefined,
         city: city.name,
         country: city.country,
         language: city.language,
@@ -1381,6 +1439,7 @@ export default function Home() {
             body: JSON.stringify({
               action: "evaluate",
               provider,
+              apiConfig: personalApiConfig(),
               city: city.name,
               language: city.language,
               level,
@@ -1578,6 +1637,13 @@ export default function Home() {
       setShowEngine(true);
       return;
     }
+    if (provider === "api" && apiStatus !== "connected") {
+      setPendingCityId(nextCity.id);
+      setApiMessage(apiStatus === "error" ? apiMessage : "Choose a provider, enter your key, and test it before entering.");
+      setEngineNote(`${nextCity.name} queued · connect a hosted model to enter`);
+      setShowEngine(true);
+      return;
+    }
     setPendingCityId(null);
     enterCity(nextCity);
   }
@@ -1657,7 +1723,7 @@ export default function Home() {
                 <section>
                   <header>
                     <div className="sadak-title-lockup"><span>W</span><div><strong>WORLDLING</strong><small>WALK · MEET · SPEAK</small></div></div>
-                    <button onClick={() => setShowEngine(true)}><i className={`status-dot ${provider} ${provider === "local" ? localStatus : ""}`} />{provider === "local" ? ollamaModel : providerLabels[provider]}</button>
+                    <button onClick={() => setShowEngine(true)}><i className={`status-dot ${provider} ${provider === "local" ? localStatus : provider === "api" ? apiStatus : ""}`} />{provider === "local" ? ollamaModel : provider === "api" ? `${API_PROVIDER_MODELS[apiProvider].label} · ${apiModel}` : providerLabels[provider]}</button>
                   </header>
                   <div className="sadak-picker-heading">
                     <span>YOUR NEXT ERRAND</span>
@@ -1670,10 +1736,10 @@ export default function Home() {
                         <button
                           key={option}
                           className={provider === option ? "active" : ""}
-                          onClick={() => { setProvider(option); if (option === "local") setShowEngine(true); }}
+                          onClick={() => { setProvider(option); if (option === "local" || option === "api") setShowEngine(true); }}
                         >
                           <i>{option === "demo" ? "◎" : option === "local" ? "⌂" : "✦"}</i>
-                          <span><strong>{option === "demo" ? "Demo" : option === "local" ? "Ollama / Qwen" : "Hosted API"}</strong><small>{option === "demo" ? "Scripted · offline" : option === "local" ? localStatus === "connected" ? `${ollamaModel} · connected` : localStatus === "error" ? "Connection failed · fix settings" : "Local LLM · test required" : "Server LLM · live"}</small></span>
+                          <span><strong>{option === "demo" ? "Demo" : option === "local" ? "Ollama / Qwen" : "Personal API"}</strong><small>{option === "demo" ? "Scripted · offline" : option === "local" ? localStatus === "connected" ? `${ollamaModel} · connected` : localStatus === "error" ? "Connection failed · fix settings" : "Local LLM · test required" : apiStatus === "connected" ? `${API_PROVIDER_MODELS[apiProvider].label} · connected` : apiStatus === "error" ? "Connection failed · fix settings" : "Your provider · your key"}</small></span>
                           <b>{provider === option ? "SELECTED" : "USE"}</b>
                         </button>
                       ))}
@@ -1773,7 +1839,7 @@ export default function Home() {
             </aside>
 
             <div className="game-status glass-card">
-              <span className={`model-chip ${provider}`} title={engineNote}>{provider === "local" ? `${ollamaModel} · local` : providerLabels[provider]}</span>
+              <span className={`model-chip ${provider}`} title={engineNote}>{provider === "local" ? `${ollamaModel} · local` : provider === "api" ? `${API_PROVIDER_MODELS[apiProvider].label} · ${apiModel}` : providerLabels[provider]}</span>
               <button onClick={() => setShowPhrasebook(true)} aria-label="Open phrasebook">Phrases <kbd>P</kbd></button>
               <button onClick={() => setShowTranscript((current) => !current)}>{showTranscript ? "Close log" : "Log"}</button>
             </div>
@@ -2023,22 +2089,48 @@ export default function Home() {
                   <p><b>Fast local mode:</b> hidden reasoning off · shorter replies · 4K context · model kept warm for 30 minutes.</p>
                 </div>
               </div>
+            ) : provider === "api" ? (
+              <div className="api-config">
+                <div className="ollama-title"><span className={`status-dot api ${apiStatus}`} /><div><strong>Personal hosted API</strong><small>Your key stays in this tab session and is never saved by Worldling.</small></div></div>
+                <div className="api-config-grid">
+                  <label>Provider
+                    <select value={apiProvider} onChange={(event) => {
+                      const next = event.target.value as ApiProvider;
+                      setApiProvider(next);
+                      setApiModel(API_PROVIDER_MODELS[next].model);
+                      setApiStatus("idle");
+                      setApiMessage(API_PROVIDER_MODELS[next].hint);
+                    }}>
+                      {(Object.keys(API_PROVIDER_MODELS) as ApiProvider[]).map((option) => <option key={option} value={option}>{API_PROVIDER_MODELS[option].label}</option>)}
+                    </select>
+                  </label>
+                  <label>Model
+                    <input value={apiModel} onChange={(event) => { setApiModel(event.target.value); setApiStatus("idle"); }} placeholder={API_PROVIDER_MODELS[apiProvider].model} autoComplete="off" spellCheck={false} />
+                  </label>
+                </div>
+                <label>API key
+                  <input type="password" value={apiKey} onChange={(event) => { setApiKey(event.target.value); setApiStatus("idle"); }} placeholder={`Paste your ${API_PROVIDER_MODELS[apiProvider].label} key`} autoComplete="off" spellCheck={false} />
+                </label>
+                <div className={`local-result ${apiStatus}`}><span>{apiStatus === "checking" ? "…" : apiStatus === "connected" ? "✓" : apiStatus === "error" ? "!" : "·"}</span><p>{apiMessage}</p></div>
+                <button className="test-local" onClick={() => void testPersonalApi()} disabled={apiStatus === "checking"}>{apiStatus === "checking" ? "Testing…" : "Test & use this API"}</button>
+                <p className="api-privacy-note"><b>Session-only:</b> closing this tab removes the saved key. Conversations are sent only to the provider you select.</p>
+              </div>
             ) : (
               <div className="config-note">
-                <strong>{provider === "api" ? "API setup" : "Demo setup"}</strong>
-                <p>{provider === "api" ? "Set OPENAI_API_KEY and OPENAI_MODEL on the server. Keys are never requested by or exposed to the browser." : "No setup. Responses and scores use transparent prototype rules so every interaction is testable."}</p>
+                <strong>Demo setup</strong>
+                <p>No setup. Responses and scores use transparent prototype rules so every interaction is testable.</p>
               </div>
             )}
             <button
               className="sheet-done"
-              disabled={provider === "local" && localStatus !== "connected"}
+              disabled={(provider === "local" && localStatus !== "connected") || (provider === "api" && apiStatus !== "connected")}
               onClick={() => {
                 const pendingCity = CITIES.find((item) => item.id === pendingCityId);
                 if (pendingCity) enterCity(pendingCity);
                 setPendingCityId(null);
                 setShowEngine(false);
               }}
-            >{provider === "local" && localStatus !== "connected" ? "Test Ollama to continue" : pendingCityId ? `Enter ${CITIES.find((item) => item.id === pendingCityId)?.name ?? "district"}` : `Continue with ${providerLabels[provider]}`}</button>
+            >{provider === "local" && localStatus !== "connected" ? "Test Ollama to continue" : provider === "api" && apiStatus !== "connected" ? "Test API to continue" : pendingCityId ? `Enter ${CITIES.find((item) => item.id === pendingCityId)?.name ?? "district"}` : `Continue with ${providerLabels[provider]}`}</button>
           </section>
         </div>
       )}

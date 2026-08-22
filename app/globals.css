@@ -478,6 +478,14 @@ footer strong { color: white; }
 .config-note strong { font-size: 10px; }
 .config-note p { font-size: 9px; line-height: 1.55; color: var(--muted); margin: 5px 0 0; }
 .ollama-config { margin-top: 14px; border: 1px solid var(--line); border-radius: 15px; padding: 14px; background: #f3f5ef; }
+.api-config { margin-top: 14px; border: 1px solid var(--line); border-radius: 15px; padding: 14px; background: #f3f5ef; }
+.api-config-grid { display: grid; grid-template-columns: .85fr 1.15fr; gap: 9px; }
+.api-config label { display: block; margin-top: 9px; color: var(--muted); font-size: 7px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.api-config input,
+.api-config select { display: block; width: 100%; min-height: 36px; margin-top: 5px; border: 1px solid var(--line); border-radius: 9px; padding: 9px 10px; outline: none; color: var(--ink); background: white; font: inherit; font-size: 9px; }
+.api-config input:focus,
+.api-config select:focus { border-color: var(--forest); box-shadow: 0 0 0 2px rgba(32,84,78,.1); }
+.api-privacy-note { margin: 10px 0 0; color: var(--muted); font-size: 7px; line-height: 1.5; }
 .ollama-title { display: flex; align-items: center; gap: 9px; margin-bottom: 12px; }
 .ollama-title strong { display: block; font-size: 10px; }
 .ollama-title small { display: block; color: var(--muted); font-size: 7px; margin-top: 2px; }
@@ -2097,14 +2105,20 @@ footer strong { color: #b9b6a9; }
 .sadak-replace .provider-icon.api { background: #b9a1eb; }
 .sadak-replace .engine-flow,
 .sadak-replace .config-note,
-.sadak-replace .ollama-config { border: 2px solid var(--sadak-ink); border-radius: 5px; color: var(--sadak-ink); background: var(--sadak-paper); }
+.sadak-replace .ollama-config,
+.sadak-replace .api-config { border: 2px solid var(--sadak-ink); border-radius: 5px; color: var(--sadak-ink); background: var(--sadak-paper); }
 .sadak-replace .engine-flow div > span { border: 1px solid var(--sadak-ink); color: var(--sadak-ink); background: var(--sadak-blue); }
 .sadak-replace .engine-flow p,
 .sadak-replace .ollama-title small,
 .sadak-replace .config-note p { color: #5b5548; }
 .sadak-replace .engine-flow p strong { color: var(--sadak-ink); }
-.sadak-replace .ollama-config input { border: 1.5px solid var(--sadak-ink); border-radius: 4px; color: var(--sadak-ink); background: #fff; }
-.sadak-replace .ollama-config input:focus { border-color: var(--sadak-blue); box-shadow: 0 0 0 2px rgba(69,168,245,.24); }
+.sadak-replace .ollama-config input,
+.sadak-replace .api-config input,
+.sadak-replace .api-config select { border: 1.5px solid var(--sadak-ink); border-radius: 4px; color: var(--sadak-ink); background: #fff; }
+.sadak-replace .ollama-config input:focus,
+.sadak-replace .api-config input:focus,
+.sadak-replace .api-config select:focus { border-color: var(--sadak-blue); box-shadow: 0 0 0 2px rgba(69,168,245,.24); }
+.sadak-replace .api-privacy-note { color: #514b3f; }
 .sadak-replace .local-result { border: 1px solid rgba(18,18,15,.28); border-radius: 4px; color: var(--sadak-ink); background: #ece9d8; }
 .sadak-replace .local-result p { color: var(--sadak-ink); font-size: 8px; }
 .sadak-replace .local-result.connected { background: #d9f3c7; }
@@ -2274,6 +2288,15 @@ footer strong { color: #b9b6a9; }
 /* Phone game mode: clear play space, thumb movement, and safe-area controls. */
 @media (max-width: 680px) {
   .sadak-replace { height: 100svh; min-height: 100svh; overscroll-behavior: none; }
+  .sadak-replace .engine-backdrop { place-items: stretch; padding: 0; }
+  .sadak-replace .engine-sheet { width: 100%; height: 100svh; border: 0; border-radius: 0; padding: max(54px,calc(env(safe-area-inset-top) + 24px)) 14px max(18px,env(safe-area-inset-bottom)); box-shadow: none; }
+  .sadak-replace .engine-sheet h2 { font-size: 30px; }
+  .sadak-replace .provider-options { margin: 16px 0; }
+  .sadak-replace .engine-flow { display: none; }
+  .api-config-grid { grid-template-columns: 1fr; gap: 0; }
+  .api-config input,
+  .api-config select { min-height: 46px; font-size: 16px; }
+  .api-config .test-local { min-height: 48px; }
   .sadak-replace .journey-section,
   .sadak-replace .journey-shell,
   .sadak-replace .play-world { height: 100svh; min-height: 100svh; }
