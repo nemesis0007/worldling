@@ -33,6 +33,9 @@ export async function POST(request: Request) {
     if (!(audio instanceof File) || !referenceText) {
       return Response.json({ error: "Audio and reference text are required." }, { status: 400 });
     }
+    if (referenceText.length > 180) {
+      return Response.json({ error: "Reference sentences must be 180 characters or fewer." }, { status: 400 });
+    }
     if (audio.size > 8 * 1024 * 1024) {
       return Response.json({ error: "Pronunciation recordings must be under 8 MB." }, { status: 413 });
     }

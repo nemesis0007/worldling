@@ -187,6 +187,8 @@ async def assess(
 ) -> dict[str, Any]:
     if not referenceText.strip():
         raise HTTPException(400, "Reference text is required.")
+    if len(referenceText.strip()) > 180:
+        raise HTTPException(400, "Reference sentences must be 180 characters or fewer.")
     payload = await audio.read()
     if not payload or len(payload) > 8 * 1024 * 1024:
         raise HTTPException(400, "Audio must be a non-empty WAV file under 8 MB.")

@@ -7,7 +7,11 @@ export const ROAD_WIDTH = 13;
 export const WORLD_LIMIT = 46;
 export const PLAYABLE_STREET_BOUNDS = { minX: 4, maxX: 96, minY: 4, maxY: 96 } as const;
 export const SCREEN_ROAD_LINES = ROAD_WORLD_LINES.map((line) => WORLD_CENTER + line * WORLD_SCALE);
-const WALKABLE_HALF_WIDTH = (ROAD_WIDTH / 2 + 2.4) * WORLD_SCALE;
+// The authored façades begin about 7.6 world units from each road centre.
+// Keep the player centre at least a character radius away from visible walls.
+// The café chair at x=-7.45 is reached only by the movement-locked scripted
+// seating phase, then the player is returned to the normal corridor.
+const WALKABLE_HALF_WIDTH = (ROAD_WIDTH / 2 + .8) * WORLD_SCALE;
 
 export const STREET_NPC_POSITIONS: WorldPoint[] = [
   { x: 41, y: 51 },

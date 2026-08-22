@@ -180,8 +180,10 @@ type PronunciationResult = {
 
 type WavCapture = { stop: () => Promise<Blob> };
 
-type CafeTourPhase = "idle" | "call" | "cab-conversation" | "riding" | "cafe" | "stop-complete" | "tour-complete";
+type CafeTourPhase = "idle" | "call" | "cab-conversation" | "riding" | "cafe" | "eating" | "stop-complete" | "tour-complete";
 const CAFE_RIDE_DURATION_MS = 7200;
+const CAFE_REST_DURATION_MS = 8500;
+const CAFE_SEAT_POSITION = { x: 42.55, y: 48.9 } as const;
 const TASK_REWARD_XP = 25;
 const TASK_REWARD_COINS = 5;
 
@@ -766,6 +768,7 @@ export default function Home() {
   const [showPronunciation, setShowPronunciation] = useState(false);
   const [pronunciationProvider, setPronunciationProvider] = useState<PronunciationProvider>("local");
   const [pronunciationPrompt, setPronunciationPrompt] = useState(0);
+  const [pronunciationCustomText, setPronunciationCustomText] = useState("");
   const [pronunciationRecording, setPronunciationRecording] = useState(false);
   const [pronunciationBusy, setPronunciationBusy] = useState(false);
   const [pronunciationNote, setPronunciationNote] = useState("Choose a phrase and record one clear attempt.");
@@ -798,6 +801,7 @@ export default function Home() {
   }, []);
 
   const moveWithJoystick = useCallback((rightInput: number, verticalInput: number) => {
+    if (cafeTourPhase === "riding" || cafeTourPhase === "eating") return;
     const forwardInput = -verticalInput;
     const inputLength = Math.max(1, Math.hypot(forwardInput, rightInput));
     const forward = cameraDirectionRef.current;
@@ -806,7 +810,7 @@ export default function Home() {
     const xDelta = (forward.x * forwardInput + right.x * rightInput) * speed;
     const yDelta = (forward.z * forwardInput + right.z * rightInput) * speed;
     setPlayerPosition((current) => clampToPlayableStreet({ x: current.x + xDelta, y: current.y + yDelta }));
-  }, []);
+  }, [cafeTourPhase]);
 
   const city = useMemo(() => CITIES.find((item) => item.id === cityId) ?? CITIES[0], [cityId]);
   const mission = useMemo(() => FLAGSHIP_MISSIONS[city.id] ?? genericMission(city.id, city.name, city.scenes.map((item) => item.goal)), [city]);
@@ -819,6 +823,7 @@ export default function Home() {
   const cafeTourStop = CAFE_TOUR_STOPS[Math.min(cafeTourStopIndex, CAFE_TOUR_STOPS.length - 1)];
   const cityTravelStop = CAFE_TOUR_STOPS.find((stop) => stop.cityId === city.id);
   const cafeTourInCurrentCity = cafeTourActive && cafeTourStop.cityId === city.id;
+  const cafeResting = cafeTourInCurrentCity && cafeTourPhase === "eating";
   const activeTravelStop = cafeTourInCurrentCity ? cafeTourStop : cityTravelStop;
   const activeNpcIndex = missionStep.npcIndex;
   const npcPositions = STREET_NPC_POSITIONS;
@@ -834,6 +839,9 @@ export default function Home() {
         : cityTravelStop && scene.role === "Cafe host"
           ? cityTravelStop.cafePrompts
           : city.prompts;
+  const pronunciationPhrases = Array.from(new Set([...conversationPrompts, ...city.prompts])).slice(0, 3);
+  const suggestedPronunciationPhrase = pronunciationPhrases[Math.min(pronunciationPrompt, pronunciationPhrases.length - 1)] ?? city.prompts[0];
+  const pronunciationTarget = pronunciationCustomText.trim().replace(/\s+/g, " ") || suggestedPronunciationPhrase;
   const currentNpcMessage = [...messages].reverse().find((message) => message.role === "npc" && message.speaker === scene.character);
   const waypointDistance = Math.round(worldDistance(playerPosition, activeNpcPosition));
   const weakestWord = pronunciationResult?.words.length
@@ -893,6 +901,7 @@ export default function Home() {
     setTaskReward(null);
     setRewarded(false);
     setPronunciationPrompt(0);
+    setPronunciationCustomText("");
     setPronunciationResult(null);
     setPronunciationNote("Choose a phrase and record one clear attempt.");
     setEngineNote(provider === "demo" ? "Ready · no account or key required" : provider === "local" ? "Ollama selected · test the connection in Engine" : "API model selected · server connection checked on first message");
@@ -920,10 +929,22 @@ export default function Home() {
 
   useEffect(() => {
     if (!cafeTourInCurrentCity || cafeTourPhase !== "cafe" || !questProgress[1]) return;
-    setCafeTourVisited((current) => Array.from(new Set([...current, city.id])));
-    setCafeTourPhase("stop-complete");
-    addAgentEvent("give_item", `${city.name} cafe passport stamp earned`);
-  }, [addAgentEvent, cafeTourInCurrentCity, cafeTourPhase, city.id, city.name, questProgress]);
+    setPlayerPosition(CAFE_SEAT_POSITION);
+    setShowTranscript(false);
+    setCafeTourPhase("eating");
+    addAgentEvent("give_item", `${activeTravelStop?.order ?? "Cafe order"} served at your table`);
+  }, [activeTravelStop?.order, addAgentEvent, cafeTourInCurrentCity, cafeTourPhase, questProgress]);
+
+  useEffect(() => {
+    if (!cafeTourInCurrentCity || cafeTourPhase !== "eating") return;
+    const timer = window.setTimeout(() => {
+      setPlayerPosition({ x: 43, y: 51 });
+      setCafeTourVisited((current) => Array.from(new Set([...current, city.id])));
+      setCafeTourPhase("stop-complete");
+      addAgentEvent("give_item", `${city.name} cafe passport stamp earned`);
+    }, CAFE_REST_DURATION_MS);
+    return () => window.clearTimeout(timer);
+  }, [addAgentEvent, cafeTourInCurrentCity, cafeTourPhase, city.id, city.name]);
 
   useEffect(() => {
     window.localStorage.setItem("worldling-provider", provider);
@@ -1002,7 +1023,7 @@ export default function Home() {
   useEffect(() => {
     const pressed = new Set<string>();
     const movementKeys = new Set(["w", "a", "s", "d"]);
-    const movementBlocked = showPause || showPhrasebook || showMobileMission || showWorldPicker || showEngine || showPronunciation || cafeTourPhase === "riding";
+    const movementBlocked = showPause || showPhrasebook || showMobileMission || showWorldPicker || showEngine || showPronunciation || cafeTourPhase === "riding" || cafeTourPhase === "eating";
     let animationFrame = 0;
     let previousTime = performance.now();
 
@@ -1480,7 +1501,7 @@ export default function Home() {
   }
 
   async function assessPronunciation(audio: Blob) {
-    const phrase = city.prompts[pronunciationPrompt];
+    const phrase = pronunciationTarget;
     const form = new FormData();
     form.append("audio", audio, "worldling-attempt.wav");
     form.append("referenceText", phrase);
@@ -1705,7 +1726,8 @@ export default function Home() {
                     : cafeTourPhase === "cab-conversation" ? `Name ${cafeTourStop.cafe}, ask one practical question, and explicitly confirm the ride.`
                       : cafeTourPhase === "riding" ? `Travelling through ${city.name} now.`
                         : cafeTourPhase === "cafe" ? `Walk to ${scene.character}, order ${cafeTourStop.order}, and complete two natural turns.`
-                          : `Your ${city.name} café visit is complete.`
+                          : cafeTourPhase === "eating" ? `Your order is here. Take a seat and enjoy it for a moment.`
+                            : `Your ${city.name} café visit is complete.`
                   : completedQuests === 3 ? mission.finale : missionStep.instruction}</p>
                 {cafeTourInCurrentCity && cafeTourPhase === "call" && <button className="mobile-mission-action" onClick={() => { callCafeRide(); setShowMobileMission(false); }}>Call {cafeTourStop.ride}</button>}
                 {cafeTourInCurrentCity && cafeTourPhase === "stop-complete" && <button className="mobile-mission-action" onClick={() => { continueCafeTour(); setShowMobileMission(false); }}>{cafeTourStopIndex === CAFE_TOUR_STOPS.length - 1 ? "Finish trip" : "Next city"}</button>}
@@ -1787,6 +1809,7 @@ export default function Home() {
                 {cafeTourPhase === "cab-conversation" && <p>Your driver {scene.character} has arrived. Name {cafeTourStop.cafe}, ask one practical question, then explicitly confirm the ride. The cab starts when you say yes.</p>}
                 {cafeTourPhase === "riding" && <p className="ride-status"><span /> Travelling through {city.name}…</p>}
                 {cafeTourPhase === "cafe" && <p>Arrived. Walk to {scene.character} and order {cafeTourStop.order}. Two natural turns earn this city’s café stamp.</p>}
+                {cafeTourPhase === "eating" && <p className="cafe-rest-status"><span>ORDER SERVED</span> You are seated with {cafeTourStop.order}. Take a short break before the passport stamp is awarded.<i><b /></i></p>}
                 {cafeTourPhase === "stop-complete" && <><p>Visit complete. Your {city.name} café stamp is in the passport.</p><button onClick={continueCafeTour}>{cafeTourStopIndex === CAFE_TOUR_STOPS.length - 1 ? "Finish the trip" : `Fly to ${CITIES.find((item) => item.id === CAFE_TOUR_STOPS[cafeTourStopIndex + 1]?.cityId)?.name ?? "next city"}`}</button></>}
               </section>
             )}
@@ -1884,7 +1907,7 @@ export default function Home() {
               </div>
             )}
 
-            {!nearCharacter && <div className="approach-hint glass-card"><b>WAYPOINT</b> Move closer to {city.scenes[activeNpcIndex].character} · {waypointDistance}m</div>}
+            {!nearCharacter && cafeTourPhase !== "riding" && cafeTourPhase !== "eating" && <div className="approach-hint glass-card"><b>WAYPOINT</b> Move closer to {city.scenes[activeNpcIndex].character} · {waypointDistance}m</div>}
 
             <div className="game-minimap glass-card" aria-label="Street radar">
               {SCREEN_ROAD_LINES.map((line) => <i key={`road-h-${line}`} className="radar-road horizontal grid" style={{ top: `${line}%` }} />)}
@@ -1895,7 +1918,7 @@ export default function Home() {
             </div>
 
             <VirtualJoystick
-              disabled={showPause || showPhrasebook || showMobileMission || showWorldPicker || showEngine || showPronunciation || cafeTourPhase === "riding"}
+              disabled={showPause || showPhrasebook || showMobileMission || showWorldPicker || showEngine || showPronunciation || cafeTourPhase === "riding" || cafeTourPhase === "eating"}
               onMove={moveWithJoystick}
             />
 
@@ -1913,12 +1936,13 @@ export default function Home() {
               </aside>
             )}
 
-            <div className={`voice-hud glass-card ${nearCharacter ? "engaged" : "roaming"}`}>
+            <div className={`voice-hud glass-card ${nearCharacter ? "engaged" : "roaming"} ${cafeResting ? "resting" : ""}`}>
               <div className="voice-context">
-                <span>{scene.avatar}</span>
-                <div><small>{nearCharacter ? `TALKING TO ${scene.character.toUpperCase()} · BOND ${affinity}%` : "EXPLORE THE SCENE"}</small><strong>{nearCharacter ? `Speak naturally in ${city.language}` : "Use WASD or the touch stick to move"}</strong></div>
+                <span>{cafeResting ? "🍽️" : scene.avatar}</span>
+                <div><small>{cafeResting ? `CAFE BREAK · ${city.name.toUpperCase()}` : nearCharacter ? `TALKING TO ${scene.character.toUpperCase()} · BOND ${affinity}%` : "EXPLORE THE SCENE"}</small><strong>{cafeResting ? `Enjoying ${activeTravelStop?.order ?? "your order"}` : nearCharacter ? `Speak naturally in ${city.language}` : "Use WASD or the touch stick to move"}</strong></div>
               </div>
-              {lastHeard && <div className="voice-heard"><span>MIC HEARD</span><p>{lastHeard}</p></div>}
+              {cafeResting && <div className="cafe-rest-progress" aria-live="polite"><span>Eating at the table</span><i><b /></i><small>Your café stamp arrives after the break.</small></div>}
+              {lastHeard && !cafeResting && <div className="voice-heard"><span>MIC HEARD</span><p>{lastHeard}</p></div>}
               <form onSubmit={handleSubmit}>
                 <button
                   type="button"
@@ -1985,7 +2009,7 @@ export default function Home() {
             <button className="close-button" disabled={pronunciationRecording} onClick={() => setShowPronunciation(false)} aria-label="Close pronunciation lab">×</button>
             <span className="score-kicker">ACOUSTIC MISSION · {city.flag} {city.name.toUpperCase()}</span>
             <h2 id="pronunciation-title">Make every sound land.</h2>
-            <p className="pronunciation-intro">Read one known phrase. Unlike conversation grading, this mission sends the recording to a speech model and scores the audio itself.</p>
+            <p className="pronunciation-intro">Read the exact highlighted sentence. The selected suggestion—or any sentence you type—is sent with the recording as the assessment reference, so the model never grades you against a different line.</p>
 
             <div className="pronunciation-providers" aria-label="Pronunciation provider">
               <button disabled={pronunciationRecording || pronunciationBusy} className={pronunciationProvider === "local" ? "active" : ""} onClick={() => { setPronunciationProvider("local"); setPronunciationResult(null); }}>
@@ -2006,13 +2030,18 @@ export default function Home() {
             )}
 
             <div className="phrase-selector">
-              <span>CHOOSE A LINE</span>
-              <div>{city.prompts.map((prompt, index) => <button disabled={pronunciationRecording || pronunciationBusy} className={pronunciationPrompt === index ? "active" : ""} key={prompt} onClick={() => { setPronunciationPrompt(index); setPronunciationResult(null); }}>{index + 1}</button>)}</div>
+              <span>SUGGESTED FOR THIS CONVERSATION</span>
+              <div>{pronunciationPhrases.map((prompt, index) => <button title={prompt} disabled={pronunciationRecording || pronunciationBusy} className={!pronunciationCustomText.trim() && pronunciationPrompt === index ? "active" : ""} key={prompt} onClick={() => { setPronunciationPrompt(index); setPronunciationCustomText(""); setPronunciationResult(null); }}>{index + 1}</button>)}</div>
             </div>
+            <label className="pronunciation-custom-target">
+              <span>OR PRACTICE ANY SENTENCE</span>
+              <input value={pronunciationCustomText} maxLength={180} disabled={pronunciationRecording || pronunciationBusy} onChange={(event) => { setPronunciationCustomText(event.target.value); setPronunciationResult(null); }} placeholder="Type or paste a sentence in the selected language" />
+              <small>{pronunciationCustomText.trim() ? "Your typed sentence is now the exact scoring reference." : "Leave blank to practise the selected conversation suggestion."}</small>
+            </label>
             <div className="target-phrase">
               <span>TARGET · {city.language.toUpperCase()}</span>
-              <strong>{city.prompts[pronunciationPrompt]}</strong>
-              <button onClick={() => speak(city.prompts[pronunciationPrompt], true)}>Listen ↗</button>
+              <strong>{pronunciationTarget}</strong>
+              <button onClick={() => speak(pronunciationTarget, true)}>Listen ↗</button>
             </div>
 
             <button className={`record-pronunciation ${pronunciationRecording ? "recording" : ""}`} disabled={pronunciationBusy} onClick={() => void togglePronunciationRecording()}>
@@ -2035,7 +2064,7 @@ export default function Home() {
                 <div className="recognized-line"><span>MODEL HEARD</span><p>{pronunciationResult.recognizedText || "No clear words detected."}</p></div>
                 <div className="attempt-review">
                   {lastAttemptUrl && <audio controls src={lastAttemptUrl} preload="metadata" aria-label="Replay your pronunciation attempt" />}
-                  <span>BEST {pronunciationBest[city.prompts[pronunciationPrompt]] ?? pronunciationResult.overall}/100</span>
+                  <span>BEST {pronunciationBest[pronunciationTarget] ?? pronunciationResult.overall}/100</span>
                   {weakestWord && <button onClick={() => speak(weakestWord.word, true)}>Hear “{weakestWord.word}” again</button>}
                 </div>
                 <div className="word-heatmap" aria-label="Word accuracy scores">

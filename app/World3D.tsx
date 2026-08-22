@@ -25,7 +25,7 @@ type World3DProps = {
   longitude: number;
   waypointLabel: string;
   rideLabel?: string;
-  ridePhase?: "idle" | "call" | "cab-conversation" | "riding" | "cafe" | "stop-complete" | "tour-complete";
+  ridePhase?: "idle" | "call" | "cab-conversation" | "riding" | "cafe" | "eating" | "stop-complete" | "tour-complete";
 };
 
 type MapPoint = { x: number; z: number };
@@ -258,15 +258,30 @@ function NewYorkStreetLife() {
   </group>;
 }
 
-function CafeTable({ position }: { position: [number, number, number] }) {
+function CafeMeal({ cityName }: { cityName: string }) {
+  const mealColor = cityName === "Mumbai" ? "#d89a42" : cityName === "Madrid" ? "#d9774f" : "#d8b66c";
+  return (
+    <group position={[0, .64, 0]}>
+      <mesh castShadow><cylinderGeometry args={[.33, .33, .035, 24]} /><meshStandardMaterial color="#f2eee2" roughness={.55} /></mesh>
+      <mesh castShadow position={[-.02, .07, 0]} rotation={[0, .12, 0]}><boxGeometry args={[.4, .12, .26]} /><meshStandardMaterial color={mealColor} roughness={.8} /></mesh>
+      <mesh castShadow position={[.27, .13, .18]}><cylinderGeometry args={[.12, .1, .25, 18]} /><meshStandardMaterial color="#f4e9d1" roughness={.45} /></mesh>
+      <mesh position={[.27, .265, .18]} rotation={[-Math.PI / 2, 0, 0]}><circleGeometry args={[.09, 18]} /><meshStandardMaterial color={cityName === "Mumbai" ? "#ad6d34" : "#6d3e2c"} /></mesh>
+      <mesh position={[.4, .14, .18]}><torusGeometry args={[.07, .018, 8, 16]} /><meshStandardMaterial color="#f4e9d1" /></mesh>
+      <Sparkles count={7} position={[.22, .6, .14]} scale={[.35, .8, .35]} size={1.4} speed={.35} opacity={.42} color="#fff4d6" />
+    </group>
+  );
+}
+
+function CafeTable({ position, servedFor }: { position: [number, number, number]; servedFor?: string }) {
   return <group position={position}>
     <mesh castShadow position={[0, .55, 0]}><cylinderGeometry args={[.58, .58, .08, 20]} /><meshStandardMaterial color="#6c3f2d" roughness={.72} /></mesh>
     <mesh castShadow position={[0, .27, 0]}><cylinderGeometry args={[.07, .09, .55, 10]} /><meshStandardMaterial color="#252523" metalness={.55} /></mesh>
     {[-.8, .8].map((x) => <group key={x} position={[x, 0, 0]}><mesh position={[0, .32, 0]}><boxGeometry args={[.42, .08, .42]} /><meshStandardMaterial color="#b23c34" /></mesh><mesh position={[0, .28, .18]} rotation={[.2, 0, 0]}><boxGeometry args={[.42, .65, .08]} /><meshStandardMaterial color="#b23c34" /></mesh></group>)}
+    {servedFor && <CafeMeal cityName={servedFor} />}
   </group>;
 }
 
-function TourCafe({ cityName }: { cityName: string }) {
+function TourCafe({ cityName, mealVisible = false }: { cityName: string; mealVisible?: boolean }) {
   const cafe = cityName === "New York"
     ? { name: "MIDTOWN CAFE", wall: "#b43d2f", awning: "#f1c52a" }
     : cityName === "Mumbai"
@@ -278,8 +293,31 @@ function TourCafe({ cityName }: { cityName: string }) {
       <mesh castShadow position={[.65, 2.35, 0]} rotation={[0, 0, -.16]}><boxGeometry args={[1.5, .12, 5.7]} /><meshStandardMaterial color={cafe.awning} roughness={.74} /></mesh>
       <mesh position={[.59, 1.45, 0]} rotation={[0, Math.PI / 2, 0]}><planeGeometry args={[4.3, 1.45]} /><meshStandardMaterial color="#18211e" emissive="#16241f" emissiveIntensity={.35} /></mesh>
       <Html position={[.78, 2.85, 0]} center distanceFactor={10} className="street-prop-label"><span>{cafe.name}</span></Html>
-      <CafeTable position={[1.35, 0, -2.1]} />
+      <CafeTable position={[1.35, 0, -2.1]} servedFor={mealVisible ? cityName : undefined} />
       <CafeTable position={[1.35, 0, 2.2]} />
+    </group>
+  );
+}
+
+function SeatedCafePlayer() {
+  const skin = "#b97855";
+  const shirt = "#d8d2bf";
+  const trousers = "#27343a";
+  return (
+    <group position={[-7.45, 0, -1.1]}>
+      <mesh castShadow position={[0, .87, 0]}><boxGeometry args={[.5, .68, .34]} /><meshStandardMaterial color={shirt} roughness={.84} /></mesh>
+      <mesh castShadow position={[-.02, 1.42, 0]}><sphereGeometry args={[.27, 18, 14]} /><meshStandardMaterial color={skin} roughness={.72} /></mesh>
+      <mesh castShadow position={[.01, 1.61, 0]} scale={[1.02, .45, 1.02]}><sphereGeometry args={[.28, 16, 10]} /><meshStandardMaterial color="#3b2a20" roughness={.95} /></mesh>
+      {[-.17, .17].map((z) => <group key={`leg-${z}`}>
+        <mesh castShadow position={[-.29, .5, z]} rotation={[0, 0, Math.PI / 2]}><cylinderGeometry args={[.095, .11, .58, 10]} /><meshStandardMaterial color={trousers} roughness={.82} /></mesh>
+        <mesh castShadow position={[-.58, .24, z]}><cylinderGeometry args={[.085, .095, .5, 10]} /><meshStandardMaterial color={trousers} roughness={.82} /></mesh>
+        <mesh castShadow position={[-.66, .04, z]} rotation={[0, 0, Math.PI / 2]}><boxGeometry args={[.3, .1, .16]} /><meshStandardMaterial color="#171b1c" roughness={.9} /></mesh>
+      </group>)}
+      {[-.3, .3].map((z) => <group key={`arm-${z}`}>
+        <mesh castShadow position={[-.18, .93, z]} rotation={[0, 0, Math.PI / 3]}><cylinderGeometry args={[.07, .085, .5, 10]} /><meshStandardMaterial color={shirt} roughness={.84} /></mesh>
+        <mesh castShadow position={[-.48, .72, z]} rotation={[0, 0, Math.PI / 2.55]}><cylinderGeometry args={[.055, .07, .42, 10]} /><meshStandardMaterial color={skin} roughness={.72} /></mesh>
+      </group>)}
+      <Html position={[0, 2.05, 0]} center distanceFactor={9} className="world3d-name"><span className="active">ENJOYING THE ORDER</span></Html>
     </group>
   );
 }
@@ -648,6 +686,7 @@ function PlayerOrbitCamera({ onDirectionChange, playerPosition, resetSignal, rid
 function CityScene({ activeNpcIndex, cameraResetSignal, cityName, neighborhood, npcNames, npcPositions, onCameraDirectionChange, onSelectNpc, playerPosition, rideLabel, ridePhase = "idle", sceneClass, waypointLabel }: World3DProps & { cameraResetSignal: number; neighborhood: Neighborhood | null }) {
   const playerWorld = toWorld(playerPosition);
   const rideVehicleRef = useRef<THREE.Group>(null);
+  const cafeResting = ridePhase === "eating";
   const sky = sceneClass === "desert" ? "#c9966f" : sceneClass === "india" ? "#d79a72" : sceneClass === "east" ? "#7894a4" : sceneClass === "tropical" ? "#5f9b9a" : "#86abc0";
 
   return (
@@ -679,12 +718,12 @@ function CityScene({ activeNpcIndex, cameraResetSignal, cityName, neighborhood, 
       {cityName === "New York" && <NewYorkStreetLife />}
       {cityName === "Paris" && <ParisStreetLife />}
       {cityName === "Mumbai" && <MumbaiStreetLife />}
-      {["New York", "Mumbai", "Madrid"].includes(cityName) && <TourCafe cityName={cityName} />}
+      {["New York", "Mumbai", "Madrid"].includes(cityName) && <TourCafe cityName={cityName} mealVisible={cafeResting} />}
 
       {npcPositions.map((point, index) => (
-        <Person key={npcNames[index]} active={index === activeNpcIndex} model={["animated-woman.glb", "business.glb", "punk-woman.glb"][index]} name={npcNames[index]} onClick={() => onSelectNpc(index)} position={toWorld(point)} waypointLabel={index === activeNpcIndex ? waypointLabel : undefined} />
+        <Person key={npcNames[index]} active={!cafeResting && index === activeNpcIndex} model={["animated-woman.glb", "business.glb", "punk-woman.glb"][index]} name={npcNames[index]} onClick={() => onSelectNpc(index)} position={toWorld(point)} waypointLabel={!cafeResting && index === activeNpcIndex ? waypointLabel : undefined} />
       ))}
-      {ridePhase !== "riding" && <Person key={`player-${cityName}`} player model="casual.glb" position={playerWorld} />}
+      {cafeResting ? <SeatedCafePlayer /> : ridePhase !== "riding" && <Person key={`player-${cityName}`} player model="casual.glb" position={playerWorld} />}
       <PlayerOrbitCamera key={cityName} onDirectionChange={onCameraDirectionChange} playerPosition={playerPosition} resetSignal={cameraResetSignal} ridePhase={ridePhase} rideVehicleRef={rideVehicleRef} />
     </>
   );

@@ -757,6 +757,12 @@ footer { border-top: 1px solid rgba(216,255,95,.22); }
 .phrase-selector > div { display: flex; gap: 5px; }
 .phrase-selector button { width: 25px; height: 25px; border: 1px solid var(--line); border-radius: 50%; background: transparent; color: var(--muted); cursor: pointer; font-size: 8px; }
 .phrase-selector button.active { border-color: var(--yellow); background: var(--yellow); color: #07110f; }
+.pronunciation-custom-target { display: block; margin: 0 0 10px; }
+.pronunciation-custom-target > span,.pronunciation-custom-target > small { display: block; }
+.pronunciation-custom-target > span { margin-bottom: 5px; color: var(--muted); font-size: 7px; font-weight: 800; letter-spacing: .11em; }
+.pronunciation-custom-target > input { width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 10px 11px; color: var(--ink); background: #050a08; font: inherit; font-size: 9px; outline: none; }
+.pronunciation-custom-target > input:focus { border-color: var(--yellow); }
+.pronunciation-custom-target > small { margin-top: 4px; color: var(--muted); font-size: 7px; }
 .target-phrase { position: relative; border: 1px solid rgba(216,255,95,.2); border-radius: 17px; padding: 15px 90px 15px 15px; background: linear-gradient(135deg, rgba(216,255,95,.08), rgba(255,255,255,.015)); }
 .target-phrase > span { display: block; margin-bottom: 7px; color: var(--yellow); font-size: 6px; font-weight: 800; letter-spacing: .11em; }
 .target-phrase > strong { display: block; font-size: 18px; line-height: 1.45; }
@@ -1422,6 +1428,13 @@ body {
 .voice-hud.roaming { width: min(520px,calc(100% - 248px)); }
 .voice-hud.roaming .voice-context { margin-bottom: 0; }
 .voice-hud.roaming form { display: none; }
+.voice-hud.resting { border-color: rgba(126,221,178,.68); background: rgba(8,24,19,.9); }
+.voice-hud.resting .voice-context { margin-bottom: 8px; }
+.cafe-rest-progress { display: grid; grid-template-columns: auto 1fr; gap: 5px 10px; align-items: center; }
+.cafe-rest-progress span { color: #f6ce5c; font-size: 8px; font-weight: 950; letter-spacing: .1em; text-transform: uppercase; }
+.cafe-rest-progress i { height: 7px; border: 1px solid rgba(245,238,220,.38); border-radius: 999px; background: rgba(255,255,255,.08); overflow: hidden; }
+.cafe-rest-progress i b { display: block; width: 100%; height: 100%; background: #7eddb2; transform-origin: left; animation: cafeRestProgress 8.5s linear both; }
+.cafe-rest-progress small { grid-column: 1 / -1; color: rgba(245,238,220,.72); font-size: 7px; }
 
 footer {
   min-height: 78px;
@@ -2182,6 +2195,9 @@ footer strong { color: #b9b6a9; }
 .cafe-tour-progress em { font-size: 6px; font-style: normal; font-weight: 950; letter-spacing: .08em; }
 .cafe-tour-hud .ride-status { font-weight: 900; letter-spacing: .04em; }
 .cafe-tour-hud .ride-status span { display: inline-block; width: 7px; height: 7px; margin-right: 5px; border-radius: 50%; background: var(--sadak-red); animation: micPulse 1s infinite; }
+.cafe-tour-hud .cafe-rest-status > span { display: block; margin-bottom: 4px; color: #176747; font-size: 7px; font-weight: 950; letter-spacing: .13em; }
+.cafe-tour-hud .cafe-rest-status > i { display: block; height: 7px; margin-top: 8px; border: 1.5px solid var(--sadak-ink); border-radius: 99px; background: #fff; overflow: hidden; }
+.cafe-tour-hud .cafe-rest-status > i b { display: block; width: 100%; height: 100%; background: var(--sadak-green); transform-origin: left; animation: cafeRestProgress 8.5s linear both; }
 .cafe-tour-active .game-mission { top: 350px !important; }
 .movement-pad.disabled { opacity: .35; pointer-events: none; }
 
@@ -2206,6 +2222,7 @@ footer strong { color: #b9b6a9; }
 .ride-cinematic > i { display: block; height: 8px; margin-top: 10px; border: 1.5px solid var(--sadak-ink); border-radius: 99px; background: #fff; overflow: hidden; }
 .ride-cinematic > i b { display: block; width: 100%; height: 100%; background: var(--sadak-green); transform-origin: left; animation: cafeRideProgress 7.2s linear both; }
 @keyframes cafeRideProgress { from { scale: 0 1; } to { scale: 1 1; } }
+@keyframes cafeRestProgress { from { scale: 0 1; } to { scale: 1 1; } }
 
 .tour-complete-panel { position: absolute; inset: 0; z-index: 130; display: grid; place-items: center; padding: 20px; background: rgba(18,18,15,.8); backdrop-filter: blur(8px); }
 .tour-complete-panel > section { width: min(620px,100%); border: 3px solid var(--sadak-ink); border-radius: 8px; padding: 24px; color: var(--sadak-ink); background: var(--sadak-cream); box-shadow: 10px 10px 0 #000; }
@@ -2582,6 +2599,10 @@ footer strong { color: #b9b6a9; }
 .pronunciation-sheet .phrase-selector > span { color: #554f43; font-size: 7px; font-weight: 950; }
 .pronunciation-sheet .phrase-selector button { width: 30px; height: 30px; border: 2px solid #171713; color: #171713; background: #fff; font-weight: 900; }
 .pronunciation-sheet .phrase-selector button.active { color: #171713; background: #f6ce5c; box-shadow: 2px 2px 0 #171713; }
+.pronunciation-sheet .pronunciation-custom-target > span { color: #554f43; font-weight: 950; }
+.pronunciation-sheet .pronunciation-custom-target > input { border: 2px solid #171713; border-radius: 6px; color: #171713; background: #fff; font-size: 10px; font-weight: 700; }
+.pronunciation-sheet .pronunciation-custom-target > input:focus { border-color: #8b5d00; box-shadow: 2px 2px 0 #f6ce5c; }
+.pronunciation-sheet .pronunciation-custom-target > small { color: #625b4d; font-weight: 700; }
 .pronunciation-sheet .target-phrase { border: 2px solid #171713; border-radius: 8px; padding: 17px 104px 17px 17px; color: #171713; background: #fff0bf; box-shadow: 4px 4px 0 #171713; }
 .pronunciation-sheet .target-phrase > span { color: #8b5d00; font-size: 7px; font-weight: 950; }
 .pronunciation-sheet .target-phrase > strong { color: #171713; font-family: var(--font-sans),system-ui,sans-serif; font-size: 22px; font-weight: 900; line-height: 1.35; }
@@ -2591,7 +2612,7 @@ footer strong { color: #b9b6a9; }
 .pronunciation-sheet .record-pronunciation strong { color: #fff; font-size: 11px; font-weight: 950; }
 .pronunciation-sheet .record-pronunciation small { color: rgba(255,255,255,.88); font-weight: 700; }
 .pronunciation-sheet .pronunciation-note { margin-top: 11px; color: #625b4d; font-size: 8px; font-weight: 700; }
-.pronunciation-sheet .pronunciation-local-service.error ~ .phrase-selector ~ .target-phrase ~ .record-pronunciation + .pronunciation-note { color: #9a2d23; }
+.pronunciation-sheet .pronunciation-local-service.error ~ .pronunciation-note { color: #9a2d23; }
 
 @media (max-width: 580px) {
   .pronunciation-sheet .pronunciation-local-service { grid-template-columns: 1fr; }
