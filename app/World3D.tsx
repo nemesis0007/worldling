@@ -25,7 +25,7 @@ type World3DProps = {
   longitude: number;
   waypointLabel: string;
   rideLabel?: string;
-  ridePhase?: "idle" | "call" | "pickup" | "riding" | "cafe" | "stop-complete" | "tour-complete";
+  ridePhase?: "idle" | "call" | "cab-conversation" | "riding" | "cafe" | "stop-complete" | "tour-complete";
 };
 
 type MapPoint = { x: number; z: number };
@@ -189,11 +189,11 @@ function TourRideVehicle({ label, phase }: { label: string; phase: NonNullable<W
     group.current.position.z = Math.max(-19, group.current.position.z - delta * 10.5);
   });
 
-  if (phase !== "pickup" && phase !== "riding") return null;
+  if (phase !== "cab-conversation" && phase !== "riding") return null;
   return (
     <group ref={group} position={[1.25, 0, 9.5]}>
       <Taxi position={[0, .08, 0]} rotation={Math.PI + .04} />
-      {phase === "pickup" && (
+      {phase === "cab-conversation" && (
         <>
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, .025, 0]}><ringGeometry args={[1, 1.22, 36]} /><meshBasicMaterial color="#d8ff5f" transparent opacity={.9} /></mesh>
           <Html position={[0, 2.1, 0]} center distanceFactor={9} className="world3d-name"><span className="active">YOUR {label.toUpperCase()}</span></Html>

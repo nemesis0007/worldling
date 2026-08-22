@@ -177,12 +177,27 @@ const STREET_NPC_POSITIONS = [
   { x: 35, y: 32 },
 ];
 
-type CafeTourPhase = "idle" | "call" | "pickup" | "riding" | "cafe" | "stop-complete" | "tour-complete";
+type CafeTourPhase = "idle" | "call" | "cab-conversation" | "riding" | "cafe" | "stop-complete" | "tour-complete";
 
 const CAFE_TOUR_STOPS = [
-  { cityId: "new-york", ride: "yellow cab", pickup: "Times Square", cafe: "Midtown cafe & deli", order: "coffee and a New York bite" },
-  { cityId: "mumbai", ride: "black-and-yellow cab", pickup: "Gateway of India", cafe: "Irani cafe", order: "cutting chai and bun maska" },
-  { cityId: "madrid", ride: "city taxi", pickup: "Puerta del Sol", cafe: "Cafe Lucia", order: "cafe con leche and a small plate" },
+  {
+    cityId: "new-york", ride: "yellow cab", pickup: "Times Square", cafe: "Midtown cafe & deli", order: "coffee and a New York bite",
+    destinationWords: ["midtown", "cafe", "deli"], orderWords: ["coffee", "bagel", "pastrami", "sandwich"],
+    driverPrompts: ["Please take me to Midtown Cafe and Deli.", "How much will the ride cost?", "How long will it take?"],
+    cafePrompts: ["Could I get a coffee, please?", "What New York bite do you recommend?", "Can I have that to stay?"],
+  },
+  {
+    cityId: "mumbai", ride: "black-and-yellow cab", pickup: "Gateway of India", cafe: "Irani cafe", order: "cutting chai and bun maska",
+    destinationWords: ["irani", "cafe", "कॅफे", "कॅफेत"], orderWords: ["chai", "maska", "चहा", "मस्का"],
+    driverPrompts: ["मला इराणी कॅफेत जायचे आहे.", "भाडे किती होईल?", "किती वेळ लागेल?"],
+    cafePrompts: ["एक कटिंग चहा द्या.", "बन मस्का मिळेल का?", "किती पैसे झाले?"],
+  },
+  {
+    cityId: "madrid", ride: "city taxi", pickup: "Puerta del Sol", cafe: "Cafe Lucia", order: "cafe con leche and a small plate",
+    destinationWords: ["lucia", "lucía", "cafe", "café"], orderWords: ["cafe", "café", "leche", "comer"],
+    driverPrompts: ["Lléveme al Café Lucía, por favor.", "¿Cuánto cuesta el viaje?", "¿Cuánto tardaremos?"],
+    cafePrompts: ["Quisiera un café con leche.", "¿Qué me recomienda para comer?", "¿Cuánto cuesta?"],
+  },
 ] as const;
 
 function clampToPlayableStreet(point: { x: number; y: number }) {
@@ -227,6 +242,13 @@ function localScenes(labels: [string, string, string], characters: [string, stri
   }));
 }
 
+function travelScenes(labels: [string, string, string], characters: [string, string, string], avatars: [string, string, string]): Scene[] {
+  return localScenes(labels, characters, avatars).map((scene, index) => ({
+    ...scene,
+    role: index === 0 ? "Cafe host" : index === 1 ? "Cab driver" : "Neighbourhood local",
+  }));
+}
+
 const CITIES: City[] = [
   {
     id: "new-york", name: "New York", country: "United States", language: "English", nativeLanguage: "English", locale: "en-US", flag: "🇺🇸",
@@ -234,7 +256,7 @@ const CITIES: City[] = [
     greeting: "Hey! Welcome to New York. What brings you to the city?", translation: "A friendly local welcome.",
     prompts: ["What do you recommend nearby?", "How do I get to the subway?", "What do locals do on weekends?"],
     demoText: "You’re doing great. There’s a brilliant little place around the corner—what kind of experience are you looking for?", demoTranslation: "The local understood you and asked a follow-up question.",
-    scenes: localScenes(["Midtown cafe & deli", "42 St subway", "Bryant Park"], ["Maya", "Theo", "Jordan"], ["👩🏽", "👨🏿", "🧑🏻"]),
+    scenes: travelScenes(["Midtown cafe & deli", "Yellow cab pickup", "Bryant Park"], ["Maya", "Theo", "Jordan"], ["👩🏽", "👨🏿", "🧑🏻"]),
   },
   {
     id: "beijing", name: "Beijing", country: "China", language: "Mandarin Chinese", nativeLanguage: "普通话", locale: "zh-CN", flag: "🇨🇳",
@@ -255,7 +277,7 @@ const CITIES: City[] = [
     coordinates: "40.42° N · 3.70° W", verified: true, sceneClass: "europe", mapX: 49, mapY: 27.5, rank: 4,
     greeting: "¡Hola! Bienvenido a Madrid. ¿Qué te gustaría hacer hoy?", translation: "Hello! Welcome to Madrid. What would you like to do today?",
     prompts: ["¿Cómo te llamas?", "¿Qué comida recomiendas?", "¿Cómo llego al centro?"], demoText: "¡Muy bien! Hay un lugar estupendo muy cerca. ¿Prefieres algo dulce o salado?", demoTranslation: "Very good! There is a great place nearby. Do you prefer something sweet or savoury?",
-    scenes: localScenes(["Cafe Lucia", "Taxi plaza", "El Rastro"], ["Lucía", "Mateo", "Sofía"], ["👩🏻", "👨🏻", "🧑🏻"]),
+    scenes: travelScenes(["Cafe Lucia", "Taxi plaza", "El Rastro"], ["Lucía", "Mateo", "Sofía"], ["👩🏻", "👨🏻", "🧑🏻"]),
   },
   {
     id: "paris", name: "Paris", country: "France", language: "French", nativeLanguage: "Français", locale: "fr-FR", flag: "🇫🇷",
@@ -304,7 +326,7 @@ const CITIES: City[] = [
     coordinates: "19.08° N · 72.88° E", verified: true, sceneClass: "india", mapX: 70.2, mapY: 39.4, india: true,
     greeting: "नमस्कार! मुंबईत तुमचं स्वागत आहे. आज तुम्हाला कुठे जायचं आहे?", translation: "Hello! Welcome to Mumbai. Where would you like to go today?",
     prompts: ["तुमचं नाव काय आहे?", "इथे चांगलं जेवण कुठे मिळेल?", "स्टेशनला कसं जायचं?"], demoText: "छान बोललात! जवळच एक मस्त जागा आहे. तुम्हाला तिखट आवडतं का?", demoTranslation: "Well said! There is a great place nearby. Do you like spicy food?",
-    scenes: localScenes(["Irani café", "Local platform", "Dadar market"], ["Ira", "Rohan", "Sahil"], ["👩🏽", "👨🏽", "🧑🏽"]),
+    scenes: travelScenes(["Irani café", "Black-and-yellow cab pickup", "Dadar market"], ["Ira", "Rohan", "Sahil"], ["👩🏽", "👨🏽", "🧑🏽"]),
   },
   {
     id: "bengaluru",
@@ -507,11 +529,13 @@ function buildConversationTurnPlan(input: string, objective: string, previousNpc
   const tripIntent = /\b(trip|travel|travelling|traveling|visit|visiting|vacation|tour|tourist|holiday)\b/.test(latest);
   const foodIntent = /\b(food|eat|eating|hungry|restaurant|deli|sandwich|cafe|café|meal|breakfast|lunch|dinner|dish|order)\b/.test(latest);
   const directionIntent = /\b(where|direction|directions|route|road|walk|walking|subway|metro|station|platform|get to|how do i get)\b/.test(latest);
+  const transportIntent = /\b(cab|taxi|ride|driver|fare|pickup|destination|take me|go to|going to|how much|how long)\b/.test(latest);
   const activityIntent = /\b(tonight|after work|event|events|weekend|things to do|what do locals do)\b/.test(latest);
   const greetingOnly = /^(hi|hey|hello|hola|bonjour|namaste|नमस्ते|你好|olá|привет|سلام)[!. ]*$/i.test(input.trim());
   const objectiveRelevant =
     (foodIntent && /food|order|cafe|café|deli|restaurant|market|price|item/.test(goal)) ||
     (directionIntent && /route|subway|metro|train|platform|direction|stop|walk/.test(goal)) ||
+    (transportIntent && /cab|taxi|ride|driver|fare|pickup|destination|journey/.test(goal)) ||
     (activityIntent && /after work|event|tonight|local/.test(goal));
 
   const answersPrevious = Boolean(previousNpcMessage) && /^(yes|yeah|yep|yup|sure|no|nope|nah|not really|maybe|it is|i am|i have|i did|i do|i was|i think so|i dont think so|i don't think so)\b/i.test(input.trim());
@@ -539,6 +563,12 @@ function buildConversationTurnPlan(input: string, objective: string, previousNpc
     return {
       objectiveRelevant,
       guidance: "The player independently asked about a place or route. Give a direct, practical answer first, then ask at most one clarification only if it helps the route.",
+    };
+  }
+  if (transportIntent) {
+    return {
+      objectiveRelevant,
+      guidance: "The player is speaking to a driver about a ride. Confirm the requested destination directly, then answer or ask at most one practical question about the fare, pickup, or journey time. Stay in the cab-driver role.",
     };
   }
   if (activityIntent) {
@@ -644,12 +674,20 @@ export default function Home() {
   const completedQuests = questProgress.filter(Boolean).length;
   const cityCenter = CITY_CENTERS[city.name] ?? [90 - city.mapY * 1.8, city.mapX * 3.6 - 180];
   const streetViewUrl = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${encodeURIComponent(`${cityCenter[0].toFixed(4)},${cityCenter[1].toFixed(4)}`)}`;
-  const activeNpcIndex = missionStep.npcIndex;
-  const npcPositions = STREET_NPC_POSITIONS;
   const cafeTourStop = CAFE_TOUR_STOPS[Math.min(cafeTourStopIndex, CAFE_TOUR_STOPS.length - 1)];
   const cafeTourInCurrentCity = cafeTourActive && cafeTourStop.cityId === city.id;
+  const activeNpcIndex = missionStep.npcIndex;
+  const npcPositions = cafeTourInCurrentCity
+    ? [{ x: 35, y: 72 }, { x: 58, y: 82 }, { x: 35, y: 32 }]
+    : STREET_NPC_POSITIONS;
   const activeNpcPosition = npcPositions[activeNpcIndex];
-  const nearCharacter = Math.hypot((playerPosition.x - activeNpcPosition.x) / 3.1, (playerPosition.y - activeNpcPosition.y) / 2.2) < 3.4;
+  const characterInRange = Math.hypot((playerPosition.x - activeNpcPosition.x) / 3.1, (playerPosition.y - activeNpcPosition.y) / 2.2) < 3.4;
+  const nearCharacter = characterInRange && (!cafeTourInCurrentCity || cafeTourPhase === "cab-conversation" || cafeTourPhase === "cafe");
+  const conversationPrompts = cafeTourInCurrentCity && cafeTourPhase === "cab-conversation"
+    ? cafeTourStop.driverPrompts
+    : cafeTourInCurrentCity && cafeTourPhase === "cafe"
+      ? cafeTourStop.cafePrompts
+      : city.prompts;
   const currentNpcMessage = [...messages].reverse().find((message) => message.role === "npc" && message.speaker === scene.character);
   const waypointDistance = Math.round(Math.hypot(playerPosition.x - activeNpcPosition.x, playerPosition.y - activeNpcPosition.y));
   const weakestWord = pronunciationResult?.words.length
@@ -708,10 +746,18 @@ export default function Home() {
   }, [city, level, provider]);
 
   useEffect(() => {
+    if (!cafeTourInCurrentCity || cafeTourPhase !== "cab-conversation" || !questProgress[0]) return;
+    setCafeTourPhase("riding");
+    addAgentEvent("remember_fact", `${city.scenes[1].character} confirmed the ride to ${cafeTourStop.cafe}`);
+  }, [addAgentEvent, cafeTourInCurrentCity, cafeTourPhase, cafeTourStop.cafe, city.scenes, questProgress]);
+
+  useEffect(() => {
     if (!cafeTourInCurrentCity || cafeTourPhase !== "riding") return;
     const timer = window.setTimeout(() => {
       setPlayerPosition({ x: 39, y: 75 });
       setSceneId(city.scenes[0].id);
+      setMessages([]);
+      setMissionStepTurns(0);
       setCafeTourPhase("cafe");
       addAgentEvent("set_waypoint", `${cafeTourStop.ride} dropped you at ${cafeTourStop.cafe}`);
     }, 3300);
@@ -719,7 +765,7 @@ export default function Home() {
   }, [addAgentEvent, cafeTourInCurrentCity, cafeTourPhase, cafeTourStop.cafe, cafeTourStop.ride, city.scenes]);
 
   useEffect(() => {
-    if (!cafeTourInCurrentCity || cafeTourPhase !== "cafe" || !questProgress[0]) return;
+    if (!cafeTourInCurrentCity || cafeTourPhase !== "cafe" || !questProgress[1]) return;
     setCafeTourVisited((current) => Array.from(new Set([...current, city.id])));
     setCafeTourPhase("stop-complete");
     addAgentEvent("give_item", `${city.name} cafe passport stamp earned`);
@@ -1086,9 +1132,13 @@ export default function Home() {
     const nextTurnCount = missionStepTurns + 1;
     const modelCompletedObjective = validatedActions.some((action) => action.tool === "complete_step");
     const demoCompletedObjective = provider === "demo" && nextTurnCount >= 2 && clean.length >= 8 && asksQuestion;
-    const cafeVisitCompleted = cafeTourInCurrentCity && cafeTourPhase === "cafe" && missionStepIndex === 0 && nextTurnCount >= 2 && clean.length >= 4;
-    const completesObjective = cafeTourInCurrentCity && cafeTourPhase === "cafe"
-      ? cafeVisitCompleted
+    const tourTranscript = nextMessages.filter((message) => message.role === "user").map((message) => message.text.toLocaleLowerCase()).join(" ");
+    const destinationMentioned = cafeTourStop.destinationWords.some((word) => tourTranscript.includes(word));
+    const orderMentioned = cafeTourStop.orderWords.some((word) => tourTranscript.includes(word));
+    const cabConversationCompleted = cafeTourInCurrentCity && cafeTourPhase === "cab-conversation" && missionStepIndex === 0 && nextTurnCount >= 2 && destinationMentioned;
+    const cafeVisitCompleted = cafeTourInCurrentCity && cafeTourPhase === "cafe" && missionStepIndex === 1 && nextTurnCount >= 2 && orderMentioned;
+    const completesObjective = cafeTourInCurrentCity && (cafeTourPhase === "cab-conversation" || cafeTourPhase === "cafe")
+      ? cabConversationCompleted || cafeVisitCompleted
       : modelCompletedObjective || demoCompletedObjective;
     if (completesObjective && !questProgress[missionStepIndex]) {
       const completedStep = missionStep;
@@ -1296,16 +1346,12 @@ export default function Home() {
     chooseCity(firstCity);
   }
 
-  function beginCafeRide() {
-    if (!cafeTourInCurrentCity || cafeTourPhase !== "pickup") return;
-    setCafeTourPhase("riding");
-    addAgentEvent("remember_fact", `Boarded ${cafeTourStop.ride} at ${cafeTourStop.pickup}`);
-  }
-
   function callCafeRide() {
     if (!cafeTourInCurrentCity || cafeTourPhase !== "call") return;
-    setCafeTourPhase("pickup");
-    addAgentEvent("set_waypoint", `${cafeTourStop.ride} called to ${cafeTourStop.pickup}`);
+    setSceneId(city.scenes[1].id);
+    setPlayerPosition({ x: 50, y: 82 });
+    setCafeTourPhase("cab-conversation");
+    addAgentEvent("set_waypoint", `${cafeTourStop.ride} arrived with ${city.scenes[1].character} driving`);
   }
 
   function continueCafeTour() {
@@ -1430,7 +1476,7 @@ export default function Home() {
                   </div>
                   <div className="cafe-tour-launch">
                     <div className="tour-route-mark"><span>NYC</span><i /><span>BOM</span><i /><span>MAD</span></div>
-                    <div><small>FEATURED TRAVEL DEMO</small><strong>The Three-City Cafe Run</strong><p>Call a cab, ride through the district, order at a local cafe, and collect a passport stamp in New York, Mumbai, and Madrid.</p></div>
+                    <div><small>FEATURED TRAVEL DEMO</small><strong>The Three-City Cafe Run</strong><p>Call a cab, tell the driver which cafe you need, confirm the ride, order locally, and collect passport stamps across New York, Mumbai, and Madrid.</p></div>
                     <button onClick={startCafeTour}>Start trip <b>3 stops</b></button>
                   </div>
                   <div className="sadak-district-grid">
@@ -1464,7 +1510,7 @@ export default function Home() {
                 </header>
                 <div className="cafe-tour-progress">{CAFE_TOUR_STOPS.map((stop, index) => <i key={stop.cityId} className={cafeTourVisited.includes(stop.cityId) ? "done" : index === cafeTourStopIndex ? "current" : ""}><b>{index + 1}</b><em>{stop.cityId === "new-york" ? "NYC" : stop.cityId === "mumbai" ? "BOM" : "MAD"}</em></i>)}</div>
                 {cafeTourPhase === "call" && <><p>You have landed at {cafeTourStop.pickup}. Call a local ride to reach the café.</p><button onClick={callCafeRide}>Call {cafeTourStop.ride}</button></>}
-                {cafeTourPhase === "pickup" && <><p>Your {cafeTourStop.ride} has arrived on the road. Board it to begin this city visit.</p><button onClick={beginCafeRide}>Board {cafeTourStop.ride}</button></>}
+                {cafeTourPhase === "cab-conversation" && <p>Your driver {scene.character} has arrived. Speak naturally: say you want to go to {cafeTourStop.cafe}, then confirm the destination, fare, or journey time. The ride starts after two useful turns.</p>}
                 {cafeTourPhase === "riding" && <p className="ride-status"><span /> Travelling through {city.name}…</p>}
                 {cafeTourPhase === "cafe" && <p>Arrived. Walk to {scene.character} and order {cafeTourStop.order}. Two natural turns earn this city’s café stamp.</p>}
                 {cafeTourPhase === "stop-complete" && <><p>Visit complete. Your {city.name} café stamp is in the passport.</p><button onClick={continueCafeTour}>{cafeTourStopIndex === CAFE_TOUR_STOPS.length - 1 ? "Finish the trip" : `Fly to ${CITIES.find((item) => item.id === CAFE_TOUR_STOPS[cafeTourStopIndex + 1]?.cityId)?.name ?? "next city"}`}</button></>}
@@ -1520,7 +1566,7 @@ export default function Home() {
                 <div className="overlay-head"><div><small>POCKET PHRASES · {city.language.toUpperCase()}</small><h3 id="phrasebook-title">Say something useful.</h3></div><button onClick={() => setShowPhrasebook(false)} aria-label="Close phrasebook">×</button></div>
                 <p>Listen first, then place a phrase directly into the conversation bar.</p>
                 <div className="phrasebook-list">
-                  {city.prompts.map((prompt, index) => (
+                  {conversationPrompts.map((prompt, index) => (
                     <article key={prompt}>
                       <span>0{index + 1}</span>
                       <strong>{prompt}</strong>
@@ -1617,7 +1663,7 @@ export default function Home() {
                 <button onClick={() => void finishConversation()}>Finish & grade</button>
               </div>
               <div className="suggestion-strip">
-                {city.prompts.map((prompt) => <button key={prompt} disabled={!nearCharacter} onClick={() => setInput(prompt)}>{prompt}</button>)}
+                {conversationPrompts.map((prompt) => <button key={prompt} disabled={!nearCharacter} onClick={() => setInput(prompt)}>{prompt}</button>)}
               </div>
             </div>
           </div>

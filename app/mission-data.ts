@@ -27,24 +27,24 @@ export const FLAGSHIP_MISSIONS: Record<string, CityMission> = {
   "new-york": {
     id: "nyc-local-plan",
     title: "A New York minute",
-    summary: "Turn one local recommendation into a complete afternoon plan across Midtown.",
-    finale: "You built a real Midtown plan and handled food, transit, and a local follow-up.",
+    summary: "Tell a cab driver where you are going, ride to a Midtown cafe, and order like a local.",
+    finale: "You handled a New York cab ride, cafe order, and local follow-up.",
     steps: [
+      {
+        id: "cab-to-cafe",
+        npcIndex: 1,
+        title: "Tell the driver",
+        instruction: "Tell Theo you want to go to Midtown Cafe and Deli, then confirm the destination or fare.",
+        handoff: "Theo's confirmed cafe ride",
+        reward: "Yellow cab receipt",
+      },
       {
         id: "deli-order",
         npcIndex: 0,
-        title: "Stop at the cafe",
+        title: "Order at the cafe",
         instruction: "Ask Maya for a coffee and a classic New York bite, then confirm the order.",
         handoff: "Maya's Midtown cafe recommendation",
         reward: "New York cafe stamp",
-      },
-      {
-        id: "subway-route",
-        npcIndex: 1,
-        title: "Get the route",
-        instruction: "Tell Theo where Maya sent you and confirm the subway line or walking route.",
-        handoff: "Theo's route to Bryant Park",
-        reward: "Metro route",
       },
       {
         id: "park-plan",
@@ -59,9 +59,17 @@ export const FLAGSHIP_MISSIONS: Record<string, CityMission> = {
   madrid: {
     id: "madrid-cafe-hop",
     title: "Cafe, cab, and El Rastro",
-    summary: "Order at a Madrid cafe, handle a taxi question, and finish at the market.",
-    finale: "You crossed Madrid using practical Spanish for coffee, transport, and shopping.",
+    summary: "Tell a taxi driver where you are going, ride to Cafe Lucia, and order in Spanish.",
+    finale: "You crossed Madrid using practical Spanish for the taxi, cafe, and market.",
     steps: [
+      {
+        id: "madrid-taxi",
+        npcIndex: 1,
+        title: "Tell the driver",
+        instruction: "Tell Mateo you want to go to Cafe Lucia, then confirm the destination, fare, or journey time in Spanish.",
+        handoff: "Mateo's confirmed cafe ride",
+        reward: "Madrid taxi receipt",
+      },
       {
         id: "madrid-cafe",
         npcIndex: 0,
@@ -69,14 +77,6 @@ export const FLAGSHIP_MISSIONS: Record<string, CityMission> = {
         instruction: "Greet Lucia, order a coffee and something small, then confirm the price in Spanish.",
         handoff: "Lucia's cafe recommendation",
         reward: "Madrid cafe stamp",
-      },
-      {
-        id: "madrid-taxi",
-        npcIndex: 1,
-        title: "Confirm the ride",
-        instruction: "Tell Mateo you are going to El Rastro and ask how long the taxi ride takes.",
-        handoff: "Mateo's El Rastro route",
-        reward: "Madrid taxi receipt",
       },
       {
         id: "madrid-market",
@@ -123,24 +123,24 @@ export const FLAGSHIP_MISSIONS: Record<string, CityMission> = {
   mumbai: {
     id: "mumbai-market-run",
     title: "The monsoon market run",
-    summary: "Get a local food tip, navigate the train, and finish an everyday Dadar market errand.",
-    finale: "You crossed Mumbai through food, transport, and shopping conversations in Marathi.",
+    summary: "Tell a cab driver where you are going, ride to an Irani cafe, and order in Marathi.",
+    finale: "You crossed Mumbai through cab, cafe, and market conversations in Marathi.",
     steps: [
+      {
+        id: "mumbai-cab",
+        npcIndex: 1,
+        title: "Tell the driver",
+        instruction: "Tell Rohan you want to go to the Irani cafe, then confirm the destination, pickup, or fare in Marathi.",
+        handoff: "Rohan's confirmed cafe ride",
+        reward: "Black-and-yellow cab receipt",
+      },
       {
         id: "irani-cafe",
         npcIndex: 0,
-        title: "Fuel up first",
-        instruction: "Ask Ira for a cafe recommendation and what to order before heading to Dadar.",
-        handoff: "Ira's cafe recommendation",
-        reward: "Irani cafe token",
-      },
-      {
-        id: "local-train",
-        npcIndex: 1,
-        title: "Navigate the local",
-        instruction: "Tell Rohan you are going to Dadar and confirm the platform and stop.",
-        handoff: "Rohan's Dadar route",
-        reward: "Local train pass",
+        title: "Order at the cafe",
+        instruction: "Ask Ira for cutting chai and bun maska, then confirm the order in Marathi.",
+        handoff: "Ira's cafe order",
+        reward: "Mumbai cafe stamp",
       },
       {
         id: "dadar-market",
