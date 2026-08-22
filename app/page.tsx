@@ -675,6 +675,7 @@ export default function Home() {
   const cityCenter = CITY_CENTERS[city.name] ?? [90 - city.mapY * 1.8, city.mapX * 3.6 - 180];
   const streetViewUrl = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${encodeURIComponent(`${cityCenter[0].toFixed(4)},${cityCenter[1].toFixed(4)}`)}`;
   const cafeTourStop = CAFE_TOUR_STOPS[Math.min(cafeTourStopIndex, CAFE_TOUR_STOPS.length - 1)];
+  const cityTravelStop = CAFE_TOUR_STOPS.find((stop) => stop.cityId === city.id);
   const cafeTourInCurrentCity = cafeTourActive && cafeTourStop.cityId === city.id;
   const activeNpcIndex = missionStep.npcIndex;
   const npcPositions = cafeTourInCurrentCity
@@ -687,7 +688,11 @@ export default function Home() {
     ? cafeTourStop.driverPrompts
     : cafeTourInCurrentCity && cafeTourPhase === "cafe"
       ? cafeTourStop.cafePrompts
-      : city.prompts;
+      : cityTravelStop && scene.role === "Cab driver"
+        ? cityTravelStop.driverPrompts
+        : cityTravelStop && scene.role === "Cafe host"
+          ? cityTravelStop.cafePrompts
+          : city.prompts;
   const currentNpcMessage = [...messages].reverse().find((message) => message.role === "npc" && message.speaker === scene.character);
   const waypointDistance = Math.round(Math.hypot(playerPosition.x - activeNpcPosition.x, playerPosition.y - activeNpcPosition.y));
   const weakestWord = pronunciationResult?.words.length
@@ -728,14 +733,16 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    setMessages([cityWelcome(city, level)]);
+    const firstNpcIndex = mission.steps[0].npcIndex;
+    setSceneId(city.scenes[firstNpcIndex].id);
+    setMessages(firstNpcIndex === 0 && !cafeTourActive ? [cityWelcome(city, level)] : []);
     setEvaluation(null);
     setInput("");
     setQuestProgress([false, false, false]);
     setMissionStepIndex(0);
     setMissionStepTurns(0);
     setMissionInventory([]);
-    setAgentEvents([{ id: Date.now(), tool: "set_waypoint", label: `Director marked ${city.scenes[0].character}` }]);
+    setAgentEvents([{ id: Date.now(), tool: "set_waypoint", label: `Director marked ${city.scenes[firstNpcIndex].character}` }]);
     setAffinity(12);
     setReward(null);
     setRewarded(false);
@@ -743,7 +750,7 @@ export default function Home() {
     setPronunciationResult(null);
     setPronunciationNote("Choose a phrase and record one clear attempt.");
     setEngineNote(provider === "demo" ? "Ready · no account or key required" : provider === "local" ? "Ollama selected · test the connection in Engine" : "API model selected · server connection checked on first message");
-  }, [city, level, provider]);
+  }, [cafeTourActive, city, level, mission, provider]);
 
   useEffect(() => {
     if (!cafeTourInCurrentCity || cafeTourPhase !== "cab-conversation" || !questProgress[0]) return;
@@ -1324,8 +1331,9 @@ export default function Home() {
   }
 
   function enterCity(nextCity: City) {
+    const nextMission = FLAGSHIP_MISSIONS[nextCity.id] ?? genericMission(nextCity.id, nextCity.name, nextCity.scenes.map((item) => item.goal));
     setCityId(nextCity.id);
-    setSceneId(nextCity.scenes[0].id);
+    setSceneId(nextCity.scenes[nextMission.steps[0].npcIndex].id);
     setPlayerPosition({ x: 50, y: 82 });
     setShowWorldPicker(false);
   }
