@@ -749,6 +749,7 @@ export default function Home() {
   const [showWorldPicker, setShowWorldPicker] = useState(true);
   const [showPhrasebook, setShowPhrasebook] = useState(false);
   const [showPause, setShowPause] = useState(false);
+  const [showMobileMission, setShowMobileMission] = useState(false);
   const [showPronunciation, setShowPronunciation] = useState(false);
   const [pronunciationProvider, setPronunciationProvider] = useState<PronunciationProvider>("local");
   const [pronunciationPrompt, setPronunciationPrompt] = useState(0);
@@ -975,7 +976,7 @@ export default function Home() {
   useEffect(() => {
     const pressed = new Set<string>();
     const movementKeys = new Set(["w", "a", "s", "d"]);
-    const movementBlocked = showPause || showPhrasebook || showWorldPicker || showEngine || showPronunciation || cafeTourPhase === "riding";
+    const movementBlocked = showPause || showPhrasebook || showMobileMission || showWorldPicker || showEngine || showPronunciation || cafeTourPhase === "riding";
     let animationFrame = 0;
     let previousTime = performance.now();
 
@@ -1029,7 +1030,7 @@ export default function Home() {
       window.removeEventListener("blur", clearPressed);
       pressed.clear();
     };
-  }, [cafeTourPhase, city.id, showEngine, showPause, showPhrasebook, showPronunciation, showWorldPicker]);
+  }, [cafeTourPhase, city.id, showEngine, showMobileMission, showPause, showPhrasebook, showPronunciation, showWorldPicker]);
 
   const speak = useCallback((text: string, force = false) => {
     if ((!autoSpeak && !force) || !("speechSynthesis" in window)) return;
@@ -1589,6 +1590,7 @@ export default function Home() {
   function leaveStreet() {
     setShowPause(false);
     setShowPhrasebook(false);
+    setShowMobileMission(false);
     setCafeTourActive(false);
     setCafeTourPhase("idle");
     setShowWorldPicker(true);
@@ -1620,6 +1622,29 @@ export default function Home() {
                 ridePhase={activeTravelStop ? cafeTourPhase : "idle"}
               />
             </Suspense>
+
+            <nav className="mobile-gamebar" aria-label="Mobile game controls">
+              <button onClick={() => { setShowMobileMission(false); setShowWorldPicker(true); }}><span>{city.flag}</span><b>{city.name}</b></button>
+              <button className={showMobileMission ? "active" : ""} onClick={() => setShowMobileMission((current) => !current)} aria-expanded={showMobileMission}><span>◎</span><b>Mission {completedQuests}/3</b></button>
+              <button onClick={() => { setShowMobileMission(false); setShowPhrasebook(true); }}><span>“”</span><b>Phrases</b></button>
+              <button className={showTranscript ? "active" : ""} onClick={() => { setShowMobileMission(false); setShowTranscript((current) => !current); }}><span>☰</span><b>Log</b></button>
+            </nav>
+
+            {showMobileMission && (
+              <aside className="mobile-mission-sheet" role="dialog" aria-modal="true" aria-labelledby="mobile-mission-title">
+                <header><div><small>{cafeTourInCurrentCity ? `CAFE PASSPORT · STOP ${cafeTourStopIndex + 1}/3` : `MISSION · ${completedQuests}/3 COMPLETE`}</small><strong id="mobile-mission-title">{cafeTourInCurrentCity ? `${cafeTourStop.pickup} → ${cafeTourStop.cafe}` : mission.title}</strong></div><button onClick={() => setShowMobileMission(false)} aria-label="Close mission">×</button></header>
+                <div className="mobile-mission-progress">{questProgress.map((done, index) => <i key={index} className={done ? "done" : index === missionStepIndex ? "current" : ""}>{done ? "✓" : index + 1}</i>)}</div>
+                <p>{cafeTourInCurrentCity
+                  ? cafeTourPhase === "call" ? `Call a ${cafeTourStop.ride}, then tell the driver you need ${cafeTourStop.cafe}.`
+                    : cafeTourPhase === "cab-conversation" ? `Name ${cafeTourStop.cafe}, ask one practical question, and explicitly confirm the ride.`
+                      : cafeTourPhase === "riding" ? `Travelling through ${city.name} now.`
+                        : cafeTourPhase === "cafe" ? `Walk to ${scene.character}, order ${cafeTourStop.order}, and complete two natural turns.`
+                          : `Your ${city.name} café visit is complete.`
+                  : completedQuests === 3 ? mission.finale : missionStep.instruction}</p>
+                {cafeTourInCurrentCity && cafeTourPhase === "call" && <button className="mobile-mission-action" onClick={() => { callCafeRide(); setShowMobileMission(false); }}>Call {cafeTourStop.ride}</button>}
+                {cafeTourInCurrentCity && cafeTourPhase === "stop-complete" && <button className="mobile-mission-action" onClick={() => { continueCafeTour(); setShowMobileMission(false); }}>{cafeTourStopIndex === CAFE_TOUR_STOPS.length - 1 ? "Finish trip" : "Next city"}</button>}
+              </aside>
+            )}
 
             <div className="sadak-brand-hud" aria-label="Current district">
               <span className="sadak-wordmark"><b>W</b> WORLDLING</span>
@@ -1804,7 +1829,7 @@ export default function Home() {
             </div>
 
             <VirtualJoystick
-              disabled={showPause || showPhrasebook || showWorldPicker || showEngine || showPronunciation || cafeTourPhase === "riding"}
+              disabled={showPause || showPhrasebook || showMobileMission || showWorldPicker || showEngine || showPronunciation || cafeTourPhase === "riding"}
               onMove={moveWithJoystick}
             />
 

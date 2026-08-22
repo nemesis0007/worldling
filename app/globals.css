@@ -1659,6 +1659,8 @@ footer strong { color: #b9b6a9; }
 }
 .sadak-replace button,
 .sadak-replace a { font-family: var(--font-sans),system-ui,sans-serif; }
+.mobile-gamebar,
+.mobile-mission-sheet { display: none; }
 
 .sadak-brand-hud {
   position: absolute;
@@ -2276,6 +2278,69 @@ footer strong { color: #b9b6a9; }
   .sadak-replace .journey-shell,
   .sadak-replace .play-world { height: 100svh; min-height: 100svh; }
   .sadak-replace .world3d-canvas canvas { touch-action: none; }
+
+  .sadak-brand-hud,
+  .sadak-replace .game-status,
+  .sadak-replace .game-mission,
+  .sadak-replace .focus-mode .game-mission,
+  .camera-orbit-hud,
+  .sadak-replace .game-minimap,
+  .sadak-replace .focus-mode .game-minimap,
+  .cafe-tour-hud,
+  .sadak-replace .approach-hint { display: none !important; }
+
+  .mobile-gamebar {
+    position: absolute;
+    z-index: 52;
+    top: max(8px,env(safe-area-inset-top));
+    left: 8px;
+    right: 8px;
+    display: grid;
+    grid-template-columns: 1.25fr repeat(3,1fr);
+    min-height: 48px;
+    border: 2px solid var(--sadak-ink);
+    border-radius: 7px;
+    padding: 4px;
+    background: rgba(255,253,241,.94);
+    box-shadow: 3px 3px 0 var(--sadak-ink);
+    backdrop-filter: blur(10px);
+  }
+  .mobile-gamebar button { min-width: 0; border: 0; border-right: 1px solid rgba(18,18,15,.2); padding: 4px 3px; color: var(--sadak-ink); background: transparent; cursor: pointer; }
+  .mobile-gamebar button:last-child { border-right: 0; }
+  .mobile-gamebar button.active { border-radius: 4px; background: var(--sadak-main); }
+  .mobile-gamebar span,
+  .mobile-gamebar b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mobile-gamebar span { height: 17px; font-size: 13px; line-height: 17px; }
+  .mobile-gamebar b { margin-top: 2px; font-size: 7px; font-weight: 950; }
+
+  .mobile-mission-sheet {
+    position: absolute;
+    z-index: 51;
+    top: calc(max(8px,env(safe-area-inset-top)) + 58px);
+    left: 8px;
+    right: 8px;
+    display: block;
+    max-height: min(310px,calc(100svh - 190px));
+    border: 2px solid var(--sadak-ink);
+    border-radius: 7px;
+    padding: 12px;
+    color: var(--sadak-ink);
+    background: rgba(255,250,235,.97);
+    box-shadow: 4px 4px 0 var(--sadak-ink);
+    overflow-y: auto;
+  }
+  .mobile-mission-sheet header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  .mobile-mission-sheet small,
+  .mobile-mission-sheet strong { display: block; }
+  .mobile-mission-sheet small { color: #6b624c; font-size: 6px; font-weight: 950; letter-spacing: .12em; }
+  .mobile-mission-sheet strong { margin-top: 4px; font-size: 14px; line-height: 1.15; }
+  .mobile-mission-sheet header > button { flex: 0 0 auto; width: 34px; height: 34px; border: 2px solid var(--sadak-ink); border-radius: 5px; color: var(--sadak-ink); background: var(--sadak-main); font-size: 19px; font-weight: 950; }
+  .mobile-mission-sheet p { margin: 10px 0 0; color: #514b3e; font-size: 11px; line-height: 1.45; }
+  .mobile-mission-progress { display: flex; gap: 5px; margin-top: 10px; }
+  .mobile-mission-progress i { display: grid; place-items: center; width: 24px; height: 24px; border: 1.5px solid var(--sadak-ink); border-radius: 4px; color: #665f51; background: #fff; font-size: 8px; font-style: normal; font-weight: 950; }
+  .mobile-mission-progress i.current { color: #fff; background: var(--sadak-red); }
+  .mobile-mission-progress i.done { color: var(--sadak-ink); background: var(--sadak-green); }
+  .mobile-mission-action { width: 100%; min-height: 44px; margin-top: 11px; border: 2px solid var(--sadak-ink); border-radius: 5px; color: var(--sadak-ink); background: var(--sadak-green); box-shadow: 2px 2px 0 var(--sadak-ink); font-size: 9px; font-weight: 950; }
 
   .sadak-brand-hud { top: max(8px,env(safe-area-inset-top)); left: 8px; min-width: 0; width: 202px; padding: 7px; box-shadow: 3px 3px 0 var(--sadak-ink); }
   .sadak-wordmark { gap: 5px; padding-bottom: 4px; font-size: 9px; }
