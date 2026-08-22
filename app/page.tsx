@@ -9,6 +9,7 @@ const World3D = lazy(() => import("./World3D"));
 
 type Provider = "demo" | "local" | "api";
 type ApiProvider = "groq" | "openai" | "openrouter" | "gemini";
+type LocalProfile = "fast" | "quality" | "custom";
 type Level = "Beginner" | "Intermediate" | "Advanced";
 type Role = "npc" | "user" | "system";
 
@@ -359,6 +360,11 @@ const API_PROVIDER_MODELS: Record<ApiProvider, { label: string; model: string; h
   openai: { label: "OpenAI", model: "gpt-4.1-mini", hint: "Reliable hosted model" },
   openrouter: { label: "OpenRouter", model: "openrouter/free", hint: "Routes across free models" },
   gemini: { label: "Google Gemini", model: "gemini-3.7-flash", hint: "Strong multilingual option" },
+};
+
+const LOCAL_MODEL_PROFILES: Record<Exclude<LocalProfile, "custom">, { model: string; label: string; hint: string }> = {
+  fast: { model: "llama3.2:3b", label: "Fast", hint: "Best for live conversation" },
+  quality: { model: "qwen3:8b", label: "Quality", hint: "Smarter, but much slower" },
 };
 
 function encodeWav(samples: Float32Array, sourceRate: number) {
@@ -728,6 +734,13 @@ Conversation policy, in priority order:
 Stay warmly in character, remember the recent transcript, keep the spoken reply under 45 words, and keep beginner language simple. ${missionContext} Return only valid JSON with fields text for the ${city.language} reply, translation for concise English, and actions as an array of zero or more objects shaped {"tool":"remember_fact|give_item|complete_step|set_waypoint","value":"short value","reason":"short reason"}. Leave actions empty during ordinary small talk. Only use complete_step when the player's latest message explicitly and meaningfully addresses the hidden objective.`;
 }
 
+function fastOllamaTurnPrompt(city: City, scene: Scene, level: Level, missionContext = "") {
+  return `You are ${scene.character}, a friendly ${scene.role} at ${scene.label} in ${city.name}. Speak naturally in simple ${city.language} for a ${level} learner.
+Answer the player's newest meaning directly. Ask no more than one related question. Never repeat your last reply or force your venue, job, food, directions, or mission into small talk. Keep the spoken reply under 30 words.
+The mission is hidden. Use complete_step only when the newest player message clearly performs it. Otherwise return no actions. ${missionContext}
+Return only JSON: text is the ${city.language} reply, translation is concise English, and actions is an array using only remember_fact, give_item, complete_step, or set_waypoint.`;
+}
+
 export default function Home() {
   const [cityId, setCityId] = useState("bengaluru");
   const [sceneId, setSceneId] = useState("scene-1");
@@ -743,7 +756,8 @@ export default function Home() {
   const [showEngine, setShowEngine] = useState(false);
   const [pendingCityId, setPendingCityId] = useState<string | null>(null);
   const [ollamaEndpoint, setOllamaEndpoint] = useState("http://127.0.0.1:11434");
-  const [ollamaModel, setOllamaModel] = useState("qwen3:8b");
+  const [ollamaModel, setOllamaModel] = useState(LOCAL_MODEL_PROFILES.fast.model);
+  const [localProfile, setLocalProfile] = useState<LocalProfile>("fast");
   const [localStatus, setLocalStatus] = useState<LocalStatus>("idle");
   const [localMessage, setLocalMessage] = useState("Not tested yet");
   const [apiProvider, setApiProvider] = useState<ApiProvider>("groq");
@@ -856,9 +870,15 @@ export default function Home() {
     const saved = window.localStorage.getItem("worldling-provider") as Provider | null;
     if (saved && ["demo", "local", "api"].includes(saved)) setProvider(saved);
     try {
-      const local = JSON.parse(window.localStorage.getItem("worldling-ollama") ?? "null") as { endpoint?: string; model?: string } | null;
+      const local = JSON.parse(window.localStorage.getItem("worldling-ollama") ?? "null") as { endpoint?: string; model?: string; profile?: LocalProfile } | null;
       if (local?.endpoint) setOllamaEndpoint(local.endpoint);
-      if (local?.model) setOllamaModel(local.model);
+      if (local?.profile && ["fast", "quality", "custom"].includes(local.profile)) {
+        setLocalProfile(local.profile);
+        if (local.model) setOllamaModel(local.model);
+      } else if (local?.model && local.model !== "qwen3:8b") {
+        setLocalProfile("custom");
+        setOllamaModel(local.model);
+      }
       const progress = JSON.parse(window.localStorage.getItem("worldling-progress") ?? "null") as { xp?: number; coins?: number; stamps?: string[] } | null;
       if (typeof progress?.xp === "number") setXp(progress.xp);
       if (typeof progress?.coins === "number") setCoins(progress.coins);
@@ -952,8 +972,8 @@ export default function Home() {
 
   useEffect(() => {
     if (!hydrated) return;
-    window.localStorage.setItem("worldling-ollama", JSON.stringify({ endpoint: ollamaEndpoint, model: ollamaModel }));
-  }, [hydrated, ollamaEndpoint, ollamaModel]);
+    window.localStorage.setItem("worldling-ollama", JSON.stringify({ endpoint: ollamaEndpoint, model: ollamaModel, profile: localProfile }));
+  }, [hydrated, localProfile, ollamaEndpoint, ollamaModel]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -1106,11 +1126,16 @@ export default function Home() {
     const objectiveContext = turnPlan.objectiveRelevant
       ? `The player independently opened a topic relevant to the hidden objective "${missionStep.instruction}". Use it only to validate genuine progress.`
       : "The hidden objective is not relevant to this turn. Do not mention it, hint at it, or steer toward it.";
-    const transcript = conversationMessages.slice(-6).map((message) => ({
+    const transcript = conversationMessages.slice(localProfile === "fast" ? -4 : -6).map((message) => ({
       role: message.role === "npc" ? "assistant" : "user",
       content: message.text,
     }));
-    const systemContent = ollamaSystemPrompt(city, scene, level, action, `Hidden game state for validation only: mission "${mission.title}". ${objectiveContext} The player has taken ${nextMessages.filter((message) => message.role === "user").length} turn(s). Latest player message: "${latestPlayerMessage}". Your previous reply was: "${previousNpcMessage || "none"}". ${turnPlan.guidance} Items and facts already carried: ${missionInventory.join(", ") || "none"}. Learner focus words: ${learnerMemory.focusWords.join(", ") || "none"}.`);
+    const missionPrompt = localProfile === "fast" && action === "turn"
+      ? `Hidden mission objective: "${missionStep.instruction}". It is background context, not a script.`
+      : `Hidden game state for validation only: mission "${mission.title}". ${objectiveContext} The player has taken ${nextMessages.filter((message) => message.role === "user").length} turn(s). Latest player message: "${latestPlayerMessage}". Your previous reply was: "${previousNpcMessage || "none"}". ${turnPlan.guidance} Items and facts already carried: ${missionInventory.join(", ") || "none"}. Learner focus words: ${learnerMemory.focusWords.join(", ") || "none"}.`;
+    const systemContent = localProfile === "fast" && action === "turn"
+      ? fastOllamaTurnPrompt(city, scene, level, missionPrompt)
+      : ollamaSystemPrompt(city, scene, level, action, missionPrompt);
     const generate = async (correction = "", promptMessages = transcript) => {
       const response = await fetch(`${base}/api/chat`, {
         method: "POST",
@@ -1120,15 +1145,15 @@ export default function Home() {
           stream: false,
           format: action === "turn" ? OLLAMA_TURN_FORMAT : OLLAMA_EVALUATION_FORMAT,
           think: false,
-          keep_alive: "30m",
+          keep_alive: "2h",
           messages: [
             { role: "system", content: `${systemContent}${correction ? ` ${correction}` : ""}` },
             ...promptMessages,
           ],
           options: {
             temperature: action === "turn" ? 0.4 : 0.1,
-            num_ctx: 4096,
-            num_predict: action === "turn" ? 160 : 220,
+            num_ctx: localProfile === "quality" ? 3072 : 2048,
+            num_predict: action === "turn" ? (localProfile === "quality" ? 120 : 96) : 180,
           },
         }),
       });
@@ -1190,6 +1215,16 @@ export default function Home() {
         setLocalMessage(available.length ? `Ollama is online, but ${ollamaModel} is not installed. Available: ${available.slice(0, 3).join(", ")}.` : "Ollama is online, but it has no downloaded models.");
         return;
       }
+      const inactiveWorldlingModels = Object.values(LOCAL_MODEL_PROFILES)
+        .map((option) => option.model)
+        .filter((model) => model !== ollamaModel.trim() && available.includes(model));
+      await Promise.all(inactiveWorldlingModels.map(async (model) => {
+        await fetch(`${base}/api/generate`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ model, keep_alive: 0 }),
+        }).catch(() => undefined);
+      }));
       setLocalMessage(`${ollamaModel} found · warming the model for faster replies…`);
       const warmResponse = await fetch(`${base}/api/generate`, {
         method: "POST",
@@ -1198,8 +1233,8 @@ export default function Home() {
           model: ollamaModel.trim(),
           prompt: "",
           stream: false,
-          keep_alive: "30m",
-          options: { num_ctx: 4096 },
+          keep_alive: "2h",
+          options: { num_ctx: localProfile === "quality" ? 3072 : 2048 },
         }),
       });
       if (!warmResponse.ok) {
@@ -1207,7 +1242,7 @@ export default function Home() {
         throw new Error(failure?.error ?? `Model warm-up returned ${warmResponse.status}.`);
       }
       setLocalStatus("connected");
-      setLocalMessage(`Connected · ${ollamaModel} is warm and ready in fast mode`);
+      setLocalMessage(`Connected · ${ollamaModel} is warm for 2 hours`);
       setProvider("local");
       setEngineNote(`Ollama connected · using ${ollamaModel}`);
       const pendingCity = CITIES.find((item) => item.id === pendingCityId);
@@ -2104,8 +2139,23 @@ export default function Home() {
             {provider === "local" ? (
               <div className="ollama-config">
                 <div className="ollama-title"><span className={`status-dot local ${localStatus}`} /><div><strong>Direct Ollama connection</strong><small>Conversation text goes from this browser to your local Ollama server.</small></div></div>
+                <div className="local-profile-picker" aria-label="Local model performance">
+                  {(["fast", "quality"] as const).map((profile) => {
+                    const option = LOCAL_MODEL_PROFILES[profile];
+                    return (
+                      <button key={profile} type="button" className={localProfile === profile ? "active" : ""} onClick={() => {
+                        setLocalProfile(profile);
+                        setOllamaModel(option.model);
+                        setLocalStatus("idle");
+                        setLocalMessage(`${option.model} selected · test to warm it`);
+                      }}>
+                        <strong>{option.label}</strong><small>{option.model} · {option.hint}</small>
+                      </button>
+                    );
+                  })}
+                </div>
                 <label>Ollama address<input value={ollamaEndpoint} onChange={(event) => { setOllamaEndpoint(event.target.value); setLocalStatus("idle"); }} placeholder="http://127.0.0.1:11434" /></label>
-                <label>Installed model<input value={ollamaModel} onChange={(event) => { setOllamaModel(event.target.value); setLocalStatus("idle"); }} placeholder="qwen3:8b" /></label>
+                <label>Installed model<input value={ollamaModel} onChange={(event) => { setOllamaModel(event.target.value); setLocalProfile("custom"); setLocalStatus("idle"); }} placeholder="llama3.2:3b" /></label>
                 <div className={`local-result ${localStatus}`}><span>{localStatus === "checking" ? "◌" : localStatus === "connected" ? "✓" : localStatus === "error" ? "!" : "·"}</span><p>{localMessage}</p></div>
                 <button className="test-local" onClick={() => void testOllama()} disabled={localStatus === "checking"}>{localStatus === "checking" ? "Testing…" : "Test Ollama connection"}</button>
                 <div className="origin-help">
@@ -2115,7 +2165,7 @@ export default function Home() {
                     <li>On Windows run <code>setx OLLAMA_ORIGINS &quot;https://worldling.vercel.app&quot;</code></li>
                     <li>Fully restart Ollama, then press Test connection.</li>
                   </ol>
-                  <p><b>Fast local mode:</b> hidden reasoning off · shorter replies · 4K context · model kept warm for 30 minutes.</p>
+                  <p><b>Fast local mode:</b> 3B model · hidden reasoning off · compact 2K context · model kept warm for 2 hours.</p>
                 </div>
               </div>
             ) : provider === "api" ? (

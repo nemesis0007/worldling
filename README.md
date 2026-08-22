@@ -64,13 +64,16 @@ The default deterministic provider keeps the complete game loop playable without
 
 ### Ollama on your device
 
-Install a multilingual model, for example:
+Install the fast conversation model. Keep Qwen as an optional quality profile:
 
 ```bash
+ollama pull llama3.2:3b
 ollama pull qwen3:8b
 ```
 
 Start Ollama, open **AI & voice settings**, select **Local model**, enter `http://127.0.0.1:11434`, and test the connection. The browser talks directly to Ollama's `/api/tags` and `/api/chat` endpoints.
+
+The **Fast** profile uses `llama3.2:3b`, a compact 2K context, short replies, and a two-hour keep-alive. The **Quality** profile uses `qwen3:8b`. Testing a profile unloads the other Worldling model so both do not compete for VRAM.
 
 When the hosted site calls a local Ollama instance, allow the Worldling origin through `OLLAMA_ORIGINS`. Running both Worldling and Ollama locally usually needs no extra origin configuration.
 

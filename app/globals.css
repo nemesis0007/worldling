@@ -489,6 +489,11 @@ footer strong { color: white; }
 .ollama-title { display: flex; align-items: center; gap: 9px; margin-bottom: 12px; }
 .ollama-title strong { display: block; font-size: 10px; }
 .ollama-title small { display: block; color: var(--muted); font-size: 7px; margin-top: 2px; }
+.local-profile-picker { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.local-profile-picker button { display: flex; min-width: 0; flex-direction: column; align-items: flex-start; gap: 3px; border: 1px solid var(--line); border-radius: 10px; padding: 10px; color: var(--ink); background: white; cursor: pointer; text-align: left; }
+.local-profile-picker button strong { font-size: 9px; }
+.local-profile-picker button small { color: var(--muted); font-size: 7px; line-height: 1.35; }
+.local-profile-picker button.active { border-color: var(--forest); background: #dcece1; box-shadow: inset 0 0 0 1px var(--forest); }
 .ollama-config label { display: block; font-size: 7px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-top: 9px; }
 .ollama-config input { display: block; width: 100%; margin-top: 5px; padding: 9px 10px; border: 1px solid var(--line); border-radius: 9px; background: white; color: var(--ink); font-size: 9px; outline: none; }
 .ollama-config input:focus { border-color: var(--forest); box-shadow: 0 0 0 2px rgba(32,84,78,.1); }
@@ -2131,6 +2136,9 @@ footer strong { color: #b9b6a9; }
 .sadak-replace .ollama-config input:focus,
 .sadak-replace .api-config input:focus,
 .sadak-replace .api-config select:focus { border-color: var(--sadak-blue); box-shadow: 0 0 0 2px rgba(69,168,245,.24); }
+.sadak-replace .local-profile-picker button { border: 1.5px solid var(--sadak-ink); border-radius: 4px; color: var(--sadak-ink); background: #fff; }
+.sadak-replace .local-profile-picker button small { color: #5b5548; }
+.sadak-replace .local-profile-picker button.active { background: var(--sadak-blue); box-shadow: 2px 2px 0 var(--sadak-ink); }
 .sadak-replace .api-privacy-note { color: #514b3f; }
 .sadak-replace .local-result { border: 1px solid rgba(18,18,15,.28); border-radius: 4px; color: var(--sadak-ink); background: #ece9d8; }
 .sadak-replace .local-result p { color: var(--sadak-ink); font-size: 8px; }
