@@ -1,13 +1,13 @@
 export type WorldPoint = { x: number; y: number };
 
-export const WORLD_SCALE = 1.4;
+export const WORLD_SCALE = 1;
 export const WORLD_CENTER = 50;
-export const ROAD_WORLD_LINES = [-22, 0, 22] as const;
-export const ROAD_WIDTH = 8.8;
-export const WORLD_LIMIT = 35;
+export const ROAD_WORLD_LINES = [-28, 0, 28] as const;
+export const ROAD_WIDTH = 13;
+export const WORLD_LIMIT = 46;
 export const PLAYABLE_STREET_BOUNDS = { minX: 4, maxX: 96, minY: 4, maxY: 96 } as const;
 export const SCREEN_ROAD_LINES = ROAD_WORLD_LINES.map((line) => WORLD_CENTER + line * WORLD_SCALE);
-const WALKABLE_HALF_WIDTH = 6.8 * WORLD_SCALE;
+const WALKABLE_HALF_WIDTH = (ROAD_WIDTH / 2 + 2.4) * WORLD_SCALE;
 
 export const STREET_NPC_POSITIONS: WorldPoint[] = [
   { x: 41, y: 51 },

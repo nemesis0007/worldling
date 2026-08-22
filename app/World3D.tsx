@@ -41,21 +41,21 @@ const MODEL_ROOT = "/models/kenney-city";
 const CHARACTER_ROOT = "/models/quaternius";
 const CAR_ROOT = "/models/kenney-cars";
 const PLAYER_MODEL_FORWARD_OFFSET = Math.PI;
-const CITY_BLOCK_CENTERS = [-11, 11] as const;
-const ROAD_DASH_POSITIONS = Array.from({ length: 23 }, (_, index) => -33 + index * 3)
+const CITY_BLOCK_CENTERS = [-14, 14] as const;
+const ROAD_DASH_POSITIONS = Array.from({ length: 29 }, (_, index) => -42 + index * 3)
   .filter((position) => ROAD_WORLD_LINES.every((line) => Math.abs(position - line) > ROAD_WIDTH * .72));
 const DISTRICT_BUILDING_EDGES = [
   ...CITY_BLOCK_CENTERS.flatMap((x) => CITY_BLOCK_CENTERS.flatMap((z) => [
-    { x, z: z - 7.55, rotation: 0 },
-    { x, z: z + 7.55, rotation: Math.PI },
-    { x: x - 7.55, z, rotation: Math.PI / 2 },
-    { x: x + 7.55, z, rotation: -Math.PI / 2 },
+    { x, z: z - 4.2, rotation: 0 },
+    { x, z: z + 4.2, rotation: Math.PI },
+    { x: x - 4.2, z, rotation: Math.PI / 2 },
+    { x: x + 4.2, z, rotation: -Math.PI / 2 },
   ])),
   ...CITY_BLOCK_CENTERS.flatMap((offset) => [
-    { x: -29.55, z: offset, rotation: -Math.PI / 2 },
-    { x: 29.55, z: offset, rotation: Math.PI / 2 },
-    { x: offset, z: -29.55, rotation: Math.PI },
-    { x: offset, z: 29.55, rotation: 0 },
+    { x: -37.8, z: offset, rotation: -Math.PI / 2 },
+    { x: 37.8, z: offset, rotation: Math.PI / 2 },
+    { x: offset, z: -37.8, rotation: Math.PI },
+    { x: offset, z: 37.8, rotation: 0 },
   ]),
 ];
 
@@ -234,23 +234,23 @@ function NewYorkStreetLife() {
     <Taxi position={[1.3, .08, 7.4]} rotation={Math.PI + .08} />
     <Taxi position={[-1.15, .08, 13]} rotation={.08} />
     <VehicleModel kind="police" position={[1.3, .03, -16.5]} rotation={Math.PI + .04} scale={.7} />
-    <TrafficSignal position={[-6.15, 0, -2.8]} />
-    <TrafficSignal position={[6.15, 0, 5.5]} />
+    <TrafficSignal position={[-8.8, 0, -2.8]} />
+    <TrafficSignal position={[8.8, 0, 5.5]} />
     {[-2.4, -1.2, 0, 1.2, 2.4].map((x) => <mesh key={`crosswalk-${x}`} position={[x, .025, 1.4]} rotation={[-Math.PI / 2, 0, 0]}><planeGeometry args={[.64, 4.9]} /><meshBasicMaterial color="#e7e4da" transparent opacity={.82} /></mesh>)}
-    <group position={[5.55, 0, -8.7]}>
+    <group position={[9.1, 0, -8.7]}>
       <mesh castShadow position={[0, .72, 0]}><boxGeometry args={[1.35, 1.1, .75]} /><meshStandardMaterial color="#2f81ce" /></mesh>
       <mesh position={[0, 1.42, 0]}><boxGeometry args={[1.55, .25, .9]} /><meshStandardMaterial color="#f1c52a" /></mesh>
       <Html position={[0, 1.42, .48]} center distanceFactor={9} className="street-prop-label"><span>HOT DOGS</span></Html>
     </group>
-    <group position={[-5.9, 0, 8.2]}>
+    <group position={[-9.1, 0, 8.2]}>
       <mesh castShadow position={[0, .2, 0]}><cylinderGeometry args={[.34, .38, .4, 14]} /><meshStandardMaterial color="#3a4143" metalness={.65} /></mesh>
       <Sparkles count={14} scale={[1.4, 3.2, 1.4]} size={2} speed={.55} opacity={.3} color="#d9f2ee" />
     </group>
-    {[-10.5, -3.3, 4.5, 11.8].map((z, index) => <group key={z} position={[index % 2 ? 6.15 : -6.15, 0, z]}>
+    {[-10.5, -3.3, 4.5, 11.8].map((z, index) => <group key={z} position={[index % 2 ? 8.8 : -8.8, 0, z]}>
       <mesh castShadow position={[0, .32, 0]}><cylinderGeometry args={[.1, .14, .64, 10]} /><meshStandardMaterial color="#b83227" roughness={.72} /></mesh>
       <mesh position={[0, .68, 0]}><sphereGeometry args={[.15, 12, 8]} /><meshStandardMaterial color="#bd3a2c" /></mesh>
     </group>)}
-    <group position={[0, 0, -27]}>
+    <group position={[0, 0, -40]}>
       <mesh castShadow position={[-3.6, 3.2, 0]}><boxGeometry args={[3.2, 5.8, .45]} /><meshStandardMaterial color="#24282b" metalness={.25} /></mesh>
       <mesh position={[-3.35, 4.1, -.25]}><planeGeometry args={[2.45, 2.1]} /><meshStandardMaterial color="#ed375e" emissive="#d51646" emissiveIntensity={1.7} /></mesh>
       <mesh castShadow position={[3.65, 3.5, .1]}><boxGeometry args={[3.5, 6.5, .5]} /><meshStandardMaterial color="#272b2e" metalness={.25} /></mesh>
@@ -275,7 +275,7 @@ function TourCafe({ cityName }: { cityName: string }) {
       ? { name: "IRANI CAFE", wall: "#397a68", awning: "#f0d07b" }
       : { name: "CAFE LUCIA", wall: "#8c493f", awning: "#e7c86e" };
   return (
-    <group position={[-6.7, 0, 1]}>
+    <group position={[-9.6, 0, 1]}>
       <mesh castShadow position={[0, 1.7, 0]}><boxGeometry args={[1.15, 3.4, 5.4]} /><meshStandardMaterial color={cafe.wall} roughness={.82} /></mesh>
       <mesh castShadow position={[.65, 2.35, 0]} rotation={[0, 0, -.16]}><boxGeometry args={[1.5, .12, 5.7]} /><meshStandardMaterial color={cafe.awning} roughness={.74} /></mesh>
       <mesh position={[.59, 1.45, 0]} rotation={[0, Math.PI / 2, 0]}><planeGeometry args={[4.3, 1.45]} /><meshStandardMaterial color="#18211e" emissive="#16241f" emissiveIntensity={.35} /></mesh>
@@ -288,20 +288,20 @@ function TourCafe({ cityName }: { cityName: string }) {
 
 function ParisStreetLife() {
   return <group>
-    {[-9, -2, 6.5].map((z) => <CafeTable key={z} position={[-5.5, 0, z]} />)}
-    <group position={[5.7, 0, -6]}>
+    {[-9, -2, 6.5].map((z) => <CafeTable key={z} position={[-9.1, 0, z]} />)}
+    <group position={[9.1, 0, -6]}>
       <mesh castShadow position={[0, 1.35, 0]}><cylinderGeometry args={[.07, .09, 2.7, 12]} /><meshStandardMaterial color="#315b4a" metalness={.55} /></mesh>
       <mesh position={[0, 2.72, 0]} rotation={[0, 0, -.08]}><circleGeometry args={[.5, 24]} /><meshStandardMaterial color="#3a7f68" /></mesh>
       <Html position={[0, 2.72, .03]} center distanceFactor={8} className="street-prop-label metro"><span>M</span></Html>
     </group>
-    {[-10, 1, 11].map((z, index) => <group key={z} position={[5.6, 0, z]}>
+    {[-10, 1, 11].map((z, index) => <group key={z} position={[9.1, 0, z]}>
       <mesh castShadow position={[0, .72, 0]} rotation={[0, index % 2 ? .08 : -.08, 0]}><boxGeometry args={[1.45, 1.4, .6]} /><meshStandardMaterial color="#315c4a" roughness={.8} /></mesh>
       <mesh position={[0, .82, -.32]}><planeGeometry args={[1.15, .85]} /><meshStandardMaterial color={index % 2 ? "#d7c7a4" : "#d9b870"} /></mesh>
       <Html position={[0, 1.58, 0]} center distanceFactor={9} className="street-prop-label"><span>BOUQUINISTE</span></Html>
     </group>)}
-    {[-12, -4, 5, 13].map((z, index) => <StreetLamp key={z} position={[index % 2 ? 6.25 : -6.25, 0, z]} />)}
+    {[-12, -4, 5, 13].map((z, index) => <StreetLamp key={z} position={[index % 2 ? 8.9 : -8.9, 0, z]} />)}
     <CityLandmark cityName="Paris" />
-    <group position={[0, 0, -22]}>
+    <group position={[0, 0, -40]}>
       <mesh position={[0, .35, 0]}><boxGeometry args={[13, .7, .25]} /><meshStandardMaterial color="#767973" metalness={.45} /></mesh>
       {[-5, -3, -1, 1, 3, 5].map((x) => <mesh key={x} position={[x, 1.05, 0]}><cylinderGeometry args={[.035, .035, 1.4, 8]} /><meshStandardMaterial color="#555955" /></mesh>)}
     </group>
@@ -322,19 +322,19 @@ function MumbaiStreetLife() {
   return <group>
     <AutoRickshaw position={[-1.3, .02, -8]} rotation={.05} />
     <AutoRickshaw position={[1.25, .02, 8]} rotation={Math.PI + .04} />
-    <group position={[-5.7, 0, -3]}>
+    <group position={[-9.1, 0, -3]}>
       <mesh castShadow position={[0, .7, 0]}><boxGeometry args={[1.7, 1.35, .8]} /><meshStandardMaterial color="#317c65" /></mesh>
       <mesh position={[0, 1.52, 0]}><coneGeometry args={[1.2, .75, 4]} /><meshStandardMaterial color="#e86c42" /></mesh>
       <Html position={[0, 1.5, .48]} center distanceFactor={9} className="street-prop-label"><span>CHAI · चहा</span></Html>
     </group>
-    <group position={[5.75, 0, 6]}>
+    <group position={[9.1, 0, 6]}>
       <mesh castShadow position={[0, 1.15, 0]}><boxGeometry args={[1.8, 2.3, .8]} /><meshStandardMaterial color="#c94435" /></mesh>
       {[.35, .8, 1.25, 1.7].map((y) => <mesh key={y} position={[0, y, -.42]}><planeGeometry args={[1.4, .12]} /><meshBasicMaterial color="#f1d36c" /></mesh>)}
       <Html position={[0, 2.55, 0]} center distanceFactor={10} className="street-prop-label"><span>BEST</span></Html>
     </group>
-    {[-12, -4, 5, 13].map((z, index) => <StreetLamp key={z} position={[index % 2 ? 6.25 : -6.25, 0, z]} />)}
+    {[-12, -4, 5, 13].map((z, index) => <StreetLamp key={z} position={[index % 2 ? 8.9 : -8.9, 0, z]} />)}
     <CityLandmark cityName="Mumbai" />
-    {[-8, 2, 11].map((z, index) => <group key={z} position={[index % 2 ? -5.8 : 5.8, 0, z]}>
+    {[-8, 2, 11].map((z, index) => <group key={z} position={[index % 2 ? -9.1 : 9.1, 0, z]}>
       <mesh castShadow position={[0, .75, 0]}><boxGeometry args={[1.65, 1.4, .65]} /><meshStandardMaterial color={["#e46b43", "#4c8d79", "#d3a12f"][index]} /></mesh>
       <mesh position={[0, 1.55, 0]}><boxGeometry args={[1.9, .18, .85]} /><meshStandardMaterial color="#f0d6a2" /></mesh>
     </group>)}
@@ -419,23 +419,23 @@ const PlayableRoad = memo(function PlayableRoad() {
       <mesh receiveShadow position={[line, .01, 0]}><boxGeometry args={[ROAD_WIDTH, .09, span]} /><meshStandardMaterial color="#202427" roughness={.94} /></mesh>
       <mesh receiveShadow position={[0, .012, line]}><boxGeometry args={[span, .09, ROAD_WIDTH]} /><meshStandardMaterial color="#202427" roughness={.94} /></mesh>
     </group>)}
-    {CITY_BLOCK_CENTERS.flatMap((x) => CITY_BLOCK_CENTERS.map((z) => <mesh key={`pavement-${x}-${z}`} receiveShadow position={[x, .075, z]}><boxGeometry args={[13.2, .15, 13.2]} /><meshStandardMaterial color="#aaa69d" roughness={.98} /></mesh>))}
+    {CITY_BLOCK_CENTERS.flatMap((x) => CITY_BLOCK_CENTERS.map((z) => <mesh key={`pavement-${x}-${z}`} receiveShadow position={[x, .075, z]}><boxGeometry args={[15, .15, 15]} /><meshStandardMaterial color="#aaa69d" roughness={.98} /></mesh>))}
     {ROAD_WORLD_LINES.flatMap((line) => ROAD_DASH_POSITIONS.flatMap((position) => [
       <mesh key={`lane-z-${line}-${position}`} position={[line, .075, position]}><boxGeometry args={[.16, .018, 1.35]} /><meshBasicMaterial color="#e7d477" /></mesh>,
       <mesh key={`lane-x-${line}-${position}`} position={[position, .075, line]}><boxGeometry args={[1.35, .018, .16]} /><meshBasicMaterial color="#e7d477" /></mesh>,
     ]))}
-    {[-3, -1.8, -.6, .6, 1.8, 3].flatMap((offset) => [
-      <mesh key={`cross-z-${offset}`} position={[offset, .082, 5.25]}><boxGeometry args={[.62, .018, 1.8]} /><meshBasicMaterial color="#eeeadd" /></mesh>,
-      <mesh key={`cross-x-${offset}`} position={[5.25, .082, offset]}><boxGeometry args={[1.8, .018, .62]} /><meshBasicMaterial color="#eeeadd" /></mesh>,
+    {[-4, -2.4, -.8, .8, 2.4, 4].flatMap((offset) => [
+      <mesh key={`cross-z-${offset}`} position={[offset, .082, 7.5]}><boxGeometry args={[.78, .018, 2]} /><meshBasicMaterial color="#eeeadd" /></mesh>,
+      <mesh key={`cross-x-${offset}`} position={[7.5, .082, offset]}><boxGeometry args={[2, .018, .78]} /><meshBasicMaterial color="#eeeadd" /></mesh>,
     ])}
   </group>;
 });
 
 const TOWER_SLOTS = CITY_BLOCK_CENTERS.flatMap((x) => CITY_BLOCK_CENTERS.flatMap((z) => [
-  { x: x - 2.35, z: z - 2.35 },
-  { x: x + 2.35, z: z + 2.35 },
-  { x: x - 2.35, z: z + 2.35 },
-  { x: x + 2.35, z: z - 2.35 },
+  { x: x - 2.8, z: z - 2.8 },
+  { x: x + 2.8, z: z + 2.8 },
+  { x: x - 2.8, z: z + 2.8 },
+  { x: x + 2.8, z: z - 2.8 },
 ]));
 
 const NewYorkNeighborhood = memo(function NewYorkNeighborhood({ data }: { data: Neighborhood }) {
@@ -490,7 +490,7 @@ const SadakDistrictGrid = memo(function SadakDistrictGrid({ cityName, sceneClass
             key={`${edge.x}-${edge.z}`}
             position={[edge.x, 0, edge.z]}
             rotation={edge.rotation}
-            width={12.7}
+            width={14.2}
             depth={cityName === "New York" ? 4 : 4.35}
             floors={floors}
             seed={seed}
@@ -545,7 +545,7 @@ function CityLandmark({ cityName }: { cityName: string }) {
   }
 
   return (
-    <group position={[0, 0, -27]} scale={1.05}>
+    <group position={[0, 0, -40]} scale={1.05}>
       {structure}
       <Html position={[0, 6.5, 0]} center distanceFactor={13} className="landmark-label"><span>{label}</span></Html>
     </group>
@@ -639,12 +639,12 @@ function CityScene({ activeNpcIndex, cameraResetSignal, cityName, neighborhood, 
   return (
     <>
       <color attach="background" args={[sky]} />
-      <fog attach="fog" args={[sky, 38, 92]} />
+      <fog attach="fog" args={[sky, 48, 118]} />
       <ambientLight intensity={1.25} />
       <hemisphereLight args={["#d9efff", "#29372f", 2.1]} />
       <directionalLight castShadow position={[-9, 14, 8]} intensity={3.2} color="#fff1d5" shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
       <Environment preset="city" environmentIntensity={.45} />
-      <Sparkles count={46} scale={[68, 6, 68]} size={1.1} speed={.18} opacity={.15} color="#d8ff5f" />
+      <Sparkles count={46} scale={[88, 6, 88]} size={1.1} speed={.18} opacity={.15} color="#d8ff5f" />
 
       <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[0, -.03, 0]} onClick={moveOnGround}>
         <planeGeometry args={[WORLD_LIMIT * 2.2, WORLD_LIMIT * 2.2]} />
@@ -653,11 +653,11 @@ function CityScene({ activeNpcIndex, cameraResetSignal, cityName, neighborhood, 
       <group onClick={moveOnGround}>{neighborhood ? <DetailedNeighborhood data={neighborhood} sceneClass={sceneClass} /> : <FallbackStreet />}</group>
       <SadakDistrictGrid cityName={cityName} sceneClass={sceneClass} />
       {!['New York', 'Paris', 'Mumbai'].includes(cityName) && <>
-        {[-11, -3, 6, 13].map((z, index) => <Model key={`tree-left-${z}`} url={`${MODEL_ROOT}/${index % 2 ? "tree-small" : "tree-large"}.glb`} position={[-6.8, 0, z]} scale={1.7} />)}
-        {[-8, 1, 9].map((z, index) => <Model key={`tree-right-${z}`} url={`${MODEL_ROOT}/${index % 2 ? "tree-large" : "tree-small"}.glb`} position={[6.8, 0, z]} scale={1.6} />)}
-        <StreetLamp position={[-6.2, 0, -4]} />
-        <StreetLamp position={[6.2, 0, 4]} />
-        <StreetLamp position={[-6.2, 0, 11]} />
+        {[-11, -3, 6, 13].map((z, index) => <Model key={`tree-left-${z}`} url={`${MODEL_ROOT}/${index % 2 ? "tree-small" : "tree-large"}.glb`} position={[-9.4, 0, z]} scale={1.7} />)}
+        {[-8, 1, 9].map((z, index) => <Model key={`tree-right-${z}`} url={`${MODEL_ROOT}/${index % 2 ? "tree-large" : "tree-small"}.glb`} position={[9.4, 0, z]} scale={1.6} />)}
+        <StreetLamp position={[-8.9, 0, -4]} />
+        <StreetLamp position={[8.9, 0, 4]} />
+        <StreetLamp position={[-8.9, 0, 11]} />
         <CityLandmark cityName={cityName} />
       </>}
       <CityVehicles cityName={cityName} />
@@ -724,7 +724,7 @@ export default function World3D(props: World3DProps) {
 
   return (
     <div className="world3d-canvas" aria-label={`Interactive 3D street in ${props.cityName}`}>
-      <Canvas shadows camera={{ fov: 52, near: .1, far: 90, position: [0, 5, 12] }} dpr={[1, 1.5]} gl={{ antialias: true, powerPreference: "high-performance" }} onContextMenu={(event) => event.preventDefault()} onPointerDown={releaseConversationFocus}>
+      <Canvas shadows camera={{ fov: 52, near: .1, far: 140, position: [0, 5, 12] }} dpr={[1, 1.5]} gl={{ antialias: true, powerPreference: "high-performance" }} onContextMenu={(event) => event.preventDefault()} onPointerDown={releaseConversationFocus}>
         <Suspense fallback={null}><CityScene {...props} cameraResetSignal={cameraResetSignal} neighborhood={neighborhood} /></Suspense>
       </Canvas>
       <div className="camera-orbit-hud" role="group" aria-label="360 degree camera controls">
