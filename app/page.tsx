@@ -742,7 +742,6 @@ export default function Home() {
   const completedQuests = questProgress.filter(Boolean).length;
   const agentHasActivity = thinking || learnerMemory.attempts > 0 || missionInventory.length > 0 || learnerMemory.focusWords.length > 0;
   const cityCenter = CITY_CENTERS[city.name] ?? [90 - city.mapY * 1.8, city.mapX * 3.6 - 180];
-  const streetViewUrl = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${encodeURIComponent(`${cityCenter[0].toFixed(4)},${cityCenter[1].toFixed(4)}`)}`;
   const cafeTourStop = CAFE_TOUR_STOPS[Math.min(cafeTourStopIndex, CAFE_TOUR_STOPS.length - 1)];
   const cityTravelStop = CAFE_TOUR_STOPS.find((stop) => stop.cityId === city.id);
   const cafeTourInCurrentCity = cafeTourActive && cafeTourStop.cityId === city.id;
@@ -1656,11 +1655,8 @@ export default function Home() {
 
             <div className="game-status glass-card">
               <span className={`model-chip ${provider}`} title={engineNote}>{provider === "local" ? `${ollamaModel} · local` : providerLabels[provider]}</span>
-              <a href={streetViewUrl} target="_blank" rel="noreferrer">Real streets ↗</a>
               <button onClick={() => setShowPhrasebook(true)} aria-label="Open phrasebook">Phrases <kbd>P</kbd></button>
               <button onClick={() => setShowTranscript((current) => !current)}>{showTranscript ? "Close log" : "Log"}</button>
-              <button onClick={() => setAutoSpeak((current) => !current)} aria-label={autoSpeak ? "Mute character voice" : "Enable character voice"}>{autoSpeak ? "Sound on" : "Muted"}</button>
-              <button onClick={() => setShowPause(true)} aria-label="Open game menu">Menu</button>
             </div>
 
             {showPhrasebook && (
