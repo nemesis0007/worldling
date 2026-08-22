@@ -76,9 +76,52 @@ function conversationMessages(body: AgentRequest) {
 
 function extractJson(text: string) {
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1];
-  const candidate = fenced ?? text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1);
-  return JSON.parse(candidate);
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  const candidate = fenced ?? (start >= 0 && end >= start ? text.slice(start, end + 1) : "");
+  if (!candidate.trim()) throw new Error("The model returned no JSON response. Try the request again.");
+  try {
+    return JSON.parse(candidate);
+  } catch {
+    throw new Error("The model returned incomplete JSON. Try the request again.");
+  }
 }
+
+const geminiTurnSchema = {
+  type: "object",
+  properties: {
+    text: { type: "string" },
+    translation: { type: "string" },
+    actions: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          tool: { type: "string", enum: ["remember_fact", "give_item", "complete_step", "set_waypoint"] },
+          value: { type: "string" },
+          reason: { type: "string" },
+        },
+        required: ["tool", "value", "reason"],
+      },
+    },
+  },
+  required: ["text", "translation", "actions"],
+};
+
+const geminiEvaluationSchema = {
+  type: "object",
+  properties: {
+    overall: { type: "number" },
+    communication: { type: "number" },
+    vocabulary: { type: "number" },
+    grammar: { type: "number" },
+    confidence: { type: "number" },
+    strength: { type: "string" },
+    improvement: { type: "string" },
+    phrase: { type: "string" },
+  },
+  required: ["overall", "communication", "vocabulary", "grammar", "confidence", "strength", "improvement", "phrase"],
+};
 
 async function callLocal(body: AgentRequest) {
   const base = process.env.LOCAL_AI_BASE_URL;
@@ -170,9 +213,18 @@ async function callOpenAICompatible(body: AgentRequest, config: ApiConfig) {
 
 async function callGemini(body: AgentRequest, config: ApiConfig) {
   const model = config.model.replace(/^models\//, "");
-  const contents = body.action === "test"
-    ? [{ role: "user", parts: [{ text: "Confirm the connection." }] }]
-    : conversationMessages(body).map((message) => ({
+  if (body.action === "test") {
+    const testResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}`, {
+      headers: { "x-goog-api-key": config.apiKey },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!testResponse.ok) {
+      const detail = await testResponse.text();
+      throw new Error(`gemini returned ${testResponse.status}${detail ? `: ${detail.slice(0, 220)}` : ""}`);
+    }
+    return { ok: true };
+  }
+  const contents = conversationMessages(body).map((message) => ({
       role: message.role === "assistant" ? "model" : "user",
       parts: [{ text: message.content }],
     }));
@@ -183,9 +235,10 @@ async function callGemini(body: AgentRequest, config: ApiConfig) {
       systemInstruction: { parts: [{ text: systemPrompt(body) }] },
       contents,
       generationConfig: {
-        temperature: body.action === "turn" ? 0.75 : 0.15,
-        maxOutputTokens: body.action === "test" ? 24 : 700,
+        maxOutputTokens: body.action === "turn" ? 500 : 900,
         responseMimeType: "application/json",
+        responseSchema: body.action === "turn" ? geminiTurnSchema : geminiEvaluationSchema,
+        thinkingConfig: { thinkingLevel: body.action === "turn" ? "low" : "medium" },
       },
     }),
     signal: AbortSignal.timeout(30000),
@@ -194,8 +247,10 @@ async function callGemini(body: AgentRequest, config: ApiConfig) {
     const detail = await response.text();
     throw new Error(`gemini returned ${response.status}${detail ? `: ${detail.slice(0, 220)}` : ""}`);
   }
-  const payload = await response.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
-  const text = payload.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("") ?? "";
+  const payload = await response.json() as { candidates?: Array<{ finishReason?: string; content?: { parts?: Array<{ text?: string }> } }> };
+  const candidate = payload.candidates?.[0];
+  const text = candidate?.content?.parts?.map((part) => part.text ?? "").join("") ?? "";
+  if (!text.trim()) throw new Error(`Gemini returned no response${candidate?.finishReason ? ` (${candidate.finishReason})` : ""}.`);
   return extractJson(text);
 }
 
