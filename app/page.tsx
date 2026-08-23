@@ -849,13 +849,13 @@ export default function Home() {
     cameraDirectionRef.current = direction;
   }, []);
 
-  const moveWithJoystick = useCallback((rightInput: number, verticalInput: number) => {
+  const moveWithJoystick = useCallback((rightInput: number, verticalInput: number, frameScale = 1) => {
     if (cafeTourPhase === "riding" || cafeTourPhase === "eating") return;
     const forwardInput = -verticalInput;
     const inputLength = Math.max(1, Math.hypot(forwardInput, rightInput));
     const forward = cameraDirectionRef.current;
     const right = { x: -forward.z, z: forward.x };
-    const speed = .085 * WORLD_SCALE / inputLength;
+    const speed = .085 * WORLD_SCALE * frameScale / inputLength;
     const xDelta = (forward.x * forwardInput + right.x * rightInput) * speed;
     const yDelta = (forward.z * forwardInput + right.z * rightInput) * speed;
     setPlayerPosition((current) => clampToPlayableStreet({ x: current.x + xDelta, y: current.y + yDelta }));
@@ -1872,6 +1872,7 @@ export default function Home() {
                 npcNames={city.scenes.map((person) => person.character)}
                 npcPositions={npcPositions}
                 onCameraDirectionChange={updateCameraDirection}
+                onXrMove={moveWithJoystick}
                 onSelectNpc={(index) => {
                   if (index === activeNpcIndex) setSceneId(city.scenes[index].id);
                   else addAgentEvent("set_waypoint", `${city.scenes[index].character} points you toward ${city.scenes[activeNpcIndex].character}`);

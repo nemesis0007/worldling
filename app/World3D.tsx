@@ -2,7 +2,7 @@
 
 import { memo, Suspense, type ComponentRef, type ReactNode, type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, ThreeElements, useFrame, useThree } from "@react-three/fiber";
-import { Environment, Html, OrbitControls, Sparkles, useGLTF } from "@react-three/drei";
+import { Environment, Html, OrbitControls, PointerLockControls, Sparkles, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils.js";
 import SadakStreetBuilding from "./SadakStreetBuilding";
@@ -10,6 +10,8 @@ import { ROAD_WIDTH, ROAD_WORLD_LINES, toWorld, WORLD_LIMIT, type WorldPoint } f
 
 type Point = WorldPoint;
 type CameraDirection = { x: number; z: number };
+type ViewMode = "orbit" | "first-person";
+type XrActions = { enter: () => Promise<void>; exit: () => Promise<void> };
 
 type World3DProps = {
   activeNpcIndex: number;
@@ -18,6 +20,7 @@ type World3DProps = {
   npcNames: string[];
   npcPositions: Point[];
   onCameraDirectionChange: (direction: CameraDirection) => void;
+  onXrMove: (rightInput: number, verticalInput: number, frameScale?: number) => void;
   onSelectNpc: (index: number) => void;
   playerPosition: Point;
   sceneClass: string;
@@ -683,7 +686,136 @@ function PlayerOrbitCamera({ onDirectionChange, playerPosition, resetSignal, rid
   );
 }
 
-function CityScene({ activeNpcIndex, cameraResetSignal, cityName, neighborhood, npcNames, npcPositions, onCameraDirectionChange, onSelectNpc, playerPosition, rideLabel, ridePhase = "idle", sceneClass, waypointLabel }: World3DProps & { cameraResetSignal: number; neighborhood: Neighborhood | null }) {
+function PlayerFirstPersonCamera({ onDirectionChange, playerPosition }: { onDirectionChange: (direction: CameraDirection) => void; playerPosition: Point }) {
+  const { camera } = useThree();
+  const directionRef = useRef(new THREE.Vector3());
+  const initialized = useRef(false);
+
+  const publishDirection = useCallback(() => {
+    const direction = directionRef.current;
+    camera.getWorldDirection(direction);
+    const length = Math.hypot(direction.x, direction.z);
+    if (length > .001) onDirectionChange({ x: direction.x / length, z: direction.z / length });
+  }, [camera, onDirectionChange]);
+
+  useFrame(() => {
+    const [x, , z] = toWorld(playerPosition);
+    if (!initialized.current) {
+      const direction = directionRef.current;
+      camera.getWorldDirection(direction);
+      direction.y = 0;
+      if (direction.lengthSq() < .001) direction.set(0, 0, -1);
+      direction.normalize();
+      camera.position.set(x, 1.62, z);
+      camera.lookAt(x + direction.x, 1.62, z + direction.z);
+      publishDirection();
+      initialized.current = true;
+      return;
+    }
+    camera.position.set(x, 1.62, z);
+  });
+
+  return <PointerLockControls makeDefault selector=".world3d-canvas canvas" onChange={publishDirection} />;
+}
+
+function WebXrPlayerRig({ onDirectionChange, onMove, onReady, onSessionChange, playerPosition, ridePhase, rideVehicleRef }: {
+  onDirectionChange: (direction: CameraDirection) => void;
+  onMove: World3DProps["onXrMove"];
+  onReady: (supported: boolean, actions: XrActions | null) => void;
+  onSessionChange: (active: boolean) => void;
+  playerPosition: Point;
+  ridePhase: NonNullable<World3DProps["ridePhase"]>;
+  rideVehicleRef: RefObject<THREE.Group | null>;
+}) {
+  const { camera, gl, scene } = useThree();
+  const rigRef = useRef<THREE.Group>(null);
+  const sessionRef = useRef<XRSession | null>(null);
+  const directionRef = useRef(new THREE.Vector3());
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function leaveSession() {
+      const session = sessionRef.current ?? gl.xr.getSession();
+      if (session) await session.end();
+    }
+
+    async function enterSession() {
+      if (!navigator.xr) throw new Error("WebXR is unavailable in this browser.");
+      const session = await navigator.xr.requestSession("immersive-vr", {
+        requiredFeatures: ["local-floor"],
+        optionalFeatures: ["bounded-floor", "hand-tracking"],
+      });
+      sessionRef.current = session;
+      const rig = rigRef.current;
+      if (rig) {
+        camera.removeFromParent();
+        rig.add(camera);
+        camera.position.set(0, 0, 0);
+      }
+      session.addEventListener("end", () => {
+        sessionRef.current = null;
+        camera.removeFromParent();
+        scene.add(camera);
+        onSessionChange(false);
+      }, { once: true });
+      await gl.xr.setSession(session);
+      onSessionChange(true);
+    }
+
+    navigator.xr?.isSessionSupported("immersive-vr")
+      .then((supported) => {
+        if (!cancelled) onReady(supported, supported ? { enter: enterSession, exit: leaveSession } : null);
+      })
+      .catch(() => {
+        if (!cancelled) onReady(false, null);
+      });
+
+    return () => {
+      cancelled = true;
+      onReady(false, null);
+      if (sessionRef.current) void sessionRef.current.end();
+    };
+  }, [camera, gl, onReady, onSessionChange, scene]);
+
+  useFrame((_, delta) => {
+    const session = sessionRef.current;
+    const rig = rigRef.current;
+    if (!session || !rig) return;
+
+    const rideVehicle = ridePhase === "riding" ? rideVehicleRef.current : null;
+    if (rideVehicle) rig.position.set(rideVehicle.position.x, 0, rideVehicle.position.z);
+    else {
+      const [x, , z] = toWorld(playerPosition);
+      rig.position.set(x, 0, z);
+    }
+
+    const direction = directionRef.current;
+    const xrCamera = gl.xr.getCamera();
+    xrCamera.getWorldDirection(direction);
+    const directionLength = Math.hypot(direction.x, direction.z);
+    if (directionLength > .001) onDirectionChange({ x: direction.x / directionLength, z: direction.z / directionLength });
+
+    let rightInput = 0;
+    let verticalInput = 0;
+    for (const inputSource of session.inputSources) {
+      const axes = inputSource.gamepad?.axes;
+      if (!axes?.length) continue;
+      const axisOffset = axes.length >= 4 ? axes.length - 2 : 0;
+      const x = Math.abs(axes[axisOffset] ?? 0) > .16 ? axes[axisOffset] ?? 0 : 0;
+      const y = Math.abs(axes[axisOffset + 1] ?? 0) > .16 ? axes[axisOffset + 1] ?? 0 : 0;
+      if (Math.hypot(x, y) > Math.hypot(rightInput, verticalInput)) {
+        rightInput = x;
+        verticalInput = y;
+      }
+    }
+    if (rightInput || verticalInput) onMove(rightInput, verticalInput, Math.min(delta * 60, 2));
+  });
+
+  return <group ref={rigRef} />;
+}
+
+function CityScene({ activeNpcIndex, cameraResetSignal, cityName, neighborhood, npcNames, npcPositions, onCameraDirectionChange, onSelectNpc, onXrMove, playerPosition, rideLabel, ridePhase = "idle", sceneClass, waypointLabel, viewMode, xrActive, onXrReady, onXrSessionChange }: World3DProps & { cameraResetSignal: number; neighborhood: Neighborhood | null; viewMode: ViewMode; xrActive: boolean; onXrReady: (supported: boolean, actions: XrActions | null) => void; onXrSessionChange: (active: boolean) => void }) {
   const playerWorld = toWorld(playerPosition);
   const rideVehicleRef = useRef<THREE.Group>(null);
   const cafeResting = ridePhase === "eating";
@@ -723,8 +855,10 @@ function CityScene({ activeNpcIndex, cameraResetSignal, cityName, neighborhood, 
       {npcPositions.map((point, index) => (
         <Person key={npcNames[index]} active={!cafeResting && index === activeNpcIndex} model={["animated-woman.glb", "business.glb", "punk-woman.glb"][index]} name={npcNames[index]} onClick={() => onSelectNpc(index)} position={toWorld(point)} waypointLabel={!cafeResting && index === activeNpcIndex ? waypointLabel : undefined} />
       ))}
-      {cafeResting ? <SeatedCafePlayer /> : ridePhase !== "riding" && <Person key={`player-${cityName}`} player model="casual.glb" position={playerWorld} />}
-      <PlayerOrbitCamera key={cityName} onDirectionChange={onCameraDirectionChange} playerPosition={playerPosition} resetSignal={cameraResetSignal} ridePhase={ridePhase} rideVehicleRef={rideVehicleRef} />
+      {!xrActive && viewMode === "orbit" && (cafeResting ? <SeatedCafePlayer /> : ridePhase !== "riding" && <Person key={`player-${cityName}`} player model="casual.glb" position={playerWorld} />)}
+      {!xrActive && viewMode === "orbit" && <PlayerOrbitCamera key={`orbit-${cityName}`} onDirectionChange={onCameraDirectionChange} playerPosition={playerPosition} resetSignal={cameraResetSignal} ridePhase={ridePhase} rideVehicleRef={rideVehicleRef} />}
+      {!xrActive && viewMode === "first-person" && <PlayerFirstPersonCamera key={`first-person-${cityName}`} onDirectionChange={onCameraDirectionChange} playerPosition={playerPosition} />}
+      <WebXrPlayerRig onDirectionChange={onCameraDirectionChange} onMove={onXrMove} onReady={onXrReady} onSessionChange={onXrSessionChange} playerPosition={playerPosition} ridePhase={ridePhase} rideVehicleRef={rideVehicleRef} />
     </>
   );
 }
@@ -733,6 +867,37 @@ export default function World3D(props: World3DProps) {
   const [neighborhood, setNeighborhood] = useState<Neighborhood | null>(null);
   const [mapStatus, setMapStatus] = useState<"loading" | "bundled" | "refreshing" | "live" | "fallback">("loading");
   const [cameraResetSignal, setCameraResetSignal] = useState(0);
+  const [viewMode, setViewMode] = useState<ViewMode>("orbit");
+  const [xrSupported, setXrSupported] = useState(false);
+  const [xrActive, setXrActive] = useState(false);
+  const [xrMessage, setXrMessage] = useState("");
+  const xrActionsRef = useRef<XrActions | null>(null);
+
+  const handleXrReady = useCallback((supported: boolean, actions: XrActions | null) => {
+    setXrSupported(supported);
+    xrActionsRef.current = actions;
+  }, []);
+
+  const handleXrSessionChange = useCallback((active: boolean) => {
+    setXrActive(active);
+    setXrMessage(active ? "VR active · use a controller thumbstick to walk" : "");
+    if (!active) setCameraResetSignal((current) => current + 1);
+  }, []);
+
+  async function toggleXr() {
+    const actions = xrActionsRef.current;
+    if (!actions) {
+      setXrMessage("VR needs a WebXR headset or emulator extension. First person works on this laptop.");
+      return;
+    }
+    try {
+      setXrMessage("");
+      if (xrActive) await actions.exit();
+      else await actions.enter();
+    } catch (error) {
+      setXrMessage(error instanceof Error ? error.message : "Could not start immersive VR.");
+    }
+  }
 
   function refreshMap() {
     setMapStatus("refreshing");
@@ -777,14 +942,17 @@ export default function World3D(props: World3DProps) {
 
   return (
     <div className="world3d-canvas" aria-label={`Interactive 3D street in ${props.cityName}`}>
-      <Canvas shadows camera={{ fov: 52, near: .1, far: 140, position: [0, 5, 12] }} dpr={[1, 1.5]} gl={{ antialias: true, powerPreference: "high-performance" }} onContextMenu={(event) => event.preventDefault()} onPointerDown={releaseConversationFocus}>
-        <Suspense fallback={null}><CityScene {...props} cameraResetSignal={cameraResetSignal} neighborhood={neighborhood} /></Suspense>
+      <Canvas shadows camera={{ fov: 52, near: .1, far: 140, position: [0, 5, 12] }} dpr={[1, 1.5]} gl={{ antialias: true, powerPreference: "high-performance" }} onCreated={({ gl: renderer }) => { renderer.xr.enabled = true; renderer.xr.setReferenceSpaceType("local-floor"); }} onContextMenu={(event) => event.preventDefault()} onPointerDown={releaseConversationFocus}>
+        <Suspense fallback={null}><CityScene {...props} cameraResetSignal={cameraResetSignal} neighborhood={neighborhood} viewMode={viewMode} xrActive={xrActive} onXrReady={handleXrReady} onXrSessionChange={handleXrSessionChange} /></Suspense>
       </Canvas>
       <div className="camera-orbit-hud" role="group" aria-label="360 degree camera controls">
-        <span aria-hidden="true">360°</span>
-        <div><strong>ORBIT CAMERA</strong><small>DRAG TO TURN · WHEEL OR PINCH TO ZOOM</small></div>
-        <button type="button" onClick={(event) => { event.currentTarget.blur(); setCameraResetSignal((current) => current + 1); }}>RESET</button>
+        <span aria-hidden="true">{viewMode === "orbit" ? "360°" : "POV"}</span>
+        <div><strong>{viewMode === "orbit" ? "ORBIT CAMERA" : "FIRST PERSON"}</strong><small>{viewMode === "orbit" ? "DRAG TO TURN · WHEEL OR PINCH TO ZOOM" : "CLICK STREET FOR MOUSE LOOK · WASD TO WALK"}</small></div>
+        <button type="button" onClick={(event) => { event.currentTarget.blur(); setViewMode((current) => current === "orbit" ? "first-person" : "orbit"); }}>{viewMode === "orbit" ? "FIRST PERSON" : "ORBIT VIEW"}</button>
+        {viewMode === "orbit" && <button type="button" onClick={(event) => { event.currentTarget.blur(); setCameraResetSignal((current) => current + 1); }}>RESET</button>}
+        <button type="button" className={xrActive ? "xr-active" : "xr-entry"} onClick={toggleXr} title={xrSupported ? "Enter an immersive WebXR session" : "Connect a headset or enable a WebXR emulator extension"}>{xrActive ? "EXIT VR" : "ENTER VR"}</button>
       </div>
+      {xrMessage && <div className="xr-status-message" role="status">{xrMessage}</div>}
       <button className={`osm-world-status ${mapStatus}`} onClick={props.cityId === "new-york" ? undefined : refreshMap} disabled={props.cityId === "new-york" || mapStatus === "loading" || mapStatus === "refreshing"} title={props.cityId === "new-york" ? "Official NYC building footprints and roof heights" : "Load the newest map data from OpenStreetMap"}>
         <span />{props.cityId === "new-york" && mapStatus === "bundled" ? "NYC official digital street" : mapStatus === "live" ? "Live OSM district" : mapStatus === "bundled" ? "Downloaded OSM district · refresh" : mapStatus === "loading" ? "Loading city area…" : mapStatus === "refreshing" ? "Refreshing map…" : "Designed fallback district"}
       </button>

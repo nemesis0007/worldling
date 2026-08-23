@@ -1120,6 +1120,26 @@ footer { min-height: 64px; padding-inline: max(24px,calc((100vw - 1320px)/2)); b
   cursor: pointer;
 }
 .camera-orbit-hud button:hover { translate: 1px 1px; background: #9bd48d; }
+.camera-orbit-hud .xr-entry { color: #fffdf1; background: #4169e1; }
+.camera-orbit-hud .xr-active { color: #07100d; background: #80d6aa; }
+.xr-status-message {
+  position: absolute;
+  z-index: 21;
+  top: 82px;
+  left: 50%;
+  max-width: min(430px,calc(100% - 32px));
+  border: 2px solid #1e211c;
+  border-radius: 5px;
+  padding: 8px 11px;
+  color: #1e211c;
+  background: #fffdf1;
+  box-shadow: 3px 3px 0 #1e211c;
+  translate: -50% 0;
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: .04em;
+  text-align: center;
+}
 .world3d-loading { position: absolute; inset: 0; z-index: 3; display: grid; place-items: center; pointer-events: none; color: rgba(255,255,255,.65); background: #0b100e; font-size: 8px; font-weight: 800; letter-spacing: .15em; text-transform: uppercase; animation: world3dReveal 2.2s .35s forwards; }
 @keyframes world3dReveal { 0%,45% { opacity: 1; } 100% { opacity: 0; visibility: hidden; } }
 .world3d-name { pointer-events: none; white-space: nowrap; }
