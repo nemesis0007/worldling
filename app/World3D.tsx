@@ -104,6 +104,12 @@ function Person({ active = false, model, name, onClick, player = false, position
       if (child instanceof THREE.Mesh) {
         child.castShadow = true;
         child.receiveShadow = true;
+        // Animated character GLBs are split into several skinned meshes. Their
+        // imported bounds do not follow every animation pose, so Three.js can
+        // incorrectly cull only the torso when the camera turns near a prop.
+        // Keep every part of a character in the render pass; depth testing
+        // still provides normal occlusion behind cars, carts, and buildings.
+        child.frustumCulled = false;
       }
     });
     const action = idleClip ? mixer.clipAction(idleClip) : null;
